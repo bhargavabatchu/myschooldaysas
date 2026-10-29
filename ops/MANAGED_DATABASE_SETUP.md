@@ -31,13 +31,20 @@ A transaction-only isolation test created two synthetic organizations and users,
 
 The test transaction was rolled back. A subsequent query confirmed that organizations and users were both still empty.
 
+## Production runtime connection
+
+The API requires the production-only `CAMPUS_DATABASE_URL` connection string. It deliberately does not fall back to Replit's platform-managed `DATABASE_URL` in production, because the available platform login roles can bypass RLS. Development continues to use `DATABASE_URL`.
+
+Production needs a restricted login role (`NOSUPERUSER`, `NOBYPASSRLS`) that inherits the non-login `campus_app` permission role. The login must not own tenant tables or schemas. Keep forced RLS enabled, and grant only the required schema/table/sequence permissions to the group role. Store the restricted login's full URL as the `CAMPUS_DATABASE_URL` production secret; never paste it into chat or commit it.
+
+The production schema now exists and has 40 tenant tables with RLS enabled and forced. The production roles inspected so far include `cloud_admin` (superuser) and `neon_service` / `neondb_owner` (BYPASSRLS); the restricted custom roles were not provisioned by the schema-copy step. Do not disable the API's startup guard or use a `SET ROLE` workaround on a privileged connection.
+
 ## Remaining publication requirements
 
-1. Supply `JWT_SECRET` and `INTERNAL_API_KEY` through secure production Secrets.
-2. Publish through Replit's supported schema-diff flow. No production database was available during the development-schema checks above. No direct production DDL, startup migration, or deployment-build migration has been added.
-3. Verify custom ownership/grants and the **actual production connection role**. The administrative SQL tool's identity is not proof of the application's runtime identity. The two custom development roles were deliberately created `NOLOGIN`; no database passwords or developer default credentials were assigned. Do not assume that custom roles, role passwords or memberships are transferred by schema publishing.
-4. Keep the API startup rejection of superuser/BYPASSRLS connections intact. If the managed production runtime role is privileged, resolve its credentials/permissions through supported database administration before exposing the app; do not use `SET ROLE` on an authenticated superuser connection as a security substitute.
-5. Provision the school's first organization and administrator securely, then verify real signed-in core journeys. An empty schema does not provide a usable login. Do not import demo passwords or seed production.
+1. Provision the production restricted login and group role through supported database administration. Schema publishing copies schemas, not role credentials or memberships.
+2. Add the restricted connection as the production `CAMPUS_DATABASE_URL` secret. Never use the platform `DATABASE_URL` as the API runtime connection.
+3. After a successful API start, verify the **actual production connection role**. The administrative SQL tool's identity is not proof of the application's runtime identity.
+4. Provision the school's first organization and administrator securely, then verify real signed-in core journeys. The production schema is empty; do not import demo passwords or seed production.
 
 ## Future schema work
 

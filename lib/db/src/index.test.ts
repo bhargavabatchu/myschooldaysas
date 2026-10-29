@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveDatabaseUrl } from "./index.ts";
+import { resolveDatabaseUrl } from "@workspace/db";
 
 test("production always uses the restricted Campus Live database URL", () => {
   assert.equal(
