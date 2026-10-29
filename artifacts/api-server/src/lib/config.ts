@@ -8,6 +8,7 @@ const runtimeEnvSchema = z
     ENABLE_ONLINE_PAYMENTS: z.enum(["true", "false"]).default("true").transform(value => value === "true"),
     ENABLE_REDIS: z.enum(["true", "false"]).default("true").transform(value => value === "true"),
     DATABASE_URL: z.string().url().optional(),
+    CAMPUS_DATABASE_URL: z.string().url().optional(),
     JWT_SECRET: z.string().optional(),
     INTERNAL_API_KEY: z.string().optional(),
     REDIS_URL: z.string().url().optional(),
@@ -23,8 +24,10 @@ const runtimeEnvSchema = z
     RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   })
   .superRefine((env, context) => {
-    if (env.DATABASE_URL && !/^postgres(ql)?:\/\//.test(env.DATABASE_URL)) {
-      context.addIssue({ code: "custom", path: ["DATABASE_URL"], message: "Must use the PostgreSQL URL scheme." });
+    for (const key of ["DATABASE_URL", "CAMPUS_DATABASE_URL"] as const) {
+      if (env[key] && !/^postgres(ql)?:\/\//.test(env[key])) {
+        context.addIssue({ code: "custom", path: [key], message: "Must use the PostgreSQL URL scheme." });
+      }
     }
     if (env.REDIS_URL && !/^rediss?:\/\//.test(env.REDIS_URL)) {
       context.addIssue({ code: "custom", path: ["REDIS_URL"], message: "Must use the Redis URL scheme." });
@@ -38,7 +41,7 @@ const runtimeEnvSchema = z
     if (env.NODE_ENV !== "production") return;
 
     const requiredKeys = [
-      "DATABASE_URL",
+      "CAMPUS_DATABASE_URL",
       "JWT_SECRET",
       "INTERNAL_API_KEY",
       ...(env.ENABLE_REDIS ? ["REDIS_URL"] as const : []),

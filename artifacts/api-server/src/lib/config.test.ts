@@ -19,7 +19,18 @@ test("development config treats blank optional LiveKit URLs as unconfigured", ()
 test("production config rejects missing required values", () => {
   assert.throws(
     () => loadRuntimeConfig({ NODE_ENV: "production", PORT: "8080" }),
-    /DATABASE_URL: Required in production/,
+    /CAMPUS_DATABASE_URL: Required in production/,
+  );
+});
+
+test("production rejects the platform database URL without the restricted app URL", () => {
+  assert.throws(
+    () => loadRuntimeConfig({
+      NODE_ENV: "production",
+      PORT: "8080",
+      DATABASE_URL: "postgres://platform-owner:secret@db.example.test/campus",
+    }),
+    /CAMPUS_DATABASE_URL: Required in production/,
   );
 });
 
@@ -29,7 +40,7 @@ test("production config rejects short secrets and development defaults", () => {
       loadRuntimeConfig({
         NODE_ENV: "production",
         PORT: "8080",
-        DATABASE_URL: "postgres://app:secret@db.example.test/campus",
+        CAMPUS_DATABASE_URL: "postgres://app:secret@db.example.test/campus",
         REDIS_URL: "rediss://cache.example.test",
         LIVEKIT_PUBLIC_URL: "wss://live.example.test",
         LIVEKIT_API_KEY: "live-key-123456",
@@ -48,7 +59,7 @@ test("production config accepts structurally valid long values", () => {
   const config = loadRuntimeConfig({
     NODE_ENV: "production",
     PORT: "8080",
-    DATABASE_URL: "postgres://app:secret@db.example.test/campus",
+    CAMPUS_DATABASE_URL: "postgres://app:secret@db.example.test/campus",
     REDIS_URL: "rediss://cache.example.test",
     LIVEKIT_PUBLIC_URL: "wss://live.example.test",
     LIVEKIT_API_KEY: "live-key-123456",
@@ -65,7 +76,7 @@ test("production config accepts structurally valid long values", () => {
 const coreProduction = {
   NODE_ENV: "production",
   PORT: "8080",
-  DATABASE_URL: "postgres://localhost/campus",
+  CAMPUS_DATABASE_URL: "postgres://localhost/campus",
   JWT_SECRET: "jwt-test-fixture-more-than-thirty-two-characters",
   INTERNAL_API_KEY: "internal-test-fixture-more-than-thirty-two-characters",
   ENABLE_LIVE_CLASSES: "false",
