@@ -46,48 +46,6 @@ export interface LoginInput {
   password: string;
 }
 
-export interface FirstAdminSetupInput {
-  /**
-     * @minLength 64
-     * @maxLength 64
-     * @pattern ^[0-9a-fA-F]{64}$
-     */
-  setupKey: string;
-  /**
-     * @minLength 2
-     * @maxLength 120
-     */
-  organizationName: string;
-  /**
-     * @minLength 2
-     * @maxLength 80
-     * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
-     */
-  organizationSlug: string;
-  /**
-     * @minLength 2
-     * @maxLength 120
-     */
-  name: string;
-  /** @maxLength 254 */
-  email: string;
-  /**
-     * @minLength 12
-     * @maxLength 256
-     */
-  password: string;
-}
-
-export interface FirstAdminSetupStatus {
-  enabled: boolean;
-}
-
-export interface FirstAdminSetupResult {
-  organizationName: string;
-  organizationSlug: string;
-  email: string;
-}
-
 export interface AuthSession {
   accessToken: string;
   user: User;

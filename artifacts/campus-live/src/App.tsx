@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { Link, Route, Switch, useLocation, useParams } from 'wouter';
 import {
   useLogin, useGetMe, getGetMeQueryKey, useGetDashboardOverview, getGetDashboardOverviewQueryKey,
-  useGetFirstAdminSetupStatus,
   useGetClasses, useGetSections,
   useGetStudents, getGetStudentsQueryKey, useGetSessions, getGetSessionsQueryKey,
   useCreateSession, useStartSession, useEndSession, useGetSessionToken,
@@ -41,7 +40,6 @@ import { FeeReceiptPage, FeesPage } from '@/components/fees/fees-page';
 import { EnrollmentLifecycle } from '@/components/academic/enrollment-lifecycle';
 import { AdmissionsInbox, PublicAdmissionForm } from '@/components/admissions';
 import { AnnouncementsPage } from '@/components/announcements/announcements-page';
-import { FirstAdminSetupPage } from '@/components/auth/first-admin-setup-page';
 import { PLATFORM_NAME, SCHOOL_NAME } from '@/lib/branding';
 import { liveClassesEnabled } from '@/lib/features';
 
@@ -62,7 +60,6 @@ const initialBoardConfig: BoardConfig = {
 function App() {
   return <QueryClientProvider client={queryClient}><Switch>
     <Route path="/login" component={LoginPage} />
-    <Route path="/setup/first-admin" component={FirstAdminSetupPage} />
     <Route path="/apply" component={PublicAdmissionForm} />
     <Route><ProtectedApp /></Route>
   </Switch></QueryClientProvider>;
@@ -205,7 +202,6 @@ function LoginGate({ error, retry }: { error: unknown; retry: () => void }) {
 function LoginPage() {
   const [orgSlug, setOrgSlug] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
   const [, setLocation] = useLocation(); const login = useLogin({ mutation: { onSuccess: result => { setAccessToken(result.accessToken); queryClient.setQueryData(getGetMeQueryKey(), result.user); setLocation('/dashboard'); } } });
-  const firstAdminSetup = useGetFirstAdminSetupStatus({ query: { retry: false } });
   return <main className="premium-login">
     <section className="premium-story" aria-label="School welcome">
       <div className="premium-orbit premium-orbit-one" aria-hidden="true"/>
@@ -266,7 +262,6 @@ function LoginPage() {
           <div><strong>A considered space for your school.</strong><span>Your school credentials stay protected.</span></div>
           <Check className="premium-assurance-check" size={16} aria-hidden="true"/>
         </div>
-        {firstAdminSetup.data?.enabled && <Link className="mt-5 block text-center text-sm font-semibold text-[hsl(var(--primary))] hover:underline" href="/setup/first-admin">Set up the first administrator</Link>}
       </div>
       <div className="premium-panel-footer" aria-hidden="true">
         <span>{PLATFORM_NAME.toUpperCase()}</span>

@@ -261,40 +261,6 @@ paths:
                 $ref: "#/components/schemas/AuthSession"
         "401":
           description: Invalid credentials
-  /identity/setup/first-admin/status:
-    get:
-      operationId: getFirstAdminSetupStatus
-      tags: [identity]
-      summary: Check whether one-time administrator setup is available
-      responses:
-        "200":
-          description: First administrator setup availability
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/FirstAdminSetupStatus"
-  /identity/setup/first-admin:
-    post:
-      operationId: createFirstAdmin
-      tags: [identity]
-      summary: Create the first organization and administrator
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/FirstAdminSetupInput"
-      responses:
-        "201":
-          description: First administrator created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/FirstAdminSetupResult"
-        "400": { description: Invalid setup details }
-        "403": { description: Invalid setup key }
-        "409": { description: Setup has already been completed }
-        "503": { description: Setup key is not configured }
   /identity/auth/change-password:
     post:
       operationId: changePassword
@@ -1826,28 +1792,6 @@ components:
         orgSlug: { type: string, minLength: 1, maxLength: 80 }
         email: { type: string, format: email }
         password: { type: string, minLength: 1, maxLength: 256 }
-    FirstAdminSetupInput:
-      type: object
-      required: [setupKey, organizationName, organizationSlug, name, email, password]
-      properties:
-        setupKey: { type: string, minLength: 64, maxLength: 64, pattern: "^[0-9a-fA-F]{64}$", format: password }
-        organizationName: { type: string, minLength: 2, maxLength: 120 }
-        organizationSlug: { type: string, minLength: 2, maxLength: 80, pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$" }
-        name: { type: string, minLength: 2, maxLength: 120 }
-        email: { type: string, format: email, maxLength: 254 }
-        password: { type: string, minLength: 12, maxLength: 256, format: password }
-    FirstAdminSetupStatus:
-      type: object
-      required: [enabled]
-      properties:
-        enabled: { type: boolean }
-    FirstAdminSetupResult:
-      type: object
-      required: [organizationName, organizationSlug, email]
-      properties:
-        organizationName: { type: string }
-        organizationSlug: { type: string }
-        email: { type: string, format: email }
     AuthSession:
       type: object
       required: [accessToken, user]

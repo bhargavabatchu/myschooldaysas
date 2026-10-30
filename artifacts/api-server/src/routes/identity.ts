@@ -15,7 +15,6 @@ import {
   isValidNewPassword,
   needsPasswordRehash,
 } from "../lib/identity-security";
-import { createFirstAdmin, getFirstAdminSetupStatus } from "../lib/first-admin-setup";
 
 const routes: FastifyPluginAsync = async (fastify) => {
 const router = createRouteRegistrar(fastify);
@@ -23,31 +22,6 @@ const router = createRouteRegistrar(fastify);
 function invalid(message: string, code = "INVALID_REQUEST") {
   return { error: { code, message } };
 }
-
-router.get("/identity/setup/first-admin/status", async (_req, res, next) => {
-  try {
-    res.json(await getFirstAdminSetupStatus(pool, process.env.FIRST_ADMIN_SETUP_KEY));
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.post("/identity/setup/first-admin", async (req, res, next) => {
-  try {
-    const result = await createFirstAdmin(pool, process.env.FIRST_ADMIN_SETUP_KEY, req.body);
-    if (!result.ok) {
-      res.status(result.status).json(invalid(result.message, result.code));
-      return;
-    }
-    res.status(201).json({
-      organizationName: result.organizationName,
-      organizationSlug: result.organizationSlug,
-      email: result.email,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
 
 router.post("/identity/auth/login", async (req, res, next) => {
   const parsed = LoginBody.safeParse(req.body);
