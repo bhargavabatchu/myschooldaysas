@@ -16,3 +16,9 @@ Publishing a managed database schema does not establish least-privilege runtime 
 **Why:** A schema copy preserved the tenant tables and forced RLS, but production omitted the custom development roles. All available production login roles had BYPASSRLS, which the API correctly rejects before listening.
 
 **How to apply:** Inspect production role metadata after schema provisioning, not just table/RLS counts. Keep the startup guard intact and require a distinct `CAMPUS_DATABASE_URL` in production so the platform-managed `DATABASE_URL` cannot be used as fallback. Arrange restricted runtime credentials through supported database administration rather than adding production DDL, switching roles on a privileged connection, or disabling isolation.
+
+Creating a restricted role and granting it access does not change the identity used by an already-saved connection URL.
+
+**Why:** A saved runtime URL still authenticated as the platform owner after restricted-role setup, so the API continued to reject startup.
+
+**How to apply:** Before another publish, verify `current_user`, `rolsuper`, and `rolbypassrls` through the application's runtime pool without printing connection strings. Distinguish a workspace reproduction from production runtime evidence when published-revision logs are missing.
