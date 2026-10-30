@@ -476,6 +476,32 @@ export const GetClassesResponse = zod.object({
 
 
 /**
+ * @summary Create a class and its first section
+ */
+export const createClassBodyNameMax = 80;
+
+export const createClassBodyGradeLevelMax = 12;
+
+export const createClassBodyFirstSectionNameMax = 40;
+
+
+
+export const CreateClassBody = zod.object({
+  "name": zod.string().min(1).max(createClassBodyNameMax),
+  "gradeLevel": zod.int().min(1).max(createClassBodyGradeLevelMax),
+  "firstSectionName": zod.string().min(1).max(createClassBodyFirstSectionNameMax)
+})
+
+export const CreateClassResponse = zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "gradeLevel": zod.int(),
+  "sectionCount": zod.int(),
+  "studentCount": zod.int()
+})
+
+
+/**
  * @summary List sections
  */
 export const GetSectionsQueryParams = zod.object({
@@ -495,6 +521,31 @@ export const GetSectionsResponse = zod.object({
   "capacity": zod.int().min(1).nullable()
 })),
   "total": zod.int()
+})
+
+
+/**
+ * @summary Add a section to a class
+ */
+export const createSectionBodyNameMax = 40;
+
+
+
+export const CreateSectionBody = zod.object({
+  "classId": zod.uuid(),
+  "name": zod.string().min(1).max(createSectionBodyNameMax)
+})
+
+
+
+
+export const CreateSectionResponse = zod.object({
+  "id": zod.uuid(),
+  "classId": zod.uuid(),
+  "className": zod.string(),
+  "name": zod.string(),
+  "studentCount": zod.int(),
+  "capacity": zod.int().min(1).nullable()
 })
 
 

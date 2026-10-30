@@ -1,8 +1,10 @@
 import type { FastifyPluginAsync } from "fastify";
 import type { PoolClient } from "pg";
 import {
+  CreateClassBody,
   CreateStudentAdmissionsBody,
   CreateEnrollmentBody,
+  CreateSectionBody,
   GetAvailableStudentsQueryParams,
   GetGuardianLinksQueryParams,
   GetStudentEnrollmentHistoryParams,
@@ -610,6 +612,54 @@ router.get("/academic/classes", requireAuth, async (req, res, next) => {
   }
 });
 
+router.post("/academic/classes", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can create classes."));
+  }
+  const body = CreateClassBody.safeParse(req.body);
+  if (!body.success) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a class name, grade, and first section."));
+  }
+  const name = body.data.name.trim();
+  const firstSectionName = body.data.firstSectionName.trim();
+  if (!name || !firstSectionName) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Class and section names cannot be blank."));
+  }
+
+  try {
+    const created = await withOrg(user.orgId, async (client) => {
+      const classResult = await client.query<{ id: string }>(
+        `INSERT INTO academic.classes (org_id, name, grade_level)
+         VALUES ($1, $2, $3)
+         RETURNING id`,
+        [user.orgId, name, body.data.gradeLevel],
+      );
+      const classId = classResult.rows[0]?.id;
+      if (!classId) throw new Error("Class was not created.");
+      await client.query(
+        `INSERT INTO academic.sections (org_id, class_id, name)
+         VALUES ($1, $2, $3)`,
+        [user.orgId, classId, firstSectionName],
+      );
+      return {
+        id: classId,
+        name,
+        gradeLevel: body.data.gradeLevel,
+        sectionCount: 1,
+        studentCount: 0,
+      };
+    });
+    res.status(201).json(created);
+  } catch (error) {
+    if ((error as { code?: string })?.code === "23505") {
+      return void res.status(409).json(errorBody("CONFLICT", "A class with that name already exists."));
+    }
+    next(error);
+  }
+});
+
 router.get("/academic/sections", requireAuth, async (req, res, next) => {
   const user = req.campusUser;
   if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
@@ -675,6 +725,54 @@ router.get("/academic/sections", requireAuth, async (req, res, next) => {
       total: result.rowCount ?? result.rows.length,
     });
   } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/academic/sections", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can create sections."));
+  }
+  const body = CreateSectionBody.safeParse(req.body);
+  if (!body.success) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid class and section name."));
+  }
+  const name = body.data.name.trim();
+  if (!name) return void res.status(400).json(errorBody("INVALID_REQUEST", "Section name cannot be blank."));
+
+  try {
+    const section = await withOrg(user.orgId, async (client) => {
+      const classResult = await client.query<{ name: string }>(
+        "SELECT name FROM academic.classes WHERE org_id = $1 AND id = $2",
+        [user.orgId, body.data.classId],
+      );
+      const className = classResult.rows[0]?.name;
+      if (!className) return null;
+      const inserted = await client.query<{ id: string }>(
+        `INSERT INTO academic.sections (org_id, class_id, name)
+         VALUES ($1, $2, $3)
+         RETURNING id`,
+        [user.orgId, body.data.classId, name],
+      );
+      const id = inserted.rows[0]?.id;
+      if (!id) throw new Error("Section was not created.");
+      return {
+        id,
+        classId: body.data.classId,
+        className,
+        name,
+        studentCount: 0,
+        capacity: null,
+      };
+    });
+    if (!section) return void res.status(404).json(errorBody("NOT_FOUND", "Class not found."));
+    res.status(201).json(section);
+  } catch (error) {
+    if ((error as { code?: string })?.code === "23505") {
+      return void res.status(409).json(errorBody("CONFLICT", "That section already exists in this class."));
+    }
     next(error);
   }
 });

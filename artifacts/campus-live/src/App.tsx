@@ -35,6 +35,7 @@ import { EnrollmentForm } from '@/components/academic/enrollment-form';
 import { AdmissionIntake } from '@/components/academic/admission-intake';
 import { StudentProfileEditor } from '@/components/academic/student-profile-editor';
 import { ClassPromotionWizard } from '@/components/academic/class-promotion-wizard';
+import { AddSectionForm, ClassSetupPanel } from '@/components/academic/class-setup';
 import { GuardianAccessPage } from '@/components/academic/guardian-access-page';
 import { FeeReceiptPage, FeesPage } from '@/components/fees/fees-page';
 import { EnrollmentLifecycle } from '@/components/academic/enrollment-lifecycle';
@@ -490,12 +491,61 @@ function ClassesPage({ roles }: { roles: string[] }) {
   const classes = useGetClasses(); const sections = useGetSections();
   const byClass = useMemo(() => (sections.data?.items ?? []).reduce<Record<string, SectionSummary[]>>((acc, section) => { (acc[section.classId] ??= []).push(section); return acc; }, {}), [sections.data]);
   const err = classes.error || sections.error;
-  return <div className="directory-page classes-page"><PageHeading eyebrow="Academic directory" title="Classes & sections" description="A clear view of the classes and sections in your school."/>
-    {canManage && classes.data && sections.data && <ClassPromotionWizard classes={classes.data.items} sections={sections.data.items}/>}
-    <QueryState loading={classes.isLoading || sections.isLoading} error={err} empty={!classes.data?.items.length} retry={() => { classes.refetch(); sections.refetch(); }}>
-      {classes.data && <div className="space-y-3">{classes.data.items.map(item => <details key={item.id} className="surface group overflow-hidden" open><summary data-testid={`class-summary-${item.id}`} className="flex cursor-pointer list-none flex-wrap items-center gap-4 p-4 md:p-5"><div className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><BookOpen size={19}/></div><div className="min-w-[150px] flex-1"><div className="display text-[15px] font-extrabold">{item.name}</div><div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">Grade {item.gradeLevel}</div></div><div className="flex gap-5 text-center"><div><div className="display font-bold">{item.sectionCount}</div><div className="text-[10px] text-[hsl(var(--muted-foreground))]">Sections</div></div><div><div className="display font-bold">{item.studentCount}</div><div className="text-[10px] text-[hsl(var(--muted-foreground))]">Students</div></div></div><ChevronDown className="ml-2 text-[hsl(var(--muted-foreground))] transition group-open:rotate-180" size={17}/></summary><div className="border-t border-[hsl(var(--border))] px-4 py-3 md:px-5">{byClass[item.id]?.length ? <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{byClass[item.id].map(section => <div key={section.id} data-testid={`section-card-${section.id}`} className="space-y-3 rounded-lg bg-[hsl(var(--background))] p-3"><div className="flex items-center justify-between"><div><div className="text-xs font-bold">{section.name}</div><div className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">{section.studentCount} students · capacity {section.capacity ?? 'not set'}</div></div><Users size={15} className="text-[hsl(var(--primary))]"/></div>{canManage && <SectionCapacityField sectionId={section.id} sectionName={section.name} capacity={section.capacity}/>}</div>)}</div> : <p className="text-xs text-[hsl(var(--muted-foreground))]">No sections have been assigned to this class.</p>}</div></details>)}</div>}
-    </QueryState>
-  </div>;
+  return (
+    <div className="directory-page classes-page">
+      <PageHeading eyebrow="Academic directory" title="Classes & sections" description="A clear view of the classes and sections in your school." />
+      {canManage && <ClassSetupPanel />}
+      {canManage && classes.data && sections.data && <ClassPromotionWizard classes={classes.data.items} sections={sections.data.items} />}
+      <QueryState
+        loading={classes.isLoading || sections.isLoading}
+        error={err}
+        empty={!classes.data?.items.length}
+        retry={() => { classes.refetch(); sections.refetch(); }}
+      >
+        {classes.data && (
+          <div className="space-y-3">
+            {classes.data.items.map((item) => (
+              <details key={item.id} className="surface group overflow-hidden" open>
+                <summary data-testid={`class-summary-${item.id}`} className="flex cursor-pointer list-none flex-wrap items-center gap-4 p-4 md:p-5">
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><BookOpen size={19} /></div>
+                  <div className="min-w-[150px] flex-1">
+                    <div className="display text-[15px] font-extrabold">{item.name}</div>
+                    <div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">Grade {item.gradeLevel}</div>
+                  </div>
+                  <div className="flex gap-5 text-center">
+                    <div><div className="display font-bold">{item.sectionCount}</div><div className="text-[10px] text-[hsl(var(--muted-foreground))]">Sections</div></div>
+                    <div><div className="display font-bold">{item.studentCount}</div><div className="text-[10px] text-[hsl(var(--muted-foreground))]">Students</div></div>
+                  </div>
+                  <ChevronDown className="ml-2 text-[hsl(var(--muted-foreground))] transition group-open:rotate-180" size={17} />
+                </summary>
+                <div className="space-y-3 border-t border-[hsl(var(--border))] px-4 py-3 md:px-5">
+                  {byClass[item.id]?.length ? (
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {byClass[item.id].map((section) => (
+                        <div key={section.id} data-testid={`section-card-${section.id}`} className="space-y-3 rounded-lg bg-[hsl(var(--background))] p-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-xs font-bold">{section.name}</div>
+                              <div className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">{section.studentCount} students · capacity {section.capacity ?? "not set"}</div>
+                            </div>
+                            <Users size={15} className="text-[hsl(var(--primary))]" />
+                          </div>
+                          {canManage && <SectionCapacityField sectionId={section.id} sectionName={section.name} capacity={section.capacity} />}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="m-0 text-xs text-[hsl(var(--muted-foreground))]">No sections have been assigned to this class.</p>
+                  )}
+                  {canManage && <AddSectionForm classId={item.id} className={item.name} />}
+                </div>
+              </details>
+            ))}
+          </div>
+        )}
+      </QueryState>
+    </div>
+  );
 }
 
 function StudentsPage({ roles }: { roles: string[] }) {
@@ -530,11 +580,14 @@ function StudentsPage({ roles }: { roles: string[] }) {
        {canManage && <label className="flex items-center gap-2 text-xs font-semibold"><span>Class</span><select data-testid="select-student-class" className="field min-w-[145px]" value={classId} onChange={e => { setClassId(e.target.value); setSectionId(''); setPage(0); setProfileStudentId(null); }}><option value="">All classes</option>{classes.data?.items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
        <label className="flex items-center gap-2 text-xs font-semibold"><span>Section</span><select data-testid="select-student-section" className="field min-w-[150px]" value={effectiveSection} onChange={e => { setSectionId(e.target.value); setPage(0); setProfileStudentId(null); }}>{canManage ? <option value="">All sections</option> : <option value="">Choose section</option>}{visibleSections.map(s => <option key={s.id} value={s.id}>{s.className} · {s.name}</option>)}</select></label>
     </div>
-    {canManage && sections.data && <>
+    {canManage && sections.data && (sections.data.items.length ? <>
       <AdmissionIntake sections={sections.data.items}/>
       <EnrollmentForm sections={sections.data.items}/>
       {students.data && classes.data && <EnrollmentLifecycle sections={sections.data.items} classes={classes.data.items} students={students.data.items}/>}
-    </>}
+    </> : <div className="surface mb-5 flex flex-wrap items-center justify-between gap-3 p-4">
+      <div><h2 className="m-0 text-sm font-bold">Set up a class before adding students</h2><p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Create a class and its first section so new students can be enrolled.</p></div>
+      <Link href="/admin/classes" className="btn btn-primary min-h-9">Set up classes</Link>
+    </div>)}
      {filtersLoading ? <div className="skeleton h-48"/> : filterError ? <QueryState loading={false} error={filterError} empty={false} retry={() => { sections.refetch(); if (canManage) classes.refetch(); }}><></></QueryState> :
        !canManage && !effectiveSection ? <InlineEmpty text="No sections are available to display students."/> :
       <QueryState loading={students.isLoading} error={students.error} empty={!students.data?.items.length} retry={() => students.refetch()}>

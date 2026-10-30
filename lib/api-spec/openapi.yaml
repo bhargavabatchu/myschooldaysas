@@ -362,6 +362,26 @@ paths:
                       $ref: "#/components/schemas/ClassSummary"
                   total:
                     type: integer
+    post:
+      operationId: createClass
+      tags: [academic]
+      summary: Create a class and its first section
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClassCreateInput" }
+      responses:
+        "201":
+          description: Created class and first section
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClassSummary" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "409": { description: Class or first section already exists }
   /academic/sections:
     get:
       operationId: getSections
@@ -390,6 +410,27 @@ paths:
                       $ref: "#/components/schemas/SectionSummary"
                   total:
                     type: integer
+    post:
+      operationId: createSection
+      tags: [academic]
+      summary: Add a section to a class
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SectionCreateInput" }
+      responses:
+        "201":
+          description: Created section
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SectionSummary" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "404": { description: Class not found }
+        "409": { description: Section already exists }
   /academic/sections/{sectionId}:
     patch:
       operationId: updateSection
@@ -2223,6 +2264,19 @@ components:
       required: [capacity]
       properties:
         capacity: { type: [integer, "null"], minimum: 1 }
+    ClassCreateInput:
+      type: object
+      required: [name, gradeLevel, firstSectionName]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        gradeLevel: { type: integer, minimum: 1, maximum: 12 }
+        firstSectionName: { type: string, minLength: 1, maxLength: 40 }
+    SectionCreateInput:
+      type: object
+      required: [classId, name]
+      properties:
+        classId: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 40 }
     EnrollmentYearUpdateInput:
       type: object
       required: [academicYear]

@@ -639,6 +639,33 @@ export interface SectionCapacityUpdateInput {
   capacity: number | null;
 }
 
+export interface ClassCreateInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  name: string;
+  /**
+     * @minimum 1
+     * @maximum 12
+     */
+  gradeLevel: number;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  firstSectionName: string;
+}
+
+export interface SectionCreateInput {
+  classId: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  name: string;
+}
+
 export interface EnrollmentYearUpdateInput {
   /**
      * @minLength 4

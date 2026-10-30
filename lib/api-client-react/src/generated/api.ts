@@ -49,6 +49,8 @@ import type {
   BoardTemplateInput,
   BoardTemplateUpdate,
   ChangePasswordInput,
+  ClassCreateInput,
+  ClassSummary,
   ConsentGrantInput,
   ConsentPurpose,
   ConsentRecord,
@@ -127,6 +129,7 @@ import type {
   SchoolAttendanceInput,
   SchoolAttendancePage,
   SectionCapacityUpdateInput,
+  SectionCreateInput,
   SectionSummary,
   StudentEnrollmentHistoryPage,
   StudentPage,
@@ -2112,6 +2115,94 @@ export function useGetClasses<TData = Awaited<ReturnType<typeof getClasses>>, TE
 
 
 
+export const getCreateClassUrl = () => {
+
+
+
+
+  return `/api/academic/classes`
+}
+
+/**
+ * @summary Create a class and its first section
+ */
+export const createClass = async (classCreateInput: ClassCreateInput, options?: Parameters<typeof customFetch>[1]): Promise<ClassSummary> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ClassSummary>(getCreateClassUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(classCreateInput)
+  }
+);}
+
+
+
+
+
+export const getCreateClassMutationKey = () => ['createClass'] as const;
+
+export const getCreateClassMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createClass>>, TError,CreateClassMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createClass>>, TError,CreateClassMutationVariables, TContext> => {
+
+const mutationKey = getCreateClassMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createClass>>, CreateClassMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createClass(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateClassMutationResult = NonNullable<Awaited<ReturnType<typeof createClass>>>
+    export type CreateClassMutationBody = BodyType<ClassCreateInput>
+    export type CreateClassMutationError = ErrorType<void>
+    export type CreateClassMutationVariables = {data: BodyType<ClassCreateInput>}
+
+    /**
+ * @summary Create a class and its first section
+ */
+export const useCreateClass = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createClass>>, TError,CreateClassMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createClass>>,
+        TError,
+        CreateClassMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateClassMutationOptions(options), queryClient);
+    }
+
 export const getGetSectionsUrl = (params?: GetSectionsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -2219,6 +2310,94 @@ export function useGetSections<TData = Awaited<ReturnType<typeof getSections>>, 
 
 
 
+
+export const getCreateSectionUrl = () => {
+
+
+
+
+  return `/api/academic/sections`
+}
+
+/**
+ * @summary Add a section to a class
+ */
+export const createSection = async (sectionCreateInput: SectionCreateInput, options?: Parameters<typeof customFetch>[1]): Promise<SectionSummary> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SectionSummary>(getCreateSectionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(sectionCreateInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSectionMutationKey = () => ['createSection'] as const;
+
+export const getCreateSectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSection>>, TError,CreateSectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSection>>, TError,CreateSectionMutationVariables, TContext> => {
+
+const mutationKey = getCreateSectionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSection>>, CreateSectionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSection(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSectionMutationResult = NonNullable<Awaited<ReturnType<typeof createSection>>>
+    export type CreateSectionMutationBody = BodyType<SectionCreateInput>
+    export type CreateSectionMutationError = ErrorType<void>
+    export type CreateSectionMutationVariables = {data: BodyType<SectionCreateInput>}
+
+    /**
+ * @summary Add a section to a class
+ */
+export const useCreateSection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSection>>, TError,CreateSectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createSection>>,
+        TError,
+        CreateSectionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSectionMutationOptions(options), queryClient);
+    }
 
 export const getUpdateSectionUrl = (sectionId: string,) => {
 
