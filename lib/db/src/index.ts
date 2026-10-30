@@ -32,13 +32,13 @@ export function resolveDatabaseUrl(env: NodeJS.ProcessEnv): string {
   const databaseUrl =
     env.NODE_ENV === "production"
       ? env.CAMPUS_DATABASE_URL
-      : env.CAMPUS_DATABASE_URL || env.DATABASE_URL;
+      : env.DATABASE_URL;
 
   if (!databaseUrl) {
     throw new Error(
       env.NODE_ENV === "production"
         ? "CAMPUS_DATABASE_URL must be set in production; refusing to use the platform database connection."
-        : "DATABASE_URL or CAMPUS_DATABASE_URL must be set; refusing to start without an explicit database connection.",
+        : "DATABASE_URL must be set outside production; refusing to use the production database connection.",
     );
   }
 
