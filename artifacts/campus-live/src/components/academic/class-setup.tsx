@@ -7,13 +7,19 @@ import {
   getGetSectionsQueryKey,
   useCreateClass,
   useCreateSection,
+  useGetClasses,
 } from "@workspace/api-client-react";
 
 export function ClassSetupPanel() {
   const queryClient = useQueryClient();
+  const classes = useGetClasses();
   const [name, setName] = useState("");
   const [gradeLevel, setGradeLevel] = useState("1");
   const [firstSectionName, setFirstSectionName] = useState("A");
+  const normalizedName = name.trim();
+  const existingClass = normalizedName
+    ? classes.data?.items.find((item) => item.name.trim() === normalizedName)
+    : undefined;
   const create = useCreateClass({
     mutation: {
       onSuccess: async () => {
@@ -59,7 +65,10 @@ export function ClassSetupPanel() {
             maxLength={80}
             placeholder="e.g. Grade 1"
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => {
+              setName(event.target.value);
+              create.reset();
+            }}
           />
         </label>
         <label className="text-xs font-semibold">
@@ -89,11 +98,21 @@ export function ClassSetupPanel() {
           />
         </label>
         <div className="flex items-end">
-          <button className="btn btn-primary min-h-10 w-full justify-center" disabled={create.isPending}>
-            {create.isPending ? "Creating…" : "Create class"}
+          <button className="btn btn-primary min-h-10 w-full justify-center" disabled={!classes.data || create.isPending || Boolean(existingClass)}>
+            {create.isPending ? "Creating…" : existingClass ? "Name already used" : "Create class"}
           </button>
         </div>
       </form>
+      {classes.isLoading && <p role="status" className="mb-0 mt-3 text-xs text-[hsl(var(--muted-foreground))]">Checking existing classes…</p>}
+      {classes.isError && <p role="alert" className="mb-0 mt-3 text-xs text-[hsl(var(--destructive))]">Could not check existing classes. Refresh this page before creating one.</p>}
+      {existingClass && (
+        <div role="status" className="mt-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-3 text-xs">
+          <p className="mb-2 mt-0">
+            <strong>{existingClass.name}</strong> already exists in Grade {existingClass.gradeLevel}. Add a section to this class, or choose a different class name.
+          </p>
+          <AddSectionForm classId={existingClass.id} className={existingClass.name} />
+        </div>
+      )}
       {create.isError && <p role="alert" className="mb-0 mt-3 text-xs text-[hsl(var(--destructive))]">{create.error.message}</p>}
       {create.isSuccess && <p role="status" className="mb-0 mt-3 text-xs text-[hsl(var(--primary))]">Class and first section created.</p>}
     </section>
