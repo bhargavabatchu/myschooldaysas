@@ -55,6 +55,21 @@ test("production config rejects short secrets and development defaults", () => {
   );
 });
 
+test("production rejects a malformed first-admin setup key when one is configured", () => {
+  assert.throws(
+    () =>
+      loadRuntimeConfig({
+        NODE_ENV: "production",
+        PORT: "8080",
+        CAMPUS_DATABASE_URL: "postgres://app:secret@db.example.test/campus",
+        JWT_SECRET: "jwt-secret-value-more-than-thirty-two-characters",
+        INTERNAL_API_KEY: "internal-key-value-more-than-thirty-two-characters",
+        FIRST_ADMIN_SETUP_KEY: "too-short",
+      }),
+    /FIRST_ADMIN_SETUP_KEY: Must be a 64-character hexadecimal value/,
+  );
+});
+
 test("production config accepts structurally valid long values", () => {
   const config = loadRuntimeConfig({
     NODE_ENV: "production",

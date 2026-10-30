@@ -337,6 +337,56 @@ export const LoginResponse = zod.object({
 
 
 /**
+ * @summary Check whether one-time administrator setup is available
+ */
+export const GetFirstAdminSetupStatusResponse = zod.object({
+  "enabled": zod.boolean()
+})
+
+
+/**
+ * @summary Create the first organization and administrator
+ */
+export const createFirstAdminBodySetupKeyRegExp = new RegExp('^[0-9a-fA-F]{64}$');
+
+export const createFirstAdminBodySetupKeyMin = 64;
+export const createFirstAdminBodySetupKeyMax = 64;
+
+export const createFirstAdminBodyOrganizationNameMin = 2;
+export const createFirstAdminBodyOrganizationNameMax = 120;
+
+export const createFirstAdminBodyOrganizationSlugMin = 2;
+export const createFirstAdminBodyOrganizationSlugMax = 80;
+
+
+export const createFirstAdminBodyOrganizationSlugRegExp = new RegExp('^[a-z0-9]+(?:-[a-z0-9]+)*$');
+export const createFirstAdminBodyNameMin = 2;
+export const createFirstAdminBodyNameMax = 120;
+
+export const createFirstAdminBodyEmailMax = 254;
+
+export const createFirstAdminBodyPasswordMin = 12;
+export const createFirstAdminBodyPasswordMax = 256;
+
+
+
+export const CreateFirstAdminBody = zod.object({
+  "setupKey": zod.stringFormat('password', createFirstAdminBodySetupKeyRegExp).min(createFirstAdminBodySetupKeyMin).max(createFirstAdminBodySetupKeyMax),
+  "organizationName": zod.string().min(createFirstAdminBodyOrganizationNameMin).max(createFirstAdminBodyOrganizationNameMax),
+  "organizationSlug": zod.string().min(createFirstAdminBodyOrganizationSlugMin).max(createFirstAdminBodyOrganizationSlugMax).regex(createFirstAdminBodyOrganizationSlugRegExp),
+  "name": zod.string().min(createFirstAdminBodyNameMin).max(createFirstAdminBodyNameMax),
+  "email": zod.email().max(createFirstAdminBodyEmailMax),
+  "password": zod.string().min(createFirstAdminBodyPasswordMin).max(createFirstAdminBodyPasswordMax)
+})
+
+export const CreateFirstAdminResponse = zod.object({
+  "organizationName": zod.string(),
+  "organizationSlug": zod.string(),
+  "email": zod.email()
+})
+
+
+/**
  * @summary Change a password, including a forced first-login change
  */
 export const changePasswordBodyCurrentPasswordMax = 256;

@@ -11,6 +11,7 @@ const runtimeEnvSchema = z
     CAMPUS_DATABASE_URL: z.string().url().optional(),
     JWT_SECRET: z.string().optional(),
     INTERNAL_API_KEY: z.string().optional(),
+    FIRST_ADMIN_SETUP_KEY: z.string().optional(),
     REDIS_URL: z.string().url().optional(),
     LIVEKIT_PUBLIC_URL: z.preprocess(
       (value) => value === "" ? undefined : value,
@@ -39,6 +40,13 @@ const runtimeEnvSchema = z
       context.addIssue({ code: "custom", path: ["LIVEKIT_PUBLIC_URL"], message: "Must use a ws:// or wss:// URL." });
     }
     if (env.NODE_ENV !== "production") return;
+    if (env.FIRST_ADMIN_SETUP_KEY && !/^[0-9a-fA-F]{64}$/.test(env.FIRST_ADMIN_SETUP_KEY)) {
+      context.addIssue({
+        code: "custom",
+        path: ["FIRST_ADMIN_SETUP_KEY"],
+        message: "Must be a 64-character hexadecimal value.",
+      });
+    }
 
     const requiredKeys = [
       "CAMPUS_DATABASE_URL",
@@ -68,7 +76,7 @@ const runtimeEnvSchema = z
       }
     }
 
-    const nonSecretKeys = ["JWT_SECRET", "INTERNAL_API_KEY", "LIVEKIT_API_KEY", ...secretKeys] as const;
+    const nonSecretKeys = ["JWT_SECRET", "INTERNAL_API_KEY", "FIRST_ADMIN_SETUP_KEY", "LIVEKIT_API_KEY", ...secretKeys] as const;
     for (const key of new Set(nonSecretKeys)) {
       const value = env[key];
       if (value && /development|change.?me|example|devkey|mock/i.test(value)) {
