@@ -261,6 +261,46 @@ paths:
                 $ref: "#/components/schemas/AuthSession"
         "401":
           description: Invalid credentials
+  /identity/auth/refresh:
+    post:
+      operationId: refreshSession
+      tags: [identity]
+      summary: Restore or renew a remembered session
+      security:
+        - refreshCookieAuth: []
+      parameters:
+        - in: header
+          name: X-CSRF-Token
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Renewed access token and authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: Remembered session is missing, expired, or revoked
+        "403":
+          description: CSRF check failed
+  /identity/auth/logout:
+    post:
+      operationId: logoutSession
+      tags: [identity]
+      summary: Revoke a remembered session on this device
+      security:
+        - refreshCookieAuth: []
+      parameters:
+        - in: header
+          name: X-CSRF-Token
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Session revoked and cookies cleared
+        "403":
+          description: CSRF check failed
   /identity/auth/change-password:
     post:
       operationId: changePassword
@@ -1803,6 +1843,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    refreshCookieAuth:
+      type: apiKey
+      in: cookie
+      name: __Host-campus_refresh
   schemas:
     HealthStatus:
       type: object
@@ -1833,6 +1877,7 @@ components:
         orgSlug: { type: string, minLength: 1, maxLength: 80 }
         email: { type: string, format: email }
         password: { type: string, minLength: 1, maxLength: 256 }
+        rememberMe: { type: boolean }
     AuthSession:
       type: object
       required: [accessToken, user]

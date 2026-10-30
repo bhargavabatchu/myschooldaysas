@@ -15,6 +15,17 @@ import {
   isValidNewPassword,
   needsPasswordRehash,
 } from "../lib/identity-security";
+import {
+  clearSessionCookies,
+  createCsrfToken,
+  createRefreshCredential,
+  createSessionCookies,
+  hashRefreshSecret,
+  hasValidCsrfToken,
+  matchesRefreshSecret,
+  readRefreshCredential,
+  REMEMBERED_SESSION_SECONDS,
+} from "../lib/auth-sessions";
 
 const routes: FastifyPluginAsync = async (fastify) => {
 const router = createRouteRegistrar(fastify);
@@ -103,7 +114,150 @@ router.post("/identity/auth/login", async (req, res, next) => {
       roles: user.roles,
       mustChangePassword: user.must_change_password,
     };
+    if (parsed.data.rememberMe) {
+      const credential = createRefreshCredential(org.id);
+      const csrfToken = createCsrfToken();
+      await withOrg(org.id, (client) =>
+        client.query(
+          `INSERT INTO identity.auth_sessions
+             (id, org_id, user_id, refresh_secret_hash, expires_at)
+           VALUES ($1, $2, $3, $4, now() + ($5 * interval '1 second'))`,
+          [
+            credential.sessionId,
+            org.id,
+            user.id,
+            hashRefreshSecret(credential.secret),
+            REMEMBERED_SESSION_SECONDS,
+          ],
+        ),
+      );
+      res.header("set-cookie", createSessionCookies(credential, csrfToken));
+    } else {
+      res.header("set-cookie", clearSessionCookies());
+    }
     res.status(200).json({ accessToken: createAccessToken(authUser), user: authUser });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/identity/auth/refresh", async (req, res, next) => {
+  if (!hasValidCsrfToken(req)) {
+    res.status(403).json(invalid("The session security check failed. Refresh the page and sign in again.", "CSRF_FAILED"));
+    return;
+  }
+
+  const credential = readRefreshCredential(req.headers.cookie);
+  if (!credential) {
+    res.header("set-cookie", clearSessionCookies());
+    res.status(401).json(invalid("Sign in to continue.", "UNAUTHENTICATED"));
+    return;
+  }
+
+  try {
+    const nextCredential = createRefreshCredential(credential.orgId, credential.sessionId);
+    const csrfToken = createCsrfToken();
+    const sessionResult = await withOrg(credential.orgId, async (client) => {
+      const result = await client.query<{
+        refresh_secret_hash: string;
+        id: string;
+        org_id: string;
+        name: string;
+        email: string;
+        must_change_password: boolean;
+        temporary_password_expires_at: Date | null;
+        roles: Array<"super_admin" | "org_admin" | "campus_admin" | "hod" | "teacher" | "class_teacher" | "student" | "parent">;
+      }>(
+        `SELECT s.refresh_secret_hash, u.id, u.org_id, u.name, u.email,
+                u.must_change_password, u.temporary_password_expires_at,
+                COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') AS roles
+           FROM identity.auth_sessions AS s
+           JOIN identity.users AS u
+             ON u.id = s.user_id AND u.org_id = s.org_id
+           LEFT JOIN identity.user_roles AS ur
+             ON ur.user_id = u.id AND ur.org_id = u.org_id
+          WHERE s.id = $1 AND s.org_id = $2
+            AND s.revoked_at IS NULL AND s.expires_at > now()
+            AND u.status = 'active'
+          GROUP BY s.id, u.id`,
+        [credential.sessionId, credential.orgId],
+      );
+      const session = result.rows[0];
+      if (
+        !session ||
+        session.roles.length === 0 ||
+        !matchesRefreshSecret(credential.secret, session.refresh_secret_hash) ||
+        (session.must_change_password &&
+          (!session.temporary_password_expires_at ||
+            session.temporary_password_expires_at.getTime() <= Date.now()))
+      ) {
+        return null;
+      }
+
+      const updated = await client.query(
+        `UPDATE identity.auth_sessions
+            SET refresh_secret_hash = $1,
+                last_used_at = now(),
+                expires_at = now() + ($2 * interval '1 second')
+          WHERE id = $3 AND org_id = $4 AND refresh_secret_hash = $5
+            AND revoked_at IS NULL AND expires_at > now()`,
+        [
+          hashRefreshSecret(nextCredential.secret),
+          REMEMBERED_SESSION_SECONDS,
+          credential.sessionId,
+          credential.orgId,
+          session.refresh_secret_hash,
+        ],
+      );
+      if (updated.rowCount !== 1) return null;
+
+      return {
+        id: session.id,
+        orgId: session.org_id,
+        name: session.name,
+        email: session.email,
+        roles: session.roles,
+        mustChangePassword: session.must_change_password,
+      };
+    });
+
+    if (!sessionResult) {
+      res.header("set-cookie", clearSessionCookies());
+      res.status(401).json(invalid("Your remembered session is no longer valid. Sign in again.", "UNAUTHENTICATED"));
+      return;
+    }
+
+    res.header("set-cookie", createSessionCookies(nextCredential, csrfToken));
+    res.status(200).json({
+      accessToken: createAccessToken(sessionResult),
+      user: sessionResult,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/identity/auth/logout", async (req, res, next) => {
+  const credential = readRefreshCredential(req.headers.cookie);
+  if (credential && !hasValidCsrfToken(req)) {
+    res.status(403).json(invalid("The session security check failed.", "CSRF_FAILED"));
+    return;
+  }
+
+  try {
+    if (credential) {
+      await withOrg(credential.orgId, (client) =>
+        client.query(
+          `UPDATE identity.auth_sessions
+              SET revoked_at = now()
+            WHERE id = $1 AND org_id = $2 AND refresh_secret_hash = $3
+              AND revoked_at IS NULL`,
+          [credential.sessionId, credential.orgId, hashRefreshSecret(credential.secret)],
+        ),
+      );
+    }
+    res.header("set-cookie", clearSessionCookies());
+    res.status(204).send();
   } catch (error) {
     next(error);
   }
@@ -190,15 +344,21 @@ router.post(
       const temporaryPassword = generateTemporaryPassword();
       const passwordHash = await hashPassword(temporaryPassword);
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      await withOrg(actor.orgId, (client) =>
-        client.query(
+      await withOrg(actor.orgId, async (client) => {
+        await client.query(
           `UPDATE identity.users
               SET password_hash = $1, must_change_password = true,
                   temporary_password_expires_at = $2, updated_at = now()
             WHERE id = $3 AND org_id = $4`,
           [passwordHash, expiresAt, target.id, actor.orgId],
-        ),
-      );
+        );
+        await client.query(
+          `UPDATE identity.auth_sessions
+              SET revoked_at = now()
+            WHERE user_id = $1 AND org_id = $2 AND revoked_at IS NULL`,
+          [target.id, actor.orgId],
+        );
+      });
       res.json({ temporaryPassword, expiresAt: expiresAt.toISOString() });
     } catch (error) {
       next(error);

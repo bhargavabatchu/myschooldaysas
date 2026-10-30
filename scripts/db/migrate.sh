@@ -34,6 +34,7 @@ identity:001|services/identity/migrations/001_identity.sql
 identity:002|services/identity/migrations/002_identity_org_fk.sql
 identity:003|services/identity/migrations/003_guardian_privacy_flags.sql
 identity:004|services/identity/migrations/004_student_profiles.sql
+identity:005|services/identity/migrations/005_auth_sessions.sql
 academic:001|services/academic/migrations/001_academic.sql
 academic:002|services/academic/migrations/002_consents.sql
 academic:003|services/academic/migrations/003_subjects.sql

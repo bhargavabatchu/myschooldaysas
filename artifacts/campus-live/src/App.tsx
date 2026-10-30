@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { Link, Route, Switch, useLocation, useParams } from 'wouter';
 import {
@@ -24,7 +24,12 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/components/not-found';
 import '@/components/auth/login-page.css';
 import '@/components/dashboard/dashboard-page.css';
-import { setAccessToken } from './auth-token';
+import {
+  logoutRememberedSession,
+  refreshRememberedSession,
+  restoreRememberedSession,
+  setAccessToken,
+} from './auth-token';
 import { ClassroomScreen } from '@/components/classroom/classroom-screen';
 import { LearningPage } from '@/components/learning/learning-page';
 import { AttendancePage } from '@/components/attendance/attendance-page';
@@ -60,6 +65,24 @@ const initialBoardConfig: BoardConfig = {
 };
 
 function App() {
+  const [sessionReady, setSessionReady] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    void restoreRememberedSession().finally(() => {
+      if (mounted) setSessionReady(true);
+    });
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshRememberedSession();
+    };
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    const refreshTimer = window.setInterval(() => void refreshRememberedSession(), 10 * 60 * 1000);
+    return () => {
+      mounted = false;
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.clearInterval(refreshTimer);
+    };
+  }, []);
+  if (!sessionReady) return <LoadingScreen />;
   return <QueryClientProvider client={queryClient}><Switch>
     <Route path="/login" component={LoginPage} />
     <Route path="/apply" component={PublicAdmissionForm} />
@@ -90,7 +113,7 @@ function ProtectedApp() {
   const user = me.data;
   if (!Array.isArray(user.roles)) return <LoginGate error={new Error('Your sign-in details are incomplete. Please sign in again.')} retry={() => me.refetch()} />;
   if (user.mustChangePassword) return <PasswordChangePage email={user.email} />;
-  const logout = () => { setAccessToken(null); queryClient.clear(); setPath('/login'); };
+  const logout = () => { void logoutRememberedSession(); setAccessToken(null); queryClient.clear(); setPath('/login'); };
   if (user.roles.includes('parent')) {
     if (consentReview.isLoading) return <LoadingScreen />;
     if (consentReview.isError) return <div className="shell grain grid min-h-screen place-items-center p-5"><div className="surface max-w-md p-6 text-center"><h1 className="display text-xl font-extrabold">Privacy choices unavailable</h1><p className="my-3 text-sm text-[hsl(var(--muted-foreground))]">We could not load your consent review status.</p><button className="btn btn-primary" onClick={() => consentReview.refetch()}>Try again</button></div></div>;
@@ -203,6 +226,7 @@ function LoginGate({ error, retry }: { error: unknown; retry: () => void }) {
 
 function LoginPage() {
   const [orgSlug, setOrgSlug] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [, setLocation] = useLocation(); const login = useLogin({ mutation: { onSuccess: result => { setAccessToken(result.accessToken); queryClient.setQueryData(getGetMeQueryKey(), result.user); setLocation('/dashboard'); } } });
   return <main className="premium-login">
     <section className="premium-story" aria-label="School welcome">
@@ -243,7 +267,7 @@ function LoginPage() {
           <h2>Welcome back.</h2>
           <p>Sign in with your school account to continue.</p>
         </div>
-        <form onSubmit={event => { event.preventDefault(); login.mutate({ data: { orgSlug, email, password } }); }}>
+        <form onSubmit={event => { event.preventDefault(); login.mutate({ data: { orgSlug, email, password, rememberMe } }); }}>
           <label className="premium-label" htmlFor="login-organization">Organization</label>
           <input id="login-organization" required autoComplete="organization" data-testid="input-organization" className="premium-input" placeholder="Your school's organization" value={orgSlug} onChange={event => setOrgSlug(event.target.value)}/>
 
@@ -252,6 +276,17 @@ function LoginPage() {
 
           <label className="premium-label premium-label-spaced" htmlFor="login-password">Password</label>
           <input id="login-password" required type="password" autoComplete="current-password" data-testid="input-password" className="premium-input" placeholder="Enter your password" value={password} onChange={event => setPassword(event.target.value)}/>
+
+          <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={event => setRememberMe(event.target.checked)}
+              className="h-4 w-4 accent-[hsl(var(--primary))]"
+            />
+            <span>Remember this device for 30 days</span>
+          </label>
+          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Leave this off on shared devices.</p>
 
           {login.isError && <div role="alert" data-testid="status-login-error" className="premium-login-error">{errorText(login.error)}</div>}
           <button type="submit" disabled={login.isPending} aria-busy={login.isPending} data-testid="button-submit-login" className="premium-submit">

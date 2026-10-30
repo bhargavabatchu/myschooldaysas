@@ -18,4 +18,5 @@ export interface LoginInput {
      * @maxLength 256
      */
   password: string;
+  rememberMe?: boolean;
 }

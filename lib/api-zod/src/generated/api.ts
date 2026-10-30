@@ -320,7 +320,8 @@ export const loginBodyPasswordMax = 256;
 export const LoginBody = zod.object({
   "orgSlug": zod.string().min(1).max(loginBodyOrgSlugMax),
   "email": zod.email(),
-  "password": zod.string().min(1).max(loginBodyPasswordMax)
+  "password": zod.string().min(1).max(loginBodyPasswordMax),
+  "rememberMe": zod.boolean().optional()
 })
 
 export const LoginResponse = zod.object({
@@ -334,6 +335,36 @@ export const LoginResponse = zod.object({
   "mustChangePassword": zod.boolean()
 })
 })
+
+
+/**
+ * @summary Restore or renew a remembered session
+ */
+export const RefreshSessionHeader = zod.object({
+  "X-CSRF-Token": zod.string()
+})
+
+export const RefreshSessionResponse = zod.object({
+  "accessToken": zod.string(),
+  "user": zod.object({
+  "id": zod.uuid(),
+  "orgId": zod.uuid(),
+  "name": zod.string(),
+  "email": zod.email(),
+  "roles": zod.array(zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent'])),
+  "mustChangePassword": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Revoke a remembered session on this device
+ */
+export const LogoutSessionHeader = zod.object({
+  "X-CSRF-Token": zod.string()
+})
+
+export const LogoutSessionResponse = zod.void()
 
 
 /**

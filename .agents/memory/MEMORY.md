@@ -4,6 +4,7 @@
 - [Campus Live MVP priority](campus-live-mvp-priority.md) — ship core acceptance journeys before polishing or extending features.
 - [Campus Live visual direction](campus-live-visual-direction.md) — carry the approved forest-green, warm-paper, muted-gold school identity from sign-in through the dashboard.
 - [Campus Live PWA privacy](campus-live-pwa-privacy.md) — keep installs online-only; never cache private school records for offline access.
+- [Campus Live remembered sessions](campus-live-remembered-sessions.md) — keep access tokens in memory; persist only rotating, CSRF-protected refresh sessions in HttpOnly cookies.
 - [Campus Live class setup](campus-live-class-setup.md) — class creation includes a first section so administrators can enroll students immediately.
 - [Campus Live database isolation](campus-live-database-isolation.md) — development uses only its restricted database URL; never fall back to the production URL.
 - [Local container health checks](local-container-healthchecks.md) — an OCI health-check exec failure can mark reachable Postgres/Redis containers unhealthy; confirm with host probes before restarting.
