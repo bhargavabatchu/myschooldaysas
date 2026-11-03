@@ -10,6 +10,7 @@ import {
   useGetFeeInvoices,
   useGetFeeReceipt,
   useGetMyFeeInvoices,
+  useGetStudents,
   useGetSections,
   usePayFeeInvoice,
 } from "@workspace/api-client-react";
@@ -77,6 +78,22 @@ export function FeesPage({ roles }: FeesPageProps) {
   const targetSectionCount = targetMode === "class"
     ? selectedClassSections.length
     : sectionId ? 1 : 0;
+  const feeTargetParams = {
+    ...(targetMode === "class"
+      ? (classId ? { classId } : {})
+      : (sectionId ? { sectionId } : {})),
+    limit: 100,
+    offset: 0,
+  };
+  const feeTargetStudents = useGetStudents(feeTargetParams, {
+    query: { enabled: isAdmin && targetSectionCount > 0 },
+  });
+  const availableAcademicYears = Array.from(new Set(
+    feeTargetStudents.data?.items.map((student) => student.academicYear) ?? [],
+  )).sort((left, right) => right.localeCompare(left));
+  const selectedAcademicYear = availableAcademicYears.includes(academicYear)
+    ? academicYear
+    : availableAcademicYears[0] ?? "";
   const targetLabel = targetMode === "class"
     ? `${classItems.find((item) => item.id === classId)?.name ?? "selected class"} across ${selectedClassSections.length} section${selectedClassSections.length === 1 ? "" : "s"}`
     : selectedSection ? `${selectedSection.className} · ${selectedSection.name}` : "selected section";
@@ -113,9 +130,13 @@ export function FeesPage({ roles }: FeesPageProps) {
       setNotice("Enter a valid amount in rupees.");
       return;
     }
+    if (!selectedAcademicYear) {
+      setNotice("No current student enrollments were found for this class or section.");
+      return;
+    }
     const target = targetMode === "class" ? { classId } : { sectionId };
     generate.mutate({
-      data: { ...target, academicYear, period, description, amountPaise, dueDate },
+      data: { ...target, academicYear: selectedAcademicYear, period, description, amountPaise, dueDate },
     });
   }
 
@@ -170,7 +191,32 @@ export function FeesPage({ roles }: FeesPageProps) {
             )}
             <label className="block text-sm font-semibold">
               Academic year
-              <input className={`${fieldClass} mt-2`} value={academicYear} onChange={(event) => setAcademicYear(event.target.value)} placeholder="2026-2027" minLength={4} maxLength={24} required />
+              <select
+                className={`${fieldClass} mt-2`}
+                value={selectedAcademicYear}
+                onChange={(event) => setAcademicYear(event.target.value)}
+                required
+                disabled={targetSectionCount === 0 || feeTargetStudents.isLoading || generate.isPending || availableAcademicYears.length === 0}
+              >
+                <option value="">
+                  {targetSectionCount === 0
+                    ? "Choose a class or section first"
+                    : feeTargetStudents.isLoading
+                      ? "Loading enrollment years…"
+                      : "No active enrollment year found"}
+                </option>
+                {availableAcademicYears.map((year) => <option key={year} value={year}>{year}</option>)}
+              </select>
+              {availableAcademicYears.length > 0 && (
+                <span className="mt-1 block text-xs font-normal text-[hsl(var(--muted-foreground))]">
+                  Years are taken from current student enrollments for this target.
+                </span>
+              )}
+              {feeTargetStudents.isError && (
+                <span className="mt-1 block text-xs font-normal text-red-700">
+                  Enrollment years could not be loaded. Refresh and try again.
+                </span>
+              )}
             </label>
             <label className="block text-sm font-semibold">
               Billing period
@@ -189,7 +235,7 @@ export function FeesPage({ roles }: FeesPageProps) {
               <input className={`${fieldClass} mt-2`} type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} required />
             </label>
             <div className="md:col-span-2 flex flex-wrap items-center gap-3">
-              <button className="btn btn-primary" type="submit" disabled={generate.isPending || targetSectionCount === 0}>
+              <button className="btn btn-primary" type="submit" disabled={generate.isPending || targetSectionCount === 0 || !selectedAcademicYear}>
                 {generate.isPending ? "Issuing…" : targetMode === "class" ? "Issue class invoices" : "Issue section invoices"}
               </button>
               {notice && <p className="text-sm text-[hsl(var(--muted-foreground))]" role="status">{notice}</p>}

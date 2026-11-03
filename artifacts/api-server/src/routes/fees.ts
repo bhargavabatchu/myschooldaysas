@@ -143,13 +143,20 @@ const routes: FastifyPluginAsync = async (fastify) => {
         if (!targetSectionIds.length) return { kind: "no_students" as const };
 
         const students = await client.query<{ student_user_id: string; section_id: string }>(
-          `SELECT DISTINCT ON (e.student_user_id) e.student_user_id, e.section_id
-             FROM academic.enrollments e
+          `WITH current_enrollments AS (
+             SELECT DISTINCT ON (e.org_id, e.student_user_id)
+                    e.org_id, e.student_user_id, e.section_id, e.academic_year
+               FROM academic.enrollments e
+              WHERE e.org_id = $1 AND e.status = 'active'
+              ORDER BY e.org_id, e.student_user_id, e.academic_year DESC, e.created_at DESC, e.id DESC
+           )
+           SELECT e.student_user_id, e.section_id
+             FROM current_enrollments e
              JOIN identity.users student
                ON student.org_id = e.org_id AND student.id = e.student_user_id
-            WHERE e.org_id = $1 AND e.section_id = ANY($2::uuid[]) AND e.academic_year = $3
-              AND e.status = 'active' AND student.status = 'active'
-            ORDER BY e.student_user_id, e.section_id`,
+            WHERE e.org_id = $1 AND e.section_id = ANY($2::uuid[])
+              AND e.academic_year = $3 AND student.status = 'active'
+            ORDER BY e.student_user_id`,
           [user.orgId, targetSectionIds, input.academicYear],
         );
         if (!students.rowCount) return { kind: "no_students" as const };
