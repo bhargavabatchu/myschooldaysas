@@ -1,5 +1,10 @@
 import type { FastifyPluginAsync } from "fastify";
-import { ChangePasswordBody, LoginBody, ResetPasswordParams } from "@workspace/api-zod";
+import {
+  ChangePasswordBody,
+  CreateTeacherAccountBody,
+  LoginBody,
+  ResetPasswordParams,
+} from "@workspace/api-zod";
 import { pool, withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
 import {
@@ -310,6 +315,61 @@ router.post("/identity/auth/change-password", requireAuth, async (req, res, next
     next(error);
   }
 });
+
+router.post(
+  "/identity/teachers",
+  requireAuth,
+  requireRoles("super_admin", "org_admin", "campus_admin"),
+  async (req, res, next) => {
+    const actor = req.campusUser;
+    if (!actor) return void res.status(401).json(invalid("Sign in to continue.", "UNAUTHENTICATED"));
+
+    const parsed = CreateTeacherAccountBody.safeParse(req.body);
+    if (!parsed.success) {
+      return void res.status(400).json(invalid("Enter a valid teacher name and email address."));
+    }
+    const name = parsed.data.name.trim();
+    const email = parsed.data.email.trim().toLowerCase();
+    if (!name || !email) {
+      return void res.status(400).json(invalid("Teacher name and email cannot be blank."));
+    }
+
+    try {
+      const temporaryPassword = generateTemporaryPassword();
+      const passwordHash = await hashPassword(temporaryPassword);
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const teacher = await withOrg(actor.orgId, async (client) => {
+        const created = await client.query<{ id: string; name: string; email: string }>(
+          `INSERT INTO identity.users
+             (org_id, email, name, password_hash, status, must_change_password, temporary_password_expires_at)
+           VALUES ($1, $2, $3, $4, 'active', true, $5)
+           RETURNING id, name, email`,
+          [actor.orgId, email, name, passwordHash, expiresAt],
+        );
+        const account = created.rows[0];
+        if (!account) throw new Error("Teacher account was not created.");
+        await client.query(
+          `INSERT INTO identity.user_roles (org_id, user_id, role)
+           VALUES ($1, $2, 'teacher')`,
+          [actor.orgId, account.id],
+        );
+        return account;
+      });
+
+      res.status(201).json({
+        ...teacher,
+        role: "teacher",
+        temporaryPassword,
+        expiresAt: expiresAt.toISOString(),
+      });
+    } catch (error: any) {
+      if (error?.code === "23505") {
+        return void res.status(409).json(invalid("An account with this email already exists in your school.", "CONFLICT"));
+      }
+      next(error);
+    }
+  },
+);
 
 router.post(
   "/identity/users/:userId/reset-password",

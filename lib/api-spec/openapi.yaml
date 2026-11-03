@@ -327,6 +327,30 @@ paths:
           description: Current password is incorrect
         "403":
           description: Temporary password has expired
+  /identity/teachers:
+    post:
+      operationId: createTeacherAccount
+      tags: [identity]
+      summary: Create a teacher login with a one-time password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeacherAccountInput"
+      responses:
+        "201":
+          description: Teacher account created; the temporary password is returned once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedTeacherAccount"
+        "400": { description: Invalid teacher details }
+        "401": { description: Authentication required }
+        "403": { description: Administrator access required }
+        "409": { description: An account already uses this email }
   /identity/users/{userId}/reset-password:
     post:
       operationId: resetPassword
@@ -1939,6 +1963,22 @@ components:
       type: object
       required: [temporaryPassword, expiresAt]
       properties:
+        temporaryPassword: { type: string, minLength: 12 }
+        expiresAt: { type: string, format: date-time }
+    CreateTeacherAccountInput:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        email: { type: string, format: email, maxLength: 320 }
+    CreatedTeacherAccount:
+      type: object
+      required: [id, name, email, role, temporaryPassword, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [teacher] }
         temporaryPassword: { type: string, minLength: 12 }
         expiresAt: { type: string, format: date-time }
     DashboardOverview:

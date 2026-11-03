@@ -42,6 +42,7 @@ import { StudentProfileEditor } from '@/components/academic/student-profile-edit
 import { ClassPromotionWizard } from '@/components/academic/class-promotion-wizard';
 import { AddSectionForm, ClassSetupPanel } from '@/components/academic/class-setup';
 import { GuardianAccessPage } from '@/components/academic/guardian-access-page';
+import { TeachersPage } from '@/components/academic/teachers-page';
 import { FeeReceiptPage, FeesPage } from '@/components/fees/fees-page';
 import { EnrollmentLifecycle } from '@/components/academic/enrollment-lifecycle';
 import { AdmissionsInbox, PublicAdmissionForm } from '@/components/admissions';
@@ -129,6 +130,7 @@ function ProtectedApp() {
         <Route path="/" component={() => <DashboardPage roles={user.roles} userName={user.name} />} />
         <Route path="/dashboard" component={() => <DashboardPage roles={user.roles} userName={user.name} />} />
         <Route path="/admin/classes" component={() => <ClassesPage roles={user.roles} />} />
+        <Route path="/admin/teachers" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <TeachersPage /> : <NotFound />} />
         <Route path="/admin/students" component={() => canViewStudentRoster(user.roles) ? <StudentsPage roles={user.roles} /> : <NotFound />} />
         <Route path="/admin/admissions" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <AdmissionsInbox/> : <NotFound/>} />
         <Route path="/admin/guardians" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <GuardianAccessPage/> : <NotFound/>} />
@@ -167,6 +169,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     { label: 'Timetable', href: '/timetable', icon: CalendarCheck },
   ];
   if (user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role))) {
+    nav.push({ label: 'Teachers', href: '/admin/teachers', icon: Users });
     nav.push({ label: 'Admissions', href: '/admin/admissions', icon: ClipboardList });
     nav.push({ label: 'Family access', href: '/admin/guardians', icon: ShieldCheck });
     nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });

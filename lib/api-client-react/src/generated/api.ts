@@ -56,8 +56,10 @@ import type {
   ConsentRecord,
   ConsentReviewStatus,
   CreateEnrollmentInput,
+  CreateTeacherAccountInput,
   CreateTimetableSlotInput,
   CreatedAdmissions,
+  CreatedTeacherAccount,
   DashboardOverview,
   EnrollmentMovePreview,
   EnrollmentMoveResult,
@@ -1887,6 +1889,94 @@ export const useChangePassword = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getChangePasswordMutationOptions(options), queryClient);
+    }
+
+export const getCreateTeacherAccountUrl = () => {
+
+
+
+
+  return `/api/identity/teachers`
+}
+
+/**
+ * @summary Create a teacher login with a one-time password
+ */
+export const createTeacherAccount = async (createTeacherAccountInput: CreateTeacherAccountInput, options?: Parameters<typeof customFetch>[1]): Promise<CreatedTeacherAccount> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CreatedTeacherAccount>(getCreateTeacherAccountUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createTeacherAccountInput)
+  }
+);}
+
+
+
+
+
+export const getCreateTeacherAccountMutationKey = () => ['createTeacherAccount'] as const;
+
+export const getCreateTeacherAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTeacherAccount>>, TError,CreateTeacherAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTeacherAccount>>, TError,CreateTeacherAccountMutationVariables, TContext> => {
+
+const mutationKey = getCreateTeacherAccountMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTeacherAccount>>, CreateTeacherAccountMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createTeacherAccount(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTeacherAccountMutationResult = NonNullable<Awaited<ReturnType<typeof createTeacherAccount>>>
+    export type CreateTeacherAccountMutationBody = BodyType<CreateTeacherAccountInput>
+    export type CreateTeacherAccountMutationError = ErrorType<void>
+    export type CreateTeacherAccountMutationVariables = {data: BodyType<CreateTeacherAccountInput>}
+
+    /**
+ * @summary Create a teacher login with a one-time password
+ */
+export const useCreateTeacherAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTeacherAccount>>, TError,CreateTeacherAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createTeacherAccount>>,
+        TError,
+        CreateTeacherAccountMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateTeacherAccountMutationOptions(options), queryClient);
     }
 
 export const getResetPasswordUrl = (userId: string,) => {

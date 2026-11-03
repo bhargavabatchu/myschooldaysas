@@ -71,9 +71,10 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.equal(identity.is_superuser, false);
     assert.equal(identity.bypasses_rls, false);
 
-    const orgId = (await pool.query(
-      "SELECT id FROM identity.organizations ORDER BY created_at LIMIT 1",
-    )).rows[0]?.id;
+    const organization = (await pool.query(
+      "SELECT id, slug FROM identity.organizations ORDER BY created_at LIMIT 1",
+    )).rows[0];
+    const orgId = organization?.id;
     assert.ok(orgId, "Development seed must exist.");
     cleanupOrgId = orgId;
 
@@ -127,6 +128,48 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     const student = people.find((person) => person.roles.includes("student"));
     const parent = people.find((person) => person.roles.includes("parent") && linkedParentIds.includes(person.id));
     assert.ok(teacher && student && parent, "A seeded teacher, student, and linked parent are required.");
+
+    const forbiddenTeacherCreation = await api("/identity/teachers", student, "POST", {
+      name: "Unauthorized Teacher",
+      email: `unauthorized-${randomUUID()}@example.test`,
+    });
+    assert.equal(forbiddenTeacherCreation.status, 403, "students cannot create teacher accounts");
+
+    const teacherAccountResponse = await api("/identity/teachers", admin, "POST", {
+      name: "Teacher Onboarding Test",
+      email: `teacher-onboarding-${randomUUID()}@example.test`,
+      role: "org_admin",
+    });
+    assert.equal(teacherAccountResponse.status, 201);
+    const createdTeacher = teacherAccountResponse.body;
+    assert.ok(createdTeacher.id);
+    createdIdentityUserIds.push(createdTeacher.id);
+    assert.equal(createdTeacher.role, "teacher", "the request cannot grant an administrator role");
+    assert.ok(createdTeacher.temporaryPassword.length >= 12);
+    assert.ok(Date.parse(createdTeacher.expiresAt) > Date.now());
+    const teacherLogin = await fetch(`${apiBase}/api/identity/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        orgSlug: organization.slug,
+        email: createdTeacher.email,
+        password: createdTeacher.temporaryPassword,
+      }),
+    });
+    assert.equal(teacherLogin.status, 200);
+    const teacherLoginBody = await teacherLogin.json();
+    assert.equal(teacherLoginBody.user.mustChangePassword, true);
+
+    const createdTeacherAssignments = await api("/academic/teacher-assignments", admin, "POST", {
+      sectionId: assignment.section_id,
+      subjectId: assignment.subject_id,
+      teacherId: createdTeacher.id,
+      isClassTeacher: false,
+    });
+    assert.equal(createdTeacherAssignments.status, 201);
+    assert.equal(createdTeacherAssignments.body.teacherId, createdTeacher.id);
+    assert.equal(createdTeacherAssignments.body.sectionId, assignment.section_id);
+    assert.equal(createdTeacherAssignments.body.subjectId, assignment.subject_id);
 
     const consentChoices = await api("/academic/consents", parent);
     assert.equal(consentChoices.status, 200, JSON.stringify(consentChoices.body));

@@ -71,6 +71,33 @@ export interface TemporaryPasswordResult {
   expiresAt: string;
 }
 
+export interface CreateTeacherAccountInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /** @maxLength 320 */
+  email: string;
+}
+
+export type CreatedTeacherAccountRole = typeof CreatedTeacherAccountRole[keyof typeof CreatedTeacherAccountRole];
+
+
+export const CreatedTeacherAccountRole = {
+  teacher: 'teacher',
+} as const;
+
+export interface CreatedTeacherAccount {
+  id: string;
+  name: string;
+  email: string;
+  role: CreatedTeacherAccountRole;
+  /** @minLength 12 */
+  temporaryPassword: string;
+  expiresAt: string;
+}
+
 export type DashboardMetricTone = typeof DashboardMetricTone[keyof typeof DashboardMetricTone];
 
 
