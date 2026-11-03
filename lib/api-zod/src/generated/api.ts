@@ -2746,6 +2746,12 @@ export const GetFeeInvoicesQueryParams = zod.object({
 })
 
 
+export const getFeeInvoicesResponseItemsItemConcessionPaiseMin = 0;
+
+export const getFeeInvoicesResponseItemsItemPaidPaiseMin = 0;
+
+export const getFeeInvoicesResponseItemsItemBalancePaiseMin = 0;
+
 
 
 export const GetFeeInvoicesResponse = zod.object({
@@ -2759,8 +2765,12 @@ export const GetFeeInvoicesResponse = zod.object({
   "period": zod.string(),
   "description": zod.string(),
   "amountPaise": zod.int().min(1),
+  "concessionPaise": zod.int().min(getFeeInvoicesResponseItemsItemConcessionPaiseMin),
+  "paidPaise": zod.int().min(getFeeInvoicesResponseItemsItemPaidPaiseMin),
+  "balancePaise": zod.int().min(getFeeInvoicesResponseItemsItemBalancePaiseMin),
+  "concessionReason": zod.string().nullish(),
   "dueDate": zod.coerce.date(),
-  "status": zod.enum(['unpaid', 'paid', 'void']),
+  "status": zod.enum(['unpaid', 'paid', 'waived', 'void']),
   "receiptNumber": zod.string().nullable(),
   "paidAt": zod.coerce.date().nullable(),
   "canPay": zod.boolean()
@@ -2828,6 +2838,12 @@ export const GenerateFeeInvoicesBody = zod.union([zod.object({
 }))
 
 
+export const generateFeeInvoicesResponseItemsItemConcessionPaiseMin = 0;
+
+export const generateFeeInvoicesResponseItemsItemPaidPaiseMin = 0;
+
+export const generateFeeInvoicesResponseItemsItemBalancePaiseMin = 0;
+
 
 
 export const GenerateFeeInvoicesResponse = zod.object({
@@ -2843,8 +2859,12 @@ export const GenerateFeeInvoicesResponse = zod.object({
   "period": zod.string(),
   "description": zod.string(),
   "amountPaise": zod.int().min(1),
+  "concessionPaise": zod.int().min(generateFeeInvoicesResponseItemsItemConcessionPaiseMin),
+  "paidPaise": zod.int().min(generateFeeInvoicesResponseItemsItemPaidPaiseMin),
+  "balancePaise": zod.int().min(generateFeeInvoicesResponseItemsItemBalancePaiseMin),
+  "concessionReason": zod.string().nullish(),
   "dueDate": zod.coerce.date(),
-  "status": zod.enum(['unpaid', 'paid', 'void']),
+  "status": zod.enum(['unpaid', 'paid', 'waived', 'void']),
   "receiptNumber": zod.string().nullable(),
   "paidAt": zod.coerce.date().nullable(),
   "canPay": zod.boolean()
@@ -2853,8 +2873,65 @@ export const GenerateFeeInvoicesResponse = zod.object({
 
 
 /**
+ * @summary Set or update the concession for one unpaid student invoice
+ */
+export const UpdateFeeInvoiceConcessionParams = zod.object({
+  "invoiceId": zod.uuid()
+})
+
+export const updateFeeInvoiceConcessionBodyConcessionPaiseMin = 0;
+export const updateFeeInvoiceConcessionBodyConcessionPaiseMax = 1000000000;
+
+export const updateFeeInvoiceConcessionBodyReasonMin = 3;
+export const updateFeeInvoiceConcessionBodyReasonMax = 240;
+
+
+
+export const UpdateFeeInvoiceConcessionBody = zod.object({
+  "concessionPaise": zod.int().min(updateFeeInvoiceConcessionBodyConcessionPaiseMin).max(updateFeeInvoiceConcessionBodyConcessionPaiseMax),
+  "reason": zod.string().min(updateFeeInvoiceConcessionBodyReasonMin).max(updateFeeInvoiceConcessionBodyReasonMax)
+})
+
+
+export const updateFeeInvoiceConcessionResponseConcessionPaiseMin = 0;
+
+export const updateFeeInvoiceConcessionResponsePaidPaiseMin = 0;
+
+export const updateFeeInvoiceConcessionResponseBalancePaiseMin = 0;
+
+
+
+export const UpdateFeeInvoiceConcessionResponse = zod.object({
+  "id": zod.uuid(),
+  "studentId": zod.uuid(),
+  "studentName": zod.string(),
+  "sectionId": zod.uuid(),
+  "invoiceNumber": zod.string(),
+  "academicYear": zod.string(),
+  "period": zod.string(),
+  "description": zod.string(),
+  "amountPaise": zod.int().min(1),
+  "concessionPaise": zod.int().min(updateFeeInvoiceConcessionResponseConcessionPaiseMin),
+  "paidPaise": zod.int().min(updateFeeInvoiceConcessionResponsePaidPaiseMin),
+  "balancePaise": zod.int().min(updateFeeInvoiceConcessionResponseBalancePaiseMin),
+  "concessionReason": zod.string().nullish(),
+  "dueDate": zod.coerce.date(),
+  "status": zod.enum(['unpaid', 'paid', 'waived', 'void']),
+  "receiptNumber": zod.string().nullable(),
+  "paidAt": zod.coerce.date().nullable(),
+  "canPay": zod.boolean()
+})
+
+
+/**
  * @summary List invoices for a parent's linked children
  */
+
+export const getMyFeeInvoicesResponseItemsItemConcessionPaiseMin = 0;
+
+export const getMyFeeInvoicesResponseItemsItemPaidPaiseMin = 0;
+
+export const getMyFeeInvoicesResponseItemsItemBalancePaiseMin = 0;
 
 
 
@@ -2869,8 +2946,12 @@ export const GetMyFeeInvoicesResponse = zod.object({
   "period": zod.string(),
   "description": zod.string(),
   "amountPaise": zod.int().min(1),
+  "concessionPaise": zod.int().min(getMyFeeInvoicesResponseItemsItemConcessionPaiseMin),
+  "paidPaise": zod.int().min(getMyFeeInvoicesResponseItemsItemPaidPaiseMin),
+  "balancePaise": zod.int().min(getMyFeeInvoicesResponseItemsItemBalancePaiseMin),
+  "concessionReason": zod.string().nullish(),
   "dueDate": zod.coerce.date(),
-  "status": zod.enum(['unpaid', 'paid', 'void']),
+  "status": zod.enum(['unpaid', 'paid', 'waived', 'void']),
   "receiptNumber": zod.string().nullable(),
   "paidAt": zod.coerce.date().nullable(),
   "canPay": zod.boolean()

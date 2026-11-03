@@ -10,7 +10,8 @@ export function buildMyFeeInvoiceQuery(
       scope,
       text: `SELECT i.id, i.student_user_id, student.name AS student_name, i.section_id,
                     i.invoice_number, i.academic_year, i.period, i.description, i.amount_paise,
-                    i.due_date, i.status, payment.receipt_number, payment.captured_at AS paid_at,
+                    i.concession_paise, i.due_date, i.status, payment.amount_paise AS paid_paise,
+                    payment.receipt_number, payment.captured_at AS paid_at,
                     false AS can_pay
                FROM fees.invoices i
                JOIN identity.users student
@@ -27,7 +28,8 @@ export function buildMyFeeInvoiceQuery(
     scope,
     text: `SELECT i.id, i.student_user_id, student.name AS student_name, i.section_id,
                   i.invoice_number, i.academic_year, i.period, i.description, i.amount_paise,
-                  i.due_date, i.status, payment.receipt_number, payment.captured_at AS paid_at,
+                  i.concession_paise, i.due_date, i.status, payment.amount_paise AS paid_paise,
+                  payment.receipt_number, payment.captured_at AS paid_at,
                   guardian.can_pay_fees AS can_pay
              FROM identity.guardian_links guardian
              JOIN fees.invoices i

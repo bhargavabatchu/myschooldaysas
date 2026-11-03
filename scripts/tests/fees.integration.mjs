@@ -69,6 +69,15 @@ after(async () => {
     const { orgId, academicYear, period } = cleanupTarget;
     await withOrg(orgId, async (client) => {
       await client.query(
+        `DELETE FROM fees.invoice_concession_audit
+          WHERE org_id = $1
+            AND invoice_id IN (
+              SELECT id FROM fees.invoices
+               WHERE org_id = $1 AND academic_year = $2 AND period = $3
+            )`,
+        [orgId, academicYear, period],
+      );
+      await client.query(
         `DELETE FROM fees.payments
           WHERE org_id = $1
             AND invoice_id IN (
@@ -265,6 +274,50 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
   assert.ok(studentInvoice, "student should see their own invoice");
   assert.equal(studentInvoice.studentId, users.parent.student_id);
   assert.equal(studentInvoice.canPay, false, "student access is view-only");
+  const forbiddenStudentConcession = await apiRequest("PATCH", `/fees/invoices/${studentInvoice.id}/concession`, studentToken, {
+    concessionPaise: 2345,
+    reason: "Unauthorized test adjustment",
+  });
+  assert.equal(forbiddenStudentConcession.statusCode, 403, "students cannot edit concessions");
+
+  const concession = await apiRequest("PATCH", `/fees/invoices/${studentInvoice.id}/concession`, adminToken, {
+    concessionPaise: 2345,
+    reason: "Approved test concession",
+  });
+  assert.equal(concession.statusCode, 200, concession.body);
+  assert.equal(concession.json().amountPaise, 12345, "the base fee must remain unchanged");
+  assert.equal(concession.json().concessionPaise, 2345);
+  assert.equal(concession.json().balancePaise, 10000);
+  assert.equal(concession.json().concessionReason, "Approved test concession");
+  const auditEntry = await withOrg(orgId, (client) =>
+    client.query(
+      `SELECT previous_concession_paise, new_concession_paise, reason, actor_user_id
+         FROM fees.invoice_concession_audit
+        WHERE org_id = $1 AND invoice_id = $2
+        ORDER BY created_at DESC
+        LIMIT 1`,
+      [orgId, studentInvoice.id],
+    ),
+  );
+  assert.equal(Number(auditEntry.rows[0]?.previous_concession_paise), 0);
+  assert.equal(Number(auditEntry.rows[0]?.new_concession_paise), 2345);
+  assert.equal(auditEntry.rows[0]?.reason, "Approved test concession");
+  assert.equal(auditEntry.rows[0]?.actor_user_id, users.admin.id);
+
+  const excessiveConcession = await apiRequest("PATCH", `/fees/invoices/${studentInvoice.id}/concession`, adminToken, {
+    concessionPaise: 12346,
+    reason: "Exceeds invoice amount",
+  });
+  assert.equal(excessiveConcession.statusCode, 409);
+
+  const refreshedStudentList = await apiRequest("GET", "/fees/my-invoices", studentToken);
+  assert.equal(refreshedStudentList.statusCode, 200, refreshedStudentList.body);
+  const refreshedStudentInvoice = refreshedStudentList.json().items.find((invoice) => invoice.id === studentInvoice.id);
+  assert.equal(refreshedStudentInvoice.concessionPaise, 2345);
+  assert.equal(refreshedStudentInvoice.paidPaise, 0);
+  assert.equal(refreshedStudentInvoice.balancePaise, 10000);
+  assert.equal("concessionReason" in refreshedStudentInvoice, false, "the internal reason must not be shown to students");
+
   const otherInvoice = generatedBody.items.find((invoice) => invoice.studentId === users.otherStudent.id);
   assert.ok(otherInvoice, "fixture should include another student's invoice");
   assert.equal(
@@ -272,6 +325,13 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
     false,
     "student must not see another student's invoice",
   );
+  const waiver = await apiRequest("PATCH", `/fees/invoices/${otherInvoice.id}/concession`, adminToken, {
+    concessionPaise: 12345,
+    reason: "Approved full test waiver",
+  });
+  assert.equal(waiver.statusCode, 200, waiver.body);
+  assert.equal(waiver.json().status, "waived");
+  assert.equal(waiver.json().balancePaise, 0);
   const forbiddenStudentPayment = await apiRequest("POST", `/fees/invoices/${studentInvoice.id}/pay`, studentToken);
   assert.equal(forbiddenStudentPayment.statusCode, 403, "students cannot pay invoices");
 
@@ -282,6 +342,10 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
     false,
     "a different student must not see this student's invoice",
   );
+  const waivedStudentInvoice = otherStudentList.json().items.find((invoice) => invoice.id === otherInvoice.id);
+  assert.equal(waivedStudentInvoice?.status, "waived");
+  assert.equal(waivedStudentInvoice?.balancePaise, 0);
+  assert.equal("concessionReason" in waivedStudentInvoice, false, "the internal reason must not be shown to students");
 
   const parentList = await apiRequest("GET", "/fees/my-invoices", parentToken);
   assert.equal(parentList.statusCode, 200, parentList.body);
@@ -289,13 +353,21 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
   assert.ok(parentInvoice, "linked parent should see the child's invoice");
   assert.equal(parentInvoice.canPay, true);
   assert.equal(studentInvoice.id, parentInvoice.id);
+  assert.equal(parentInvoice.concessionPaise, 2345);
+  assert.equal(parentInvoice.balancePaise, 10000);
 
   const firstPayment = await apiRequest("POST", `/fees/invoices/${parentInvoice.id}/pay`, parentToken, { amountPaise: 1 });
   assert.equal(firstPayment.statusCode, 200, firstPayment.body);
   const payment = firstPayment.json();
   assert.equal(payment.status, "paid");
-  assert.equal(payment.amountPaise, 12345, "the server must take the invoice amount, not a client-supplied amount");
+  assert.equal(payment.amountPaise, 10000, "the server must charge the remaining balance after concession, not a client-supplied amount");
   assert.ok(payment.receiptNumber);
+
+  const paidInvoiceConcession = await apiRequest("PATCH", `/fees/invoices/${parentInvoice.id}/concession`, adminToken, {
+    concessionPaise: 3000,
+    reason: "Too late",
+  });
+  assert.equal(paidInvoiceConcession.statusCode, 409, "concessions must not rewrite recorded payments");
 
   const repeatedPayment = await apiRequest("POST", `/fees/invoices/${parentInvoice.id}/pay`, parentToken);
   assert.equal(repeatedPayment.statusCode, 200, repeatedPayment.body);
@@ -304,7 +376,7 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
   const receipt = await apiRequest("GET", `/fees/receipts/${encodeURIComponent(payment.receiptNumber)}`, parentToken);
   assert.equal(receipt.statusCode, 200, receipt.body);
   assert.equal(receipt.json().paymentMethod, "mock");
-  assert.equal(receipt.json().amountPaise, 12345);
+  assert.equal(receipt.json().amountPaise, 10000);
 
   const studentReceipt = await apiRequest("GET", `/fees/receipts/${encodeURIComponent(payment.receiptNumber)}`, studentToken);
   assert.equal(studentReceipt.statusCode, 200, studentReceipt.body);

@@ -14,3 +14,4 @@
 - [PostgreSQL parameter placeholders](postgres-parameter-placeholders.md) — composed SQL fragments need contiguous positional placeholders and explicit bindings.
 - [Publishing startup diagnosis](publishing-startup-diagnosis.md) — generic root-probe errors do not identify the failed service; check production configuration before changing probes.
 - [Core-only release scope](core-only-release-scope.md) — defer live classes and online payments in production; preserve their implementation for later.
+- [Campus Live fee concessions](campus-live-fee-concessions.md) — apply concessions after issue to one student's invoice; preserve captured payments and reduce only the unpaid balance.

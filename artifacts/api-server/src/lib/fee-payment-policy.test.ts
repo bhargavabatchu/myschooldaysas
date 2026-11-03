@@ -13,6 +13,7 @@ test("parents can pay only when permission is enabled and the invoice is unpaid"
   assert.equal(canParentPayInvoice(true, "unpaid", "development"), true);
   assert.equal(canParentPayInvoice(false, "unpaid", "development"), false);
   assert.equal(canParentPayInvoice(true, "paid", "development"), false);
+  assert.equal(canParentPayInvoice(true, "waived", "development"), false);
   assert.equal(canParentPayInvoice(true, "void", "development"), false);
   assert.equal(canParentPayInvoice(true, "unpaid", "production"), false);
 });

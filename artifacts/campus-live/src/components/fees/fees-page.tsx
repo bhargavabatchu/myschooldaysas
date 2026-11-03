@@ -13,9 +13,11 @@ import {
   useGetStudents,
   useGetSections,
   usePayFeeInvoice,
+  type FeeInvoice,
 } from "@workspace/api-client-react";
 import { SCHOOL_NAME } from "@/lib/branding";
 import { onlinePaymentsEnabled } from "@/lib/features";
+import { FeeConcessionEditor } from "./fee-concession-editor";
 import './school-work-pages.css';
 
 const adminRoles = ["super_admin", "org_admin", "campus_admin"];
@@ -73,6 +75,7 @@ export function FeesPage({ roles }: FeesPageProps) {
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [notice, setNotice] = useState("");
+  const [editingInvoice, setEditingInvoice] = useState<FeeInvoice | null>(null);
   const selectedClassSections = sectionItems.filter((section) => section.classId === classId);
   const selectedSection = sectionItems.find((section) => section.id === sectionId);
   const targetSectionCount = targetMode === "class"
@@ -252,9 +255,9 @@ export function FeesPage({ roles }: FeesPageProps) {
           {invoices.isLoading ? <p className="p-5 text-sm">Loading invoices…</p> : invoiceItems.length === 0
             ? <p className="p-5 text-sm text-[hsl(var(--muted-foreground))]">No fee invoices have been issued yet.</p>
             : <div className="overflow-x-auto">
-              <table className="w-full min-w-[740px] text-left text-sm">
+              <table className="w-full min-w-[980px] text-left text-sm">
                 <thead className="bg-[hsl(var(--muted))] text-xs uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-                  <tr><th className="p-3">Student</th><th className="p-3">Invoice</th><th className="p-3">Period</th><th className="p-3">Amount</th><th className="p-3">Due</th><th className="p-3">Status</th><th className="p-3">Receipt</th></tr>
+                  <tr><th className="p-3">Student</th><th className="p-3">Invoice</th><th className="p-3">Period</th><th className="p-3">Fee</th><th className="p-3">Concession</th><th className="p-3">Balance</th><th className="p-3">Due</th><th className="p-3">Status</th><th className="p-3">Receipt</th><th className="p-3">Action</th></tr>
                 </thead>
                 <tbody>
                   {invoiceItems.map((invoice) => (
@@ -263,10 +266,15 @@ export function FeesPage({ roles }: FeesPageProps) {
                       <td className="p-3">{invoice.invoiceNumber}</td>
                       <td className="p-3">{invoice.period} · {invoice.academicYear}</td>
                       <td className="p-3">{money(invoice.amountPaise)}</td>
+                      <td className="p-3">{invoice.concessionPaise ? `−${money(invoice.concessionPaise)}` : "—"}</td>
+                      <td className="p-3 font-semibold">{money(invoice.balancePaise)}</td>
                       <td className="p-3">{dateText(invoice.dueDate)}</td>
                       <td className="p-3 capitalize">{invoice.status}</td>
                       <td className="p-3">{invoice.receiptNumber
                         ? <Link className="font-semibold text-[hsl(var(--primary))] underline" href={`/fees/receipts/${encodeURIComponent(invoice.receiptNumber)}`}>{invoice.receiptNumber}</Link>
+                        : "—"}</td>
+                      <td className="p-3">{invoice.status === "unpaid" || invoice.status === "waived"
+                        ? <button className="btn btn-muted min-h-9 px-3" type="button" onClick={() => setEditingInvoice(invoice)}>{invoice.concessionPaise ? "Edit concession" : "Add concession"}</button>
                         : "—"}</td>
                     </tr>
                   ))}
@@ -274,6 +282,16 @@ export function FeesPage({ roles }: FeesPageProps) {
               </table>
             </div>}
         </section>
+        {editingInvoice && (
+          <FeeConcessionEditor
+            invoice={editingInvoice}
+            onClose={() => setEditingInvoice(null)}
+            onSaved={(updatedInvoice) => {
+              setEditingInvoice(null);
+              setNotice(`Concession updated for ${updatedInvoice.studentName}. Only this invoice changed.`);
+            }}
+          />
+        )}
       </div>
     );
   }
@@ -306,13 +324,16 @@ export function FeesPage({ roles }: FeesPageProps) {
                       <h2 className="display mt-1 text-xl font-bold">{invoice.description}</h2>
                       <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{invoice.invoiceNumber} · {invoice.period} · {invoice.academicYear}</p>
                     </div>
-                    <span className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${invoice.status === "paid" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${invoice.status === "paid" || invoice.status === "waived" ? "bg-emerald-100 text-emerald-800" : invoice.status === "void" ? "bg-slate-100 text-slate-700" : "bg-amber-100 text-amber-900"}`}>
                       {invoice.status}
                     </span>
                   </div>
                   <div className="mt-5 flex flex-wrap items-end justify-between gap-4 border-t border-[hsl(var(--border))] pt-4">
-                    <div className="flex gap-8">
-                      <div><p className="text-xs text-[hsl(var(--muted-foreground))]">Amount</p><p className="mt-1 text-lg font-bold">{money(invoice.amountPaise)}</p></div>
+                    <div className="flex flex-wrap gap-x-8 gap-y-3">
+                      <div><p className="text-xs text-[hsl(var(--muted-foreground))]">Original fee</p><p className="mt-1 font-semibold">{money(invoice.amountPaise)}</p></div>
+                      <div><p className="text-xs text-[hsl(var(--muted-foreground))]">Concession</p><p className="mt-1 font-semibold">{invoice.concessionPaise ? `−${money(invoice.concessionPaise)}` : "—"}</p></div>
+                      <div><p className="text-xs text-[hsl(var(--muted-foreground))]">Paid</p><p className="mt-1 font-semibold">{money(invoice.paidPaise)}</p></div>
+                      <div><p className="text-xs text-[hsl(var(--muted-foreground))]">Balance due</p><p className="mt-1 text-lg font-bold">{money(invoice.balancePaise)}</p></div>
                       <div><p className="text-xs text-[hsl(var(--muted-foreground))]">Due date</p><p className="mt-1 font-semibold">{dateText(invoice.dueDate)}</p></div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">

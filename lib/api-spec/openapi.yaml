@@ -1707,6 +1707,32 @@ paths:
         "403": { description: Administrator role required }
         "404": { description: Class or section not found }
         "409": { description: No active students or conflicting invoices for the period }
+  /fees/invoices/{invoiceId}/concession:
+    patch:
+      operationId: updateFeeInvoiceConcession
+      tags: [fees]
+      summary: Set or update the concession for one unpaid student invoice
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: invoiceId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FeeInvoiceConcessionInput" }
+      responses:
+        "200":
+          description: Updated invoice with the student-specific concession
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeInvoice" }
+        "400": { description: Invalid concession details }
+        "403": { description: Administrator role required }
+        "404": { description: Invoice not found }
+        "409": { description: "Invoice is paid or void, or concession exceeds unpaid balance" }
   /fees/my-invoices:
     get:
       operationId: getMyFeeInvoices
@@ -2923,10 +2949,10 @@ components:
         remark: { type: string, minLength: 1, maxLength: 2000 }
     FeeInvoiceStatus:
       type: string
-      enum: [unpaid, paid, void]
+      enum: [unpaid, paid, waived, void]
     FeeInvoice:
       type: object
-      required: [id, studentId, studentName, sectionId, invoiceNumber, academicYear, period, description, amountPaise, dueDate, status, receiptNumber, paidAt, canPay]
+      required: [id, studentId, studentName, sectionId, invoiceNumber, academicYear, period, description, amountPaise, concessionPaise, paidPaise, balancePaise, dueDate, status, receiptNumber, paidAt, canPay]
       properties:
         id: { type: string, format: uuid }
         studentId: { type: string, format: uuid }
@@ -2937,11 +2963,21 @@ components:
         period: { type: string }
         description: { type: string }
         amountPaise: { type: integer, minimum: 1 }
+        concessionPaise: { type: integer, minimum: 0 }
+        paidPaise: { type: integer, minimum: 0 }
+        balancePaise: { type: integer, minimum: 0 }
+        concessionReason: { type: string, nullable: true }
         dueDate: { type: string, format: date }
         status: { $ref: "#/components/schemas/FeeInvoiceStatus" }
         receiptNumber: { type: string, nullable: true }
         paidAt: { type: string, format: date-time, nullable: true }
         canPay: { type: boolean }
+    FeeInvoiceConcessionInput:
+      type: object
+      required: [concessionPaise, reason]
+      properties:
+        concessionPaise: { type: integer, minimum: 0, maximum: 1000000000 }
+        reason: { type: string, minLength: 3, maxLength: 240 }
     FeeInvoicePage:
       type: object
       required: [items, total]

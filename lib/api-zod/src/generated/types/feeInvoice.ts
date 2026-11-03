@@ -18,6 +18,14 @@ export interface FeeInvoice {
   description: string;
   /** @minimum 1 */
   amountPaise: number;
+  /** @minimum 0 */
+  concessionPaise: number;
+  /** @minimum 0 */
+  paidPaise: number;
+  /** @minimum 0 */
+  balancePaise: number;
+  /** @nullable */
+  concessionReason?: string | null;
   dueDate: Date;
   status: FeeInvoiceStatus;
   /** @nullable */

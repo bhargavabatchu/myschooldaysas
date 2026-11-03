@@ -12,5 +12,6 @@ export type FeeInvoiceStatus = typeof FeeInvoiceStatus[keyof typeof FeeInvoiceSt
 export const FeeInvoiceStatus = {
   unpaid: 'unpaid',
   paid: 'paid',
+  waived: 'waived',
   void: 'void',
 } as const;

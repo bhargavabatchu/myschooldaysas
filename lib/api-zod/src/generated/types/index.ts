@@ -87,6 +87,7 @@ export * from './enrollmentPromotionInputSectionMapItem';
 export * from './enrollmentTransferInput';
 export * from './enrollmentYearUpdateInput';
 export * from './feeInvoice';
+export * from './feeInvoiceConcessionInput';
 export * from './feeInvoiceGenerateInput';
 export * from './feeInvoiceGenerateResult';
 export * from './feeInvoicePage';

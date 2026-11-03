@@ -5,10 +5,13 @@ import {
   GetFeeInvoicesQueryParams,
   GetFeeReceiptParams,
   PayFeeInvoiceParams,
+  UpdateFeeInvoiceConcessionBody,
+  UpdateFeeInvoiceConcessionParams,
 } from "@workspace/api-zod";
 import { withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
 import { requireAuth, type CampusRole } from "../lib/auth";
+import { calculateConcessionBalance } from "../lib/fee-concession-policy";
 import { canParentPayInvoice, isMockPaymentEnvironment } from "../lib/fee-payment-policy";
 import { buildMyFeeInvoiceQuery } from "../lib/fee-invoice-access";
 
@@ -25,8 +28,11 @@ type InvoiceRow = {
   period: string;
   description: string;
   amount_paise: string | number;
+  concession_paise: string | number;
+  concession_reason?: string | null;
+  paid_paise?: string | number | null;
   due_date: string | Date;
-  status: "unpaid" | "paid" | "void";
+  status: "unpaid" | "paid" | "waived" | "void";
   receipt_number: string | null;
   paid_at: Date | null;
   can_pay?: boolean;
@@ -41,7 +47,10 @@ function dateTimeValue(value: Date | string | null): string | null {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
-function mapInvoice(row: InvoiceRow, canPay = false) {
+function mapInvoice(row: InvoiceRow, canPay = false, includeConcessionReason = false) {
+  const amountPaise = Number(row.amount_paise);
+  const concessionPaise = Number(row.concession_paise);
+  const paidPaise = Number(row.paid_paise ?? 0);
   return {
     id: row.id,
     studentId: row.student_user_id,
@@ -51,7 +60,13 @@ function mapInvoice(row: InvoiceRow, canPay = false) {
     academicYear: row.academic_year,
     period: row.period,
     description: row.description,
-    amountPaise: Number(row.amount_paise),
+    amountPaise,
+    concessionPaise,
+    paidPaise,
+    balancePaise: row.status === "unpaid"
+      ? Math.max(0, amountPaise - concessionPaise - paidPaise)
+      : 0,
+    ...(includeConcessionReason ? { concessionReason: row.concession_reason ?? null } : {}),
     dueDate: dateValue(row.due_date),
     status: row.status,
     receiptNumber: row.receipt_number,
@@ -83,7 +98,9 @@ const routes: FastifyPluginAsync = async (fastify) => {
         const invoices = await client.query<InvoiceRow>(
           `SELECT i.id, i.student_user_id, student.name AS student_name, i.section_id,
                   i.invoice_number, i.academic_year, i.period, i.description, i.amount_paise,
-                  i.due_date, i.status, payment.receipt_number, payment.captured_at AS paid_at
+                  i.concession_paise, i.concession_reason,
+                  i.due_date, i.status, payment.amount_paise AS paid_paise,
+                  payment.receipt_number, payment.captured_at AS paid_at
              FROM fees.invoices i
              JOIN identity.users student
                ON student.org_id = i.org_id AND student.id = i.student_user_id
@@ -95,7 +112,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
           [user.orgId, limit, offset],
         );
         return {
-          items: invoices.rows.map((row) => mapInvoice(row)),
+          items: invoices.rows.map((row) => mapInvoice(row, false, true)),
           total: Number(count.rows[0]?.total ?? 0),
         };
       });
@@ -211,7 +228,9 @@ const routes: FastifyPluginAsync = async (fastify) => {
         const rows = await client.query<InvoiceRow>(
           `SELECT i.id, i.student_user_id, student.name AS student_name, i.section_id,
                   i.invoice_number, i.academic_year, i.period, i.description, i.amount_paise,
-                  i.due_date, i.status, payment.receipt_number, payment.captured_at AS paid_at
+                  i.concession_paise,
+                  i.due_date, i.status, payment.amount_paise AS paid_paise,
+                  payment.receipt_number, payment.captured_at AS paid_at
              FROM fees.invoices i
              JOIN identity.users student
                ON student.org_id = i.org_id AND student.id = i.student_user_id
@@ -249,6 +268,111 @@ const routes: FastifyPluginAsync = async (fastify) => {
       if (["23505", "FEE_INVOICE_CONFLICT"].includes((error as { code?: string })?.code ?? "")) {
         return void res.status(409).json(errorBody("INVOICE_CONFLICT", "An invoice was issued for this academic year and billing period while this request was processing. Check Recent invoices."));
       }
+      next(error);
+    }
+  });
+
+  router.patch("/fees/invoices/:invoiceId/concession", requireAuth, async (req, res, next) => {
+    const user = req.campusUser;
+    if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+    if (!user.roles.some((role) => adminRoles.includes(role))) {
+      return void res.status(403).json(errorBody("FORBIDDEN", "Administrator role required."));
+    }
+    const params = UpdateFeeInvoiceConcessionParams.safeParse(req.params);
+    const body = UpdateFeeInvoiceConcessionBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid concession amount and reason."));
+    }
+    const reason = body.data.reason.trim();
+    if (reason.length < 3) {
+      return void res.status(400).json(errorBody("INVALID_REQUEST", "The concession reason must contain at least 3 non-space characters."));
+    }
+
+    try {
+      const result = await withOrg(user.orgId, async (client) => {
+        const invoiceResult = await client.query<InvoiceRow>(
+          `SELECT i.id, i.student_user_id, student.name AS student_name, i.section_id,
+                  i.invoice_number, i.academic_year, i.period, i.description, i.amount_paise,
+                  i.concession_paise, i.concession_reason, i.due_date, i.status,
+                  payment.amount_paise AS paid_paise, payment.receipt_number,
+                  payment.captured_at AS paid_at
+             FROM fees.invoices i
+             JOIN identity.users student
+               ON student.org_id = i.org_id AND student.id = i.student_user_id
+             LEFT JOIN fees.payments payment
+               ON payment.org_id = i.org_id AND payment.invoice_id = i.id AND payment.status = 'captured'
+            WHERE i.org_id = $1 AND i.id = $2
+            FOR UPDATE OF i`,
+          [user.orgId, params.data.invoiceId],
+        );
+        const invoice = invoiceResult.rows[0];
+        if (!invoice) return { kind: "missing" as const };
+        if (invoice.status === "paid") return { kind: "paid" as const };
+        if (invoice.status === "void") return { kind: "void" as const };
+
+        const payments = await client.query<{ paid_paise: string }>(
+          `SELECT COALESCE(SUM(amount_paise), 0)::text AS paid_paise
+             FROM fees.payments
+            WHERE org_id = $1 AND invoice_id = $2 AND status = 'captured'`,
+          [user.orgId, invoice.id],
+        );
+        const amountPaise = Number(invoice.amount_paise);
+        const paidPaise = Number(payments.rows[0]?.paid_paise ?? 0);
+        const concessionBalance = calculateConcessionBalance(amountPaise, paidPaise, body.data.concessionPaise);
+        if (!concessionBalance) {
+          return { kind: "exceeds_balance" as const };
+        }
+
+        const previousConcessionPaise = Number(invoice.concession_paise);
+        const concessionReason = body.data.concessionPaise === 0 ? null : reason;
+        if (
+          previousConcessionPaise === body.data.concessionPaise
+          && (invoice.concession_reason ?? null) === concessionReason
+        ) {
+          return { kind: "ok" as const, invoice };
+        }
+        const status = concessionBalance.status;
+        await client.query(
+          `UPDATE fees.invoices
+              SET concession_paise = $3, concession_reason = $4, status = $5
+            WHERE org_id = $1 AND id = $2`,
+          [user.orgId, invoice.id, body.data.concessionPaise, concessionReason, status],
+        );
+        await client.query(
+          `INSERT INTO fees.invoice_concession_audit
+             (org_id, invoice_id, previous_concession_paise, new_concession_paise,
+              previous_reason, new_reason, reason, actor_user_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            user.orgId,
+            invoice.id,
+            previousConcessionPaise,
+            body.data.concessionPaise,
+            invoice.concession_reason ?? null,
+            concessionReason,
+            reason,
+            user.id,
+          ],
+        );
+        return {
+          kind: "ok" as const,
+          invoice: {
+            ...invoice,
+            concession_paise: body.data.concessionPaise,
+            concession_reason: concessionReason,
+            status,
+          },
+        };
+      });
+
+      if (result.kind === "missing") return void res.status(404).json(errorBody("NOT_FOUND", "Invoice not found."));
+      if (result.kind === "paid") return void res.status(409).json(errorBody("CONCESSION_AFTER_PAYMENT", "A concession cannot be changed after payment has been recorded."));
+      if (result.kind === "void") return void res.status(409).json(errorBody("INVOICE_VOID", "A void invoice cannot be changed."));
+      if (result.kind === "exceeds_balance") {
+        return void res.status(409).json(errorBody("CONCESSION_EXCEEDS_BALANCE", "The concession cannot exceed the unpaid balance."));
+      }
+      res.json(mapInvoice(result.invoice, false, true));
+    } catch (error) {
       next(error);
     }
   });
@@ -299,10 +423,11 @@ const routes: FastifyPluginAsync = async (fastify) => {
           id: string;
           invoice_number: string;
           amount_paise: string | number;
-          status: "unpaid" | "paid" | "void";
+          concession_paise: string | number;
+          status: "unpaid" | "paid" | "waived" | "void";
           can_pay_fees: boolean;
         }>(
-          `SELECT i.id, i.invoice_number, i.amount_paise, i.status, guardian.can_pay_fees
+          `SELECT i.id, i.invoice_number, i.amount_paise, i.concession_paise, i.status, guardian.can_pay_fees
              FROM fees.invoices i
              JOIN identity.guardian_links guardian
                ON guardian.org_id = i.org_id AND guardian.student_user_id = i.student_user_id
@@ -314,6 +439,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
         if (!row) return { kind: "missing" as const };
         if (!row.can_pay_fees) return { kind: "forbidden" as const };
         if (row.status === "void") return { kind: "void" as const };
+        if (row.status === "waived") return { kind: "waived" as const };
 
         if (row.status === "paid") {
           const payment = await client.query<{
@@ -347,7 +473,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
           [
             user.orgId,
             row.id,
-            Number(row.amount_paise),
+            Number(row.amount_paise) - Number(row.concession_paise),
             `MOCK-${randomUUID()}`,
             receiptNumber,
             user.id,
@@ -365,7 +491,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
           kind: "paid" as const,
           invoiceId: row.id,
           invoiceNumber: row.invoice_number,
-          amountPaise: Number(row.amount_paise),
+          amountPaise: Number(row.amount_paise) - Number(row.concession_paise),
           receiptNumber,
           paidAt: dateTimeValue(updated.rows[0]!.paid_at)!,
         };
@@ -374,6 +500,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
       if (result.kind === "missing") return void res.status(404).json(errorBody("NOT_FOUND", "Invoice not found."));
       if (result.kind === "forbidden") return void res.status(403).json(errorBody("FEE_PAYMENT_DISABLED", "Fee payments are not enabled for this parent."));
       if (result.kind === "void") return void res.status(409).json(errorBody("INVOICE_VOID", "This invoice can no longer be paid."));
+      if (result.kind === "waived") return void res.status(409).json(errorBody("INVOICE_WAIVED", "This invoice has no balance to pay because it was fully covered by a concession."));
       res.json({
         invoiceId: result.invoiceId,
         invoiceNumber: result.invoiceNumber,

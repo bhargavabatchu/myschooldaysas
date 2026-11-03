@@ -1,4 +1,4 @@
-export type FeeInvoicePaymentStatus = "unpaid" | "paid" | "void";
+export type FeeInvoicePaymentStatus = "unpaid" | "paid" | "waived" | "void";
 
 export function isMockPaymentEnvironment(nodeEnv: string | undefined): boolean {
   return nodeEnv === "development" || nodeEnv === "test";

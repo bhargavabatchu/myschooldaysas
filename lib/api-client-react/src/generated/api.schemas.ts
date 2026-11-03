@@ -1438,6 +1438,7 @@ export type FeeInvoiceStatus = typeof FeeInvoiceStatus[keyof typeof FeeInvoiceSt
 export const FeeInvoiceStatus = {
   unpaid: 'unpaid',
   paid: 'paid',
+  waived: 'waived',
   void: 'void',
 } as const;
 
@@ -1452,6 +1453,14 @@ export interface FeeInvoice {
   description: string;
   /** @minimum 1 */
   amountPaise: number;
+  /** @minimum 0 */
+  concessionPaise: number;
+  /** @minimum 0 */
+  paidPaise: number;
+  /** @minimum 0 */
+  balancePaise: number;
+  /** @nullable */
+  concessionReason?: string | null;
   dueDate: string;
   status: FeeInvoiceStatus;
   /** @nullable */
@@ -1459,6 +1468,19 @@ export interface FeeInvoice {
   /** @nullable */
   paidAt: string | null;
   canPay: boolean;
+}
+
+export interface FeeInvoiceConcessionInput {
+  /**
+     * @minimum 0
+     * @maximum 1000000000
+     */
+  concessionPaise: number;
+  /**
+     * @minLength 3
+     * @maxLength 240
+     */
+  reason: string;
 }
 
 export interface FeeInvoicePage {

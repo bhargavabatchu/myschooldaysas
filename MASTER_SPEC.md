@@ -607,7 +607,7 @@ All tables carry org_id uuid NOT NULL and RLS (except the documented non-tenant 
 | School operations | leave_requests, calendar_events, ptm_slots, homework(=learning diary), admission_enquiries/applications, visitors, pickup_authorisations, pickup_events, certificates, health_records/health_incidents, library_items/library_loans, grievances | leave, calendar, PTM, diary, admissions, certificates, grievances, health checkups BUILT; visitors, pickup, library ROADMAP |
 | Learning | content_items, question_bank, quizzes, quiz_attempts | resources BUILT (lite); quizzes/question bank ROADMAP |
 | Platform | tenant_settings(=orgs.settings), import_jobs, import_mappings, import_staging_rows, legacy_ids, notification_preferences(=notify.preferences), subscriptions, api_keys, webhook_endpoints | settings, preferences BUILT; import pipeline, subscriptions, API keys ROADMAP |
-| Finance & system | fee_structures, invoices, payments, notifications, audit_logs | PARTIAL (section invoices, dev/test mock payment, receipts; full fee operations remain open) |
+| Finance & system | fee_structures, invoices, payments, notifications, audit_logs | PARTIAL (class/section invoices, per-invoice student concessions, dev/test mock payment, receipts; full fee operations remain open) |
 
 Column-level contracts for what is built are in §5 and Appendix E. Roadmap table columns are in Appendices G and H.
 
@@ -636,9 +636,11 @@ Tables below list the columns the code implements (names exact). Additional oper
 - Analytics: performance-distribution, subject-averages, section-comparison, student-trend/:id, toppers, at-risk (below pass % in ≥ 2 subjects), assignment-stats, teacher-effectiveness.
 
 ### E.3 fees (schema fees)
+- Current MVP invoices support a post-issue fixed-amount concession on one student's unpaid invoice. The adjustment records an internal reason and administrator, preserves the original amount and captured payments, and is visible to that student's family as a reduced balance. Full fee-head/fee-structure concession rules and sibling discounts remain roadmap items. `fees.invoice_concession_audit` records each change.
 - fee_heads(name,kind tuition|transport|lab|misc,active), fee_structures(class_id,academic_year,items jsonb[{head_id,amount,due_month}],installments), concessions(student_id,type sibling|merit|staff|custom,percent|amount,reason,active), family_links (+POST /families) for sibling detection.
-- invoices(student_id,number unique,academic_year,period,items,gross,discount,total,due_date,status unpaid|partial|paid|void,class_id,discount_breakdown,last_reminded_at), payments(invoice_id,amount,method cash|upi|card|netbanking|cheque|online,reference,gateway manual|razorpay|mock,gateway_order_id,gateway_payment_id,status created|captured|failed|refunded,received_by,paid_at), receipts(payment_id,number unique,issued_at), number_sequences, webhook_events.
-- POST /invoices/generate {class_id|section_id|student_ids,period} (idempotent per student+period; applies concessions and sibling discount); manual payments (partial allowed, receipt issued); reports collection/defaulters(+CSV); reminders; analytics collection-trend, outstanding-by-class, payment-mode-split, aging (0–30/31–60/61–90/90+), forecast; GET /internal/students/:id/dues → {total_due,overdue,has_dues}.
+- Current implementation: invoices store `amount_paise`, `concession_paise`, and an administrator-only `concession_reason`; the family invoice view exposes original amount, concession, payments, and balance. `PATCH /fees/invoices/:invoiceId/concession` updates one unpaid invoice, keeps captured payments unchanged, rejects concessions above the unpaid balance, and records history in `fees.invoice_concession_audit`; a fully waived invoice is marked `waived`.
+- fee_heads(name,kind tuition|transport|lab|misc,active), fee_structures(class_id,academic_year,items jsonb[{head_id,amount,due_month}],installments), concessions(student_id,type sibling|merit|staff|custom,percent|amount,reason,active), family_links (+POST /families) for sibling detection.
+- POST /invoices/generate {class_id|section_id|student_ids,period} (idempotent per student+period); full fee-structure-based concessions and sibling discounts, manual partial payments, reports collection/defaulters(+CSV), reminders, and analytics remain roadmap; GET /internal/students/:id/dues → {total_due,overdue,has_dues}.
 - Online pay: POST /invoices/:id/pay creates a gateway order; PaymentGateway interface with RazorpayGateway (REST + signature verification) and MockGateway (*development only — must not exist in production, PR-S2*); webhook POST /payments/razorpay/webhook (signature verified, idempotent on event id) captures, issues receipt, emits payment.captured.
 
 ### E.4 registry (schema registry)
@@ -741,8 +743,8 @@ MVP ships in the first pilot, P2 follows, P3 later. "Code" = status today.
 | | Push/SMS/WhatsApp/email providers; preferences | System, All | MVP | preferences BUILT; providers ROADMAP |
 | | Parent-teacher chat, PTM, grievances | Teacher, Parent | P2 | BUILT |
 | | Hindi/regional UI and templates | All | P2 | ROADMAP |
-| Finance | Fee structures, invoices, receipts, Razorpay, defaulters, reminders | Accountant, Parent | MVP | PARTIAL (section invoices, dev/test mock payment, receipts) |
-| | Concessions and sibling discounts | Accountant | P2 | ROADMAP |
+| Finance | Fee structures, invoices, receipts, Razorpay, defaulters, reminders | Accountant, Parent | MVP | PARTIAL (class/section invoices, per-invoice student concessions, dev/test mock payment, receipts) |
+| | Automatic fee-structure concessions and sibling discounts | Accountant | P2 | ROADMAP |
 | | Payroll; Tally export | HR, Accountant | P3 | ROADMAP |
 | School ops | Leave (student, staff) | Parent, Teacher, HR | MVP | BUILT |
 | | Admissions, certificates/TC, ID cards, health records, staff HR | Admissions, Admin, Nurse, HR | P2 | PARTIAL (public enquiries + admin triage; applications/offers/admit remain open; health checkups, not full health module) |
