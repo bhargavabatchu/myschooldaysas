@@ -22,6 +22,29 @@ const money = (paise: number) => `₹${(paise / 100).toFixed(2)}`;
 const dateText = (value?: string | null) => value ? value.slice(0, 10) : "—";
 const fieldClass = "field w-full";
 
+function invoiceGenerationError(error: unknown) {
+  const candidate = error as {
+    status?: number;
+    message?: string;
+    data?: { error?: { code?: unknown; message?: unknown } };
+  } | null;
+  const code = candidate?.data?.error?.code;
+
+  if (code === "INVOICE_CONFLICT") {
+    return "This fee has already been issued for the selected section, academic year, and billing period. Check Recent invoices; no duplicate was created.";
+  }
+  if (code === "NO_ACTIVE_STUDENTS") {
+    return "No active students are enrolled in this section for that academic year. Check the section and academic year.";
+  }
+  if (typeof candidate?.data?.error?.message === "string") {
+    return candidate.data.error.message;
+  }
+  if (candidate?.status === 409) {
+    return "This billing period could not be issued. Check Recent invoices and confirm the section has active students for that academic year.";
+  }
+  return candidate?.message || "Invoices could not be issued.";
+}
+
 type FeesPageProps = { roles: string[] };
 
 export function FeesPage({ roles }: FeesPageProps) {
@@ -49,10 +72,13 @@ export function FeesPage({ roles }: FeesPageProps) {
       onSuccess: async (result) => {
         setNotice(result.generatedCount
           ? `${result.generatedCount} invoice${result.generatedCount === 1 ? "" : "s"} issued.`
-          : "These invoices already exist for that section and period.");
+          : "These fees have already been issued for that section and billing period. No duplicates were created.");
         await queryClient.invalidateQueries({ queryKey: getGetFeeInvoicesQueryKey() });
       },
-      onError: (error) => setNotice(error.message || "Invoices could not be issued."),
+      onError: async (error) => {
+        setNotice(invoiceGenerationError(error));
+        await queryClient.invalidateQueries({ queryKey: getGetFeeInvoicesQueryKey() });
+      },
     },
   });
   const pay = usePayFeeInvoice({
