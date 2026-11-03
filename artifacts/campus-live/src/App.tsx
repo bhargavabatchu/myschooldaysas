@@ -175,6 +175,9 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
     nav.push({ label: 'Privacy & consent', href: '/family/consents', icon: ShieldCheck });
   }
+  if (user.roles.includes('student')) {
+    nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
+  }
   return <div className={`signed-in-shell min-h-[100dvh] md:flex ${isDashboard ? 'dashboard-app-shell' : ''}`}>
     <aside className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-[hsl(var(--sidebar))] px-4 py-5 text-[hsl(var(--sidebar-foreground))] transition-transform md:translate-x-0 ${mobileNav ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="mb-9 flex items-center gap-3 px-2">

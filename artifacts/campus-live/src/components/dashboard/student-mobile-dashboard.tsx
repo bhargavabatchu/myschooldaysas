@@ -8,6 +8,7 @@ import {
   Check,
   ChevronRight,
   Clock3,
+  CreditCard,
   FileText,
   GraduationCap,
   LayoutDashboard,
@@ -222,6 +223,19 @@ export function StudentMobileDashboard({ userName }: StudentMobileDashboardProps
             </Link>
           ))}
         </div>
+      </section>
+
+      <section aria-label="Fees and receipts">
+        <Link href="/fees" className="surface flex items-center gap-3 p-3.5 transition active:scale-[.99]">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]">
+            <CreditCard size={18} strokeWidth={1.9} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] font-extrabold">Fees &amp; receipts</span>
+            <span className="mt-1 block text-[9px] leading-relaxed text-[hsl(var(--muted-foreground))]">View invoices and payment status for your account.</span>
+          </span>
+          <ChevronRight size={16} className="shrink-0 text-[hsl(var(--muted-foreground))]" />
+        </Link>
       </section>
 
       <section aria-labelledby="student-today-title">

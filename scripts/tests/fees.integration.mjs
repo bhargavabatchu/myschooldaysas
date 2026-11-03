@@ -86,7 +86,7 @@ after(async () => {
   await pool.end();
 });
 
-test("fee MVP issues invoices, gates parent payment, and returns one idempotent receipt", {
+test("fee MVP scopes student invoices and receipts while retaining parent payment", {
   skip: process.env.RUN_FEES_INTEGRATION !== "1",
 }, async (t) => {
   const identity = await pool.query(
@@ -115,7 +115,8 @@ test("fee MVP issues invoices, gates parent payment, and returns one idempotent 
       [orgId, adminRoles],
     );
     const parentResult = await client.query(
-      `SELECT guardian.id, guardian.name, guardian.email, enrollment.section_id, enrollment.academic_year
+      `SELECT guardian.id, guardian.name, guardian.email, enrollment.section_id, enrollment.academic_year,
+              student.id AS student_id, student.name AS student_name, student.email AS student_email
          FROM identity.guardian_links link
          JOIN identity.users guardian
            ON guardian.org_id = link.org_id AND guardian.id = link.guardian_user_id
@@ -136,10 +137,35 @@ test("fee MVP issues invoices, gates parent payment, and returns one idempotent 
         LIMIT 1`,
       [orgId],
     );
-    return { admin: adminResult.rows[0], parent: parentResult.rows[0] };
+    const otherStudentResult = parentResult.rows[0]
+      ? await client.query(
+        `SELECT student.id, student.name, student.email
+           FROM academic.enrollments enrollment
+           JOIN identity.users student
+             ON student.org_id = enrollment.org_id AND student.id = enrollment.student_user_id
+           JOIN identity.user_roles student_role
+             ON student_role.org_id = student.org_id
+            AND student_role.user_id = student.id
+            AND student_role.role = 'student'
+          WHERE enrollment.org_id = $1
+            AND enrollment.section_id = $2
+            AND enrollment.academic_year = $3
+            AND enrollment.status = 'active'
+            AND student.status = 'active'
+            AND student.id <> $4
+          ORDER BY student.created_at
+          LIMIT 1`,
+        [orgId, parentResult.rows[0].section_id, parentResult.rows[0].academic_year, parentResult.rows[0].student_id],
+      )
+      : { rows: [] };
+    return {
+      admin: adminResult.rows[0],
+      parent: parentResult.rows[0],
+      otherStudent: otherStudentResult.rows[0],
+    };
   });
-  if (!users.admin || !users.parent) {
-    return t.skip("A seeded administrator and a fee-enabled parent with an active enrollment are required.");
+  if (!users.admin || !users.parent || !users.otherStudent) {
+    return t.skip("A seeded administrator, linked parent, and two students in one section are required.");
   }
 
   const period = `fee-test-${randomUUID().slice(0, 10)}`;
@@ -158,6 +184,22 @@ test("fee MVP issues invoices, gates parent payment, and returns one idempotent 
     name: users.parent.name,
     email: users.parent.email,
     roles: ["parent"],
+    mustChangePassword: false,
+  });
+  const studentToken = createTestToken({
+    id: users.parent.student_id,
+    orgId,
+    name: users.parent.student_name,
+    email: users.parent.student_email,
+    roles: ["student"],
+    mustChangePassword: false,
+  });
+  const otherStudentToken = createTestToken({
+    id: users.otherStudent.id,
+    orgId,
+    name: users.otherStudent.name,
+    email: users.otherStudent.email,
+    roles: ["student"],
     mustChangePassword: false,
   });
 
@@ -182,11 +224,39 @@ test("fee MVP issues invoices, gates parent payment, and returns one idempotent 
   const forbiddenAdminPayment = await apiRequest("POST", `/fees/invoices/${generatedBody.items[0].id}/pay`, adminToken);
   assert.equal(forbiddenAdminPayment.statusCode, 403);
 
+  const forbiddenStudentInvoiceList = await apiRequest("GET", "/fees/invoices", studentToken);
+  assert.equal(forbiddenStudentInvoiceList.statusCode, 403);
+
+  const studentList = await apiRequest("GET", "/fees/my-invoices", studentToken);
+  assert.equal(studentList.statusCode, 200, studentList.body);
+  const studentInvoice = studentList.json().items.find((invoice) => invoice.period === period);
+  assert.ok(studentInvoice, "student should see their own invoice");
+  assert.equal(studentInvoice.studentId, users.parent.student_id);
+  assert.equal(studentInvoice.canPay, false, "student access is view-only");
+  const otherInvoice = generatedBody.items.find((invoice) => invoice.studentId === users.otherStudent.id);
+  assert.ok(otherInvoice, "fixture should include another student's invoice");
+  assert.equal(
+    studentList.json().items.some((invoice) => invoice.id === otherInvoice.id),
+    false,
+    "student must not see another student's invoice",
+  );
+  const forbiddenStudentPayment = await apiRequest("POST", `/fees/invoices/${studentInvoice.id}/pay`, studentToken);
+  assert.equal(forbiddenStudentPayment.statusCode, 403, "students cannot pay invoices");
+
+  const otherStudentList = await apiRequest("GET", "/fees/my-invoices", otherStudentToken);
+  assert.equal(otherStudentList.statusCode, 200, otherStudentList.body);
+  assert.equal(
+    otherStudentList.json().items.some((invoice) => invoice.id === studentInvoice.id),
+    false,
+    "a different student must not see this student's invoice",
+  );
+
   const parentList = await apiRequest("GET", "/fees/my-invoices", parentToken);
   assert.equal(parentList.statusCode, 200, parentList.body);
   const parentInvoice = parentList.json().items.find((invoice) => invoice.period === period);
   assert.ok(parentInvoice, "linked parent should see the child's invoice");
   assert.equal(parentInvoice.canPay, true);
+  assert.equal(studentInvoice.id, parentInvoice.id);
 
   const firstPayment = await apiRequest("POST", `/fees/invoices/${parentInvoice.id}/pay`, parentToken, { amountPaise: 1 });
   assert.equal(firstPayment.statusCode, 200, firstPayment.body);
@@ -203,4 +273,10 @@ test("fee MVP issues invoices, gates parent payment, and returns one idempotent 
   assert.equal(receipt.statusCode, 200, receipt.body);
   assert.equal(receipt.json().paymentMethod, "mock");
   assert.equal(receipt.json().amountPaise, 12345);
+
+  const studentReceipt = await apiRequest("GET", `/fees/receipts/${encodeURIComponent(payment.receiptNumber)}`, studentToken);
+  assert.equal(studentReceipt.statusCode, 200, studentReceipt.body);
+  assert.equal(studentReceipt.json().studentName, users.parent.student_name);
+  const otherStudentReceipt = await apiRequest("GET", `/fees/receipts/${encodeURIComponent(payment.receiptNumber)}`, otherStudentToken);
+  assert.equal(otherStudentReceipt.statusCode, 404, "another student must not see this receipt");
 });

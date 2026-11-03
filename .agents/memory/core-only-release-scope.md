@@ -14,3 +14,9 @@ The user selected Replit-managed PostgreSQL for the published app, with the exis
 **Why:** The user accepted the managed-database option after being told the publishing database did not yet contain the school schema.
 
 **How to apply:** Treat managed development as the schema source for Publishing, separately from local development data. Do not silently switch back to an external database or copy demo credentials into production.
+
+Students may view invoices and receipts billed to their own account; payment remains parent/guardian-only.
+
+**Why:** The user asked to enable fees for students while keeping the existing family payment boundary.
+
+**How to apply:** Scope student invoice and receipt reads to the authenticated student's own ID. Do not grant students payment or linked-sibling access.

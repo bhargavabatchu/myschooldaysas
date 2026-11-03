@@ -10,6 +10,7 @@ import { withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
 import { requireAuth, type CampusRole } from "../lib/auth";
 import { canParentPayInvoice, isMockPaymentEnvironment } from "../lib/fee-payment-policy";
+import { buildMyFeeInvoiceQuery } from "../lib/fee-invoice-access";
 
 const adminRoles: CampusRole[] = ["super_admin", "org_admin", "campus_admin"];
 const errorBody = (code: string, message: string) => ({ error: { code, message } });
@@ -228,33 +229,22 @@ const routes: FastifyPluginAsync = async (fastify) => {
   router.get("/fees/my-invoices", requireAuth, async (req, res, next) => {
     const user = req.campusUser;
     if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
-    if (!user.roles.includes("parent")) {
-      return void res.status(403).json(errorBody("FORBIDDEN", "Parent access required."));
+    const isParent = user.roles.includes("parent");
+    const isStudent = user.roles.includes("student");
+    if (!isParent && !isStudent) {
+      return void res.status(403).json(errorBody("FORBIDDEN", "Student or parent access required."));
     }
 
     try {
+      const query = buildMyFeeInvoiceQuery(isParent ? "parent" : "student", user.orgId, user.id);
       const items = await withOrg(user.orgId, (client) =>
-        client.query<InvoiceRow>(
-          `SELECT i.id, i.student_user_id, student.name AS student_name, i.section_id,
-                  i.invoice_number, i.academic_year, i.period, i.description, i.amount_paise,
-                  i.due_date, i.status, payment.receipt_number, payment.captured_at AS paid_at,
-                  guardian.can_pay_fees AS can_pay
-             FROM identity.guardian_links guardian
-             JOIN fees.invoices i
-               ON i.org_id = guardian.org_id AND i.student_user_id = guardian.student_user_id
-             JOIN identity.users student
-               ON student.org_id = i.org_id AND student.id = i.student_user_id
-             LEFT JOIN fees.payments payment
-               ON payment.org_id = i.org_id AND payment.invoice_id = i.id AND payment.status = 'captured'
-            WHERE guardian.org_id = $1 AND guardian.guardian_user_id = $2
-            ORDER BY i.due_date, i.created_at DESC`,
-          [user.orgId, user.id],
-        ),
+        client.query<InvoiceRow>(query.text, [...query.values]),
       );
       res.json({
         items: items.rows.map((row) => mapInvoice(
           row,
-          process.env.ENABLE_ONLINE_PAYMENTS !== "false" &&
+          query.scope === "parent" &&
+            process.env.ENABLE_ONLINE_PAYMENTS !== "false" &&
             canParentPayInvoice(row.can_pay === true, row.status, process.env.NODE_ENV),
         )),
         total: items.rowCount ?? 0,
@@ -379,8 +369,10 @@ const routes: FastifyPluginAsync = async (fastify) => {
     const params = GetFeeReceiptParams.safeParse(req.params);
     if (!params.success) return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid receipt number."));
     const isAdmin = user.roles.some((role) => adminRoles.includes(role));
-    if (!isAdmin && !user.roles.includes("parent")) {
-      return void res.status(403).json(errorBody("FORBIDDEN", "Receipt access is restricted to school administrators and linked parents."));
+    const isParent = user.roles.includes("parent");
+    const isStudent = user.roles.includes("student");
+    if (!isAdmin && !isParent && !isStudent) {
+      return void res.status(403).json(errorBody("FORBIDDEN", "Receipt access is restricted to school administrators, linked parents, and the billed student."));
     }
 
     try {
@@ -405,13 +397,13 @@ const routes: FastifyPluginAsync = async (fastify) => {
              JOIN identity.users student
                ON student.org_id = invoice.org_id AND student.id = invoice.student_user_id
             WHERE payment.org_id = $1 AND payment.receipt_number = $2
-              AND ($3::boolean OR EXISTS (
+              AND ($3::boolean OR ($4::boolean AND invoice.student_user_id = $5) OR EXISTS (
                 SELECT 1 FROM identity.guardian_links guardian
                  WHERE guardian.org_id = invoice.org_id
-                   AND guardian.guardian_user_id = $4
+                   AND guardian.guardian_user_id = $6
                    AND guardian.student_user_id = invoice.student_user_id
               ))`,
-          [user.orgId, params.data.receiptNumber, isAdmin, user.id],
+          [user.orgId, params.data.receiptNumber, isAdmin, isStudent, user.id, user.id],
         ),
       );
       const row = result.rows[0];

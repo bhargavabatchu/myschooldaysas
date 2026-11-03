@@ -27,13 +27,15 @@ type FeesPageProps = { roles: string[] };
 export function FeesPage({ roles }: FeesPageProps) {
   const isAdmin = roles.some((role) => adminRoles.includes(role));
   const isParent = roles.includes("parent");
+  const isStudent = roles.includes("student");
+  const isStudentOnlyView = isStudent && !isParent;
   const queryClient = useQueryClient();
   const sections = useGetSections(undefined, { query: { enabled: isAdmin } });
   const invoices = useGetFeeInvoices(
     { limit: 100, offset: 0 },
     { query: { enabled: isAdmin } },
   );
-  const myInvoices = useGetMyFeeInvoices({ query: { enabled: isParent } });
+  const myInvoices = useGetMyFeeInvoices({ query: { enabled: isParent || isStudent } });
   const [sectionId, setSectionId] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [period, setPeriod] = useState("");
@@ -165,19 +167,25 @@ export function FeesPage({ roles }: FeesPageProps) {
     );
   }
 
-  if (isParent) {
+  if (isParent || isStudent) {
     const items = myInvoices.data?.items ?? [];
     return (
       <div className="fees-family-page mx-auto max-w-5xl space-y-6">
         <header>
-          <p className="eyebrow">Family account</p>
+          <p className="eyebrow">{isStudentOnlyView ? "Student account" : "Family account"}</p>
           <h1 className="display text-3xl font-extrabold">Fees and receipts</h1>
-          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{onlinePaymentsEnabled ? "View invoices for your linked children and pay eligible balances." : "View invoices and receipts for your linked children. Online payments are temporarily unavailable; contact the school for payment instructions."}</p>
+          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">
+            {isStudentOnlyView
+              ? "View invoices and receipts for your own account. Ask your parent or guardian about payment."
+              : onlinePaymentsEnabled
+                ? "View invoices for your linked children and pay eligible balances."
+                : "View invoices and receipts for your linked children. Online payments are temporarily unavailable; contact the school for payment instructions."}
+          </p>
         </header>
         {notice && <div className="surface p-4 text-sm" role="status">{notice}</div>}
         {myInvoices.isError && <div className="surface p-5 text-sm text-red-700">Fee information could not be loaded. Refresh and try again.</div>}
         {myInvoices.isLoading ? <div className="surface p-5 text-sm">Loading fee information…</div>
-          : items.length === 0 ? <div className="surface p-6 text-sm text-[hsl(var(--muted-foreground))]">There are no invoices for your linked children.</div>
+          : items.length === 0 ? <div className="surface p-6 text-sm text-[hsl(var(--muted-foreground))]">{isStudentOnlyView ? "There are no invoices for your student account." : "There are no invoices for your linked children."}</div>
             : <div className="space-y-4">
               {items.map((invoice) => (
                 <article className="surface family-invoice p-5 md:p-6" key={invoice.id}>
@@ -203,7 +211,13 @@ export function FeesPage({ roles }: FeesPageProps) {
                         </button>
                       )}
                       {(!onlinePaymentsEnabled || !invoice.canPay) && invoice.status === "unpaid" && (
-                        <span className="text-sm text-[hsl(var(--muted-foreground))]">{onlinePaymentsEnabled ? "Payment is not enabled for this account." : "Online payments are unavailable. Contact the school."}</span>
+                        <span className="text-sm text-[hsl(var(--muted-foreground))]">
+                          {isStudentOnlyView
+                            ? "Ask a parent or guardian about payment."
+                            : onlinePaymentsEnabled
+                              ? "Payment is not enabled for this account."
+                              : "Online payments are unavailable. Contact the school."}
+                        </span>
                       )}
                       {invoice.receiptNumber && (
                         <Link className="btn btn-muted" href={`/fees/receipts/${encodeURIComponent(invoice.receiptNumber)}`}>View receipt</Link>
@@ -217,7 +231,7 @@ export function FeesPage({ roles }: FeesPageProps) {
     );
   }
 
-  return <div className="fees-access-notice surface p-6 text-sm">Fee access is available to school administrators and parents.</div>;
+  return <div className="fees-access-notice surface p-6 text-sm">Fee access is available to school administrators, parents, and students.</div>;
 }
 
 export function FeeReceiptPage() {
