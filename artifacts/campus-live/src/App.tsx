@@ -572,7 +572,7 @@ function ClassesPage({ roles }: { roles: string[] }) {
                   ) : (
                     <p className="m-0 text-xs text-[hsl(var(--muted-foreground))]">No sections have been assigned to this class.</p>
                   )}
-                  {canManage && <AddSectionForm classId={item.id} className={item.name} />}
+                  {canManage && <AddSectionForm classId={item.id} className={item.name} existingSections={byClass[item.id] ?? []} />}
                 </div>
               </details>
             ))}

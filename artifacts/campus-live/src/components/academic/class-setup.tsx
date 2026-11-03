@@ -8,11 +8,26 @@ import {
   useCreateClass,
   useCreateSection,
   useGetClasses,
+  useGetSections,
 } from "@workspace/api-client-react";
+
+type ExistingSection = { id: string; name: string };
+
+function suggestSectionName(sections: ExistingSection[]) {
+  const used = new Set(sections.map((section) => section.name.trim().toLowerCase()));
+  for (let index = 0; index < 26; index += 1) {
+    const label = String.fromCharCode(65 + index);
+    if (!used.has(label.toLowerCase())) return label;
+  }
+  let suffix = 1;
+  while (used.has(`Section ${suffix}`.toLowerCase())) suffix += 1;
+  return `Section ${suffix}`;
+}
 
 export function ClassSetupPanel() {
   const queryClient = useQueryClient();
   const classes = useGetClasses();
+  const sections = useGetSections();
   const [name, setName] = useState("");
   const [gradeLevel, setGradeLevel] = useState("1");
   const [firstSectionName, setFirstSectionName] = useState("A");
@@ -110,7 +125,13 @@ export function ClassSetupPanel() {
           <p className="mb-2 mt-0">
             <strong>{existingClass.name}</strong> already exists in Grade {existingClass.gradeLevel}. Add a section to this class, or choose a different class name.
           </p>
-          <AddSectionForm classId={existingClass.id} className={existingClass.name} />
+          {sections.data
+            ? <AddSectionForm
+                classId={existingClass.id}
+                className={existingClass.name}
+                existingSections={sections.data.items.filter((section) => section.classId === existingClass.id)}
+              />
+            : <p role="status" className="mb-0 mt-2 text-[hsl(var(--muted-foreground))]">Loading this class’s sections…</p>}
         </div>
       )}
       {create.isError && <p role="alert" className="mb-0 mt-3 text-xs text-[hsl(var(--destructive))]">{create.error.message}</p>}
@@ -119,10 +140,23 @@ export function ClassSetupPanel() {
   );
 }
 
-export function AddSectionForm({ classId, className }: { classId: string; className: string }) {
+export function AddSectionForm({
+  classId,
+  className,
+  existingSections = [],
+}: {
+  classId: string;
+  className: string;
+  existingSections?: ExistingSection[];
+}) {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState("");
+  const normalizedName = name.trim().toLowerCase();
+  const duplicate = normalizedName
+    ? existingSections.find((section) => section.name.trim().toLowerCase() === normalizedName)
+    : undefined;
+  const suggestedName = suggestSectionName(existingSections);
   const create = useCreateSection({
     mutation: {
       onSuccess: async () => {
@@ -143,7 +177,15 @@ export function AddSectionForm({ classId, className }: { classId: string; classN
 
   if (!isOpen) {
     return (
-      <button type="button" className="btn btn-muted min-h-9 px-3 text-[11px]" onClick={() => setIsOpen(true)}>
+      <button
+        type="button"
+        className="btn btn-muted min-h-9 px-3 text-[11px]"
+        onClick={() => {
+          setName(suggestedName);
+          create.reset();
+          setIsOpen(true);
+        }}
+      >
         Add section
       </button>
     );
@@ -158,17 +200,28 @@ export function AddSectionForm({ classId, className }: { classId: string; classN
           className="field mt-1 min-h-9"
           required
           maxLength={40}
-          placeholder="e.g. B"
+          placeholder={`e.g. ${suggestedName}`}
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => {
+            setName(event.target.value);
+            create.reset();
+          }}
         />
+        <span className="mt-1 block font-normal text-[hsl(var(--muted-foreground))]">
+          Existing: {existingSections.length ? existingSections.map((section) => section.name).join(", ") : "none"} · Suggested: {suggestedName}
+        </span>
       </label>
-      <button className="btn btn-primary min-h-9 px-3 text-[11px]" disabled={create.isPending}>
-        {create.isPending ? "Adding…" : "Save section"}
+      <button className="btn btn-primary min-h-9 px-3 text-[11px]" disabled={create.isPending || Boolean(duplicate)}>
+        {create.isPending ? "Adding…" : duplicate ? "Name already used" : "Save section"}
       </button>
-      <button type="button" className="btn btn-muted min-h-9 px-3 text-[11px]" onClick={() => setIsOpen(false)}>
+      <button type="button" className="btn btn-muted min-h-9 px-3 text-[11px]" onClick={() => { create.reset(); setIsOpen(false); }}>
         Cancel
       </button>
+      {duplicate && (
+        <p role="alert" className="basis-full mb-0 text-xs text-[hsl(var(--destructive))]">
+          {duplicate.name} already exists in {className}. Choose another name, such as {suggestedName}.
+        </p>
+      )}
       {create.isError && <p role="alert" className="basis-full mb-0 text-xs text-[hsl(var(--destructive))]">{create.error.message}</p>}
     </form>
   );

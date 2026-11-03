@@ -774,7 +774,10 @@ router.post("/academic/sections", requireAuth, async (req, res, next) => {
     res.status(201).json(section);
   } catch (error) {
     if ((error as { code?: string })?.code === "23505") {
-      return void res.status(409).json(errorBody("CONFLICT", "That section already exists in this class."));
+      return void res.status(409).json(errorBody(
+        "CONFLICT",
+        "That section name is already in use for this class. Choose a different section name.",
+      ));
     }
     next(error);
   }
