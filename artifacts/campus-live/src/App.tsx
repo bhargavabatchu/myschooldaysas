@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { Link, Route, Switch, useLocation, useParams } from 'wouter';
 import {
   useLogin, useGetMe, getGetMeQueryKey, useGetDashboardOverview, getGetDashboardOverviewQueryKey,
-  useGetClasses, useGetSections,
+  useGetClasses, useGetSections, useGetTimetable,
   useGetStudents, getGetStudentsQueryKey, useGetSessions, getGetSessionsQueryKey,
   useCreateSession, useStartSession, useEndSession, useGetSessionToken,
   useGetBoardTemplates, getGetBoardTemplatesQueryKey, useCreateBoardTemplate, useUpdateBoardTemplate,
@@ -422,11 +422,23 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
   const data = overview.data;
   const isStudent = roles.includes('student');
   const adminInsights = data?.adminInsights;
+  const timetable = useGetTimetable(undefined, { query: { enabled: Boolean(adminInsights) } });
+  const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const todayWeekdayName = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    timeZone: 'Asia/Kolkata',
+  }).format(new Date());
+  const todayWeekday = weekdays.indexOf(todayWeekdayName);
+  const todaySchedule = (timetable.data?.items ?? [])
+    .filter(slot => slot.weekday === todayWeekday)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const visibleTodaySchedule = todaySchedule.slice(0, 4);
   const formatRupees = (paise: number) => new Intl.NumberFormat('en-IN', {
     style: 'currency', currency: 'INR', maximumFractionDigits: 2,
   }).format(paise / 100);
   const trend = adminInsights?.fees.collectionTrend ?? [];
   const maxCollected = Math.max(0, ...trend.map(point => point.collectedPaise));
+  const hasRecordedCollections = trend.some(point => point.collectedPaise > 0);
   const chartPoints = trend.map((point, index) => {
     const x = trend.length < 2 ? 50 : 8 + (index / (trend.length - 1)) * 84;
     const y = maxCollected === 0 ? 68 : 68 - (point.collectedPaise / maxCollected) * 48;
@@ -458,49 +470,40 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
             </article>;
           })}
         </section>
-        {adminInsights && <section className="dashboard-admin-insights" aria-label="Administrator insights" data-testid="dashboard-admin-insights">
-          <div className="dashboard-insight-attendance" data-testid="dashboard-attendance-insight">
-            <div className="dashboard-insight-heading">
-              <div className="dashboard-insight-symbol"><CalendarCheck size={17}/></div>
-              <div><span className="dashboard-panel-kicker">ATTENDANCE · {adminInsights.attendanceToday.attendanceDate}</span><h2>Today’s register</h2></div>
-            </div>
-            {adminInsights.attendanceToday.attendancePercent === null
-              ? <div className="dashboard-attendance-unmarked"><strong>Not recorded yet</strong><span>No attendance marks have been recorded for today.</span></div>
-              : <div className="dashboard-attendance-readout">
-                <strong>{adminInsights.attendanceToday.attendancePercent}<small>%</small></strong>
-                <div className="dashboard-attendance-detail"><span>{adminInsights.attendanceToday.presentStudents} present</span><span>{adminInsights.attendanceToday.markedStudents} students marked</span></div>
-                <div className="dashboard-progress-track" aria-label={`${adminInsights.attendanceToday.attendancePercent}% attendance`}><span style={{ width: `${Math.max(0, Math.min(100, adminInsights.attendanceToday.attendancePercent))}%` }}/></div>
-              </div>}
-            <Link href="/attendance" className="dashboard-insight-link">Open attendance <ArrowRight size={13}/></Link>
-          </div>
-          <div className="dashboard-insight-fees" data-testid="dashboard-fees-insight">
-            <div className="dashboard-insight-heading">
-              <div className="dashboard-insight-symbol gold"><CreditCard size={17}/></div>
-              <div><span className="dashboard-panel-kicker">FEES · THIS MONTH</span><h2>Collection overview</h2></div>
-            </div>
-            <div className="dashboard-fee-totals">
-              <div><span>Collected</span><strong>{formatRupees(adminInsights.fees.collectedThisMonthPaise)}</strong></div>
-              <div><span>Outstanding</span><strong>{formatRupees(adminInsights.fees.outstandingPaise)}</strong></div>
-              <div className="dashboard-overdue"><span>Overdue invoices</span><strong>{adminInsights.fees.overdueInvoiceCount}</strong></div>
-            </div>
-            {trend.length > 0 ? <div className="dashboard-trend" aria-label="Fee collection trend" data-testid="dashboard-fee-trend">
-              <div className="dashboard-trend-label"><span>Collection trend</span><span>Last 6 months</span></div>
-              <svg viewBox="0 0 100 76" preserveAspectRatio="none" role="img" aria-label="Monthly fee collections">
-                <line x1="5" y1="69" x2="95" y2="69" className="dashboard-chart-axis"/>
-                <polyline points={chartPoints} className="dashboard-chart-line"/>
-                {trend.map((point, index) => {
-                  const x = trend.length < 2 ? 50 : 8 + (index / (trend.length - 1)) * 84;
-                  const y = maxCollected === 0 ? 68 : 68 - (point.collectedPaise / maxCollected) * 48;
-                  return <circle key={point.month} cx={x} cy={y} r="1.7" className="dashboard-chart-dot"/>;
-                })}
-              </svg>
-              <div className="dashboard-trend-months">{trend.map(point => <span key={point.month}>{new Intl.DateTimeFormat('en', { month: 'short', timeZone: 'UTC' }).format(new Date(`${point.month}-01T00:00:00Z`))}</span>)}</div>
-            </div> : <p className="dashboard-trend-empty">Monthly collection history will appear here.</p>}
-            <Link href="/fees" className="dashboard-insight-link">Review fees <ArrowRight size={13}/></Link>
-          </div>
+        {adminInsights && (adminInsights.attendanceToday.attendancePercent === null || adminInsights.fees.overdueInvoiceCount > 0) && <section className="dashboard-followups" aria-label="Administrator follow-ups" data-testid="dashboard-followups">
+          {adminInsights.attendanceToday.attendancePercent === null && <Link href="/attendance" className="dashboard-followup dashboard-followup-attendance">
+            <span className="dashboard-followup-icon"><CalendarCheck size={16}/></span>
+            <span className="dashboard-followup-copy"><strong>Attendance has not been recorded</strong><span>Today’s register is ready for an update.</span></span>
+            <span className="dashboard-followup-action">Open attendance <ArrowRight size={13}/></span>
+          </Link>}
+          {adminInsights.fees.overdueInvoiceCount > 0 && <Link href="/fees" className="dashboard-followup dashboard-followup-fees">
+            <span className="dashboard-followup-icon"><CreditCard size={16}/></span>
+            <span className="dashboard-followup-copy"><strong>{adminInsights.fees.overdueInvoiceCount} overdue {adminInsights.fees.overdueInvoiceCount === 1 ? 'invoice' : 'invoices'}</strong><span>Review outstanding school fees.</span></span>
+            <span className="dashboard-followup-action">Review fees <ArrowRight size={13}/></span>
+          </Link>}
         </section>}
         <div className="dashboard-panels">
-          {liveClassesEnabled ? <section className="dashboard-panel dashboard-sessions" aria-labelledby="dashboard-sessions-title">
+          {adminInsights ? <section className="dashboard-panel dashboard-sessions" aria-labelledby="dashboard-sessions-title" data-testid="dashboard-timetable-today">
+            <div className="dashboard-panel-heading">
+              <div>
+                <div className="dashboard-panel-kicker">TODAY · {todayWeekdayName.toUpperCase()}</div>
+                <h2 id="dashboard-sessions-title">Today’s timetable</h2>
+                <p>Class, subject, and teacher at a glance</p>
+              </div>
+              <Link href="/timetable" className="dashboard-text-link">Full timetable <ArrowRight size={14}/></Link>
+            </div>
+            {timetable.isLoading ? <div className="dashboard-schedule-loading" aria-label="Loading today’s timetable"><span/><span/><span/></div>
+              : timetable.error ? <div className="dashboard-schedule-empty" role="status">Today’s timetable couldn’t be loaded. <button type="button" onClick={() => void timetable.refetch()}>Try again</button></div>
+              : visibleTodaySchedule.length ? <div className="dashboard-day-schedule">
+                {visibleTodaySchedule.map(slot => <article key={slot.id} className="dashboard-day-slot" data-testid={`dashboard-slot-${slot.id}`}>
+                  <div className="dashboard-day-time"><strong>{slot.startTime}</strong><span>{slot.endTime}</span></div>
+                  <div className="dashboard-day-slot-copy"><strong>{slot.subjectName}</strong><span>{slot.sectionName} · {slot.teacherName}</span></div>
+                  {slot.room && <span className="dashboard-day-room">{slot.room}</span>}
+                </article>)}
+                {todaySchedule.length > visibleTodaySchedule.length && <Link href="/timetable" className="dashboard-day-more">{todaySchedule.length - visibleTodaySchedule.length} more scheduled today</Link>}
+              </div>
+              : <div className="dashboard-schedule-empty">No timetable slots are scheduled for today.</div>}
+          </section> : liveClassesEnabled ? <section className="dashboard-panel dashboard-sessions" aria-labelledby="dashboard-sessions-title">
             <div className="dashboard-panel-heading">
               <div>
                 <div className="dashboard-panel-kicker">ON THE TIMETABLE</div>
@@ -526,6 +529,47 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
             </article>)}</div> : <InlineEmpty text="No recent updates to show."/>}
           </section>
         </div>
+        {adminInsights && <section className="dashboard-admin-insights" aria-label="Administrator insights" data-testid="dashboard-admin-insights">
+          <div className="dashboard-insight-attendance" data-testid="dashboard-attendance-insight">
+            <div className="dashboard-insight-heading">
+              <div className="dashboard-insight-symbol"><CalendarCheck size={17}/></div>
+              <div><span className="dashboard-panel-kicker">ATTENDANCE · {adminInsights.attendanceToday.attendanceDate}</span><h2>Today’s register</h2></div>
+            </div>
+            {adminInsights.attendanceToday.attendancePercent === null
+              ? <div className="dashboard-attendance-unmarked"><strong>Not recorded yet</strong><span>No attendance marks have been recorded for today.</span></div>
+              : <div className="dashboard-attendance-readout">
+                <strong>{adminInsights.attendanceToday.attendancePercent}<small>%</small></strong>
+                <div className="dashboard-attendance-detail"><span>{adminInsights.attendanceToday.presentStudents} present</span><span>{adminInsights.attendanceToday.markedStudents} students marked</span></div>
+                <div className="dashboard-progress-track" aria-label={`${adminInsights.attendanceToday.attendancePercent}% attendance`}><span style={{ width: `${Math.max(0, Math.min(100, adminInsights.attendanceToday.attendancePercent))}%` }}/></div>
+              </div>}
+            <Link href="/attendance" className="dashboard-insight-link">Open attendance <ArrowRight size={13}/></Link>
+          </div>
+          <div className="dashboard-insight-fees" data-testid="dashboard-fees-insight">
+            <div className="dashboard-insight-heading">
+              <div className="dashboard-insight-symbol gold"><CreditCard size={17}/></div>
+              <div><span className="dashboard-panel-kicker">FEES · THIS MONTH</span><h2>Collection overview</h2></div>
+            </div>
+            <div className="dashboard-fee-totals">
+              <div><span>Collected</span><strong>{formatRupees(adminInsights.fees.collectedThisMonthPaise)}</strong></div>
+              <div><span>Outstanding</span><strong>{formatRupees(adminInsights.fees.outstandingPaise)}</strong></div>
+              <div className="dashboard-overdue"><span>Overdue invoices</span><strong>{adminInsights.fees.overdueInvoiceCount}</strong></div>
+            </div>
+            {trend.length > 0 && hasRecordedCollections ? <div className="dashboard-trend" aria-label="Fee collection trend" data-testid="dashboard-fee-trend">
+              <div className="dashboard-trend-label"><span>Collection trend</span><span>Last 6 months</span></div>
+              <svg viewBox="0 0 100 76" preserveAspectRatio="none" role="img" aria-label="Monthly fee collections">
+                <line x1="5" y1="69" x2="95" y2="69" className="dashboard-chart-axis"/>
+                <polyline points={chartPoints} className="dashboard-chart-line"/>
+                {trend.map((point, index) => {
+                  const x = trend.length < 2 ? 50 : 8 + (index / (trend.length - 1)) * 84;
+                  const y = maxCollected === 0 ? 68 : 68 - (point.collectedPaise / maxCollected) * 48;
+                  return <circle key={point.month} cx={x} cy={y} r="1.7" className="dashboard-chart-dot"/>;
+                })}
+              </svg>
+              <div className="dashboard-trend-months">{trend.map(point => <span key={point.month}>{new Intl.DateTimeFormat('en', { month: 'short', timeZone: 'UTC' }).format(new Date(`${point.month}-01T00:00:00Z`))}</span>)}</div>
+            </div> : <p className="dashboard-trend-empty" data-testid="dashboard-trend-empty">{trend.length > 0 ? 'No fee collections have been recorded in the last six months.' : 'Monthly collection history will appear here.'}</p>}
+            <Link href="/fees" className="dashboard-insight-link">Review fees <ArrowRight size={13}/></Link>
+          </div>
+        </section>}
         <section className="dashboard-toolband" aria-label="Learning tools">
           <div className="dashboard-toolband-mark"><BookOpen size={21}/></div>
           <div className="dashboard-toolband-copy"><span>THE CLASSROOM, READY WHEN YOU ARE</span><strong>Bring the lesson to life.</strong><p>Open a shared board and pick up where the school day is.</p></div>

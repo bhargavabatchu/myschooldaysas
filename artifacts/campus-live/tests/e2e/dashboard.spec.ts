@@ -23,7 +23,7 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(dimensions.page, "dashboard should not scroll horizontally").toBeLessThanOrEqual(dimensions.viewport);
 }
 
-async function expectDashboardData(page: Page) {
+async function expectDashboardData(page: Page, administrator = false) {
   const metricCards = page.locator(".dashboard-metric");
   await expect(metricCards).toHaveCount(4);
   for (const card of await metricCards.all()) {
@@ -32,8 +32,26 @@ async function expectDashboardData(page: Page) {
   }
 
   const sessions = page.locator(".dashboard-sessions");
-  await expect(sessions.getByRole("heading", { name: "Coming up" })).toBeVisible();
-  await expect(sessions.locator(".dashboard-session")).not.toHaveCount(0);
+  if (administrator) {
+    const schedule = page.getByTestId("dashboard-timetable-today");
+    await expect(schedule.getByRole("heading", { name: "Today’s timetable" })).toBeVisible();
+    await expect.poll(async () =>
+      (await schedule.locator(".dashboard-day-slot").count()) +
+      (await schedule.locator(".dashboard-schedule-empty").count()),
+    ).toBeGreaterThan(0);
+    if (await schedule.locator(".dashboard-day-slot").count()) {
+      await expect(schedule.locator(".dashboard-day-slot").first()).toBeVisible();
+    } else {
+      await expect(schedule.locator(".dashboard-schedule-empty")).toBeVisible();
+    }
+  } else {
+    await expect(sessions.getByRole("heading", { name: "Coming up" })).toBeVisible();
+    if (await sessions.locator(".dashboard-session").count()) {
+      await expect(sessions.locator(".dashboard-session").first()).toBeVisible();
+    } else {
+      await expect(sessions.getByText("No upcoming sessions have been scheduled.")).toBeVisible();
+    }
+  }
 
   const activity = page.locator(".dashboard-activity");
   await expect(activity.getByRole("heading", { name: "Recent activity" })).toBeVisible();
@@ -52,7 +70,12 @@ async function expectAdminInsights(page: Page) {
   await expect(insights.getByText("Collected", { exact: true })).toBeVisible();
   await expect(insights.getByText("Outstanding", { exact: true })).toBeVisible();
   await expect(insights.getByText("Overdue invoices", { exact: true })).toBeVisible();
-  await expect(insights.getByRole("img", { name: "Monthly fee collections" })).toBeVisible();
+  const collectionTrend = insights.getByTestId("dashboard-fee-trend");
+  if (await collectionTrend.count()) {
+    await expect(collectionTrend.getByRole("img", { name: "Monthly fee collections" })).toBeVisible();
+  } else {
+    await expect(insights.getByTestId("dashboard-trend-empty")).toContainText(/No fee collections have been recorded|Monthly collection history will appear here/);
+  }
   await expect(insights.getByRole("link", { name: /Review fees/ })).toHaveAttribute("href", "/fees");
 }
 
@@ -60,7 +83,7 @@ test("administrator dashboard data, navigation, and theme controls fit desktop a
   await signIn(page, process.env.DASHBOARD_E2E_ADMIN_EMAIL ?? "admin@demo.edu");
 
   await page.setViewportSize(desktop);
-  await expectDashboardData(page);
+  await expectDashboardData(page, true);
   await expectAdminInsights(page);
   await expectNoHorizontalOverflow(page);
   await expect(page.getByTestId("link-nav-admissions")).toBeVisible();
@@ -89,7 +112,7 @@ test("administrator dashboard data, navigation, and theme controls fit desktop a
 
   await page.getByTestId("link-nav-overview").click();
   await page.setViewportSize(mobile);
-  await expectDashboardData(page);
+  await expectDashboardData(page, true);
   await expectAdminInsights(page);
   await expectNoHorizontalOverflow(page);
   const mobileMetricsColumns = await page.locator(".dashboard-metrics").evaluate((element) =>
