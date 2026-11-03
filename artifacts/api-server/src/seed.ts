@@ -108,35 +108,46 @@ try {
 
     const classIds: string[] = [];
     const sectionIds: string[] = [];
+    const gradeOneSectionIds = new Map<string, string>();
     for (let grade = 1; grade <= 12; grade += 1) {
-      const classResult = await client.query<{ id: string }>(
+      const classResult = await client.query<{ id: string; is_active: boolean }>(
         `INSERT INTO academic.classes (org_id, name, grade_level)
          VALUES ($1, $2, $3)
          ON CONFLICT (org_id, name) DO UPDATE SET grade_level = EXCLUDED.grade_level
-         RETURNING id`,
+         RETURNING id, is_active`,
         [orgId, `Grade ${grade}`, grade],
       );
-      const classId = classResult.rows[0]?.id;
+      const classRow = classResult.rows[0];
+      const classId = classRow?.id;
       if (!classId) throw new Error(`Could not seed Grade ${grade}.`);
+      if (grade === 1 && !classRow.is_active) {
+        throw new Error("Cannot seed Grade 1 demo students into an archived class.");
+      }
       classIds.push(classId);
-      for (const sectionName of ["A", "B"]) {
-        const sectionResult = await client.query<{ id: string }>(
+      const sectionNames = grade === 1 ? ["A", "B", "C", "D", "E"] : ["A", "B"];
+      for (const sectionName of sectionNames) {
+        const sectionResult = await client.query<{ id: string; is_active: boolean }>(
           `INSERT INTO academic.sections (org_id, class_id, name)
            VALUES ($1, $2, $3)
            ON CONFLICT (org_id, class_id, name) DO NOTHING
-           RETURNING id`,
+           RETURNING id, is_active`,
           [orgId, classId, sectionName],
         );
-        let sectionId = sectionResult.rows[0]?.id;
-        if (!sectionId) {
-          const found = await client.query<{ id: string }>(
-            "SELECT id FROM academic.sections WHERE org_id = $1 AND class_id = $2 AND name = $3",
+        let section = sectionResult.rows[0];
+        if (!section) {
+          const found = await client.query<{ id: string; is_active: boolean }>(
+            "SELECT id, is_active FROM academic.sections WHERE org_id = $1 AND class_id = $2 AND name = $3",
             [orgId, classId, sectionName],
           );
-          sectionId = found.rows[0]?.id;
+          section = found.rows[0];
         }
-        if (!sectionId) throw new Error(`Could not seed Grade ${grade} ${sectionName}.`);
-        sectionIds.push(sectionId);
+        if (!section) throw new Error(`Could not seed Grade ${grade} ${sectionName}.`);
+        if (grade === 1 && !section.is_active) {
+          throw new Error(`Cannot seed demo students into archived Grade 1 ${sectionName}.`);
+        }
+        if (grade === 1) gradeOneSectionIds.set(sectionName, section.id);
+        // Keep the original 24-section distribution for all baseline demo students.
+        if (grade !== 1 || sectionName === "A" || sectionName === "B") sectionIds.push(section.id);
       }
     }
 
@@ -174,6 +185,50 @@ try {
            SET section_id = EXCLUDED.section_id`,
         [orgId, userIds.get(student.email), sectionId, `ADM2026${String(index + 1).padStart(3, "0")}`],
       );
+    }
+
+    for (const sectionName of ["A", "B", "C", "D", "E"]) {
+      const sectionId = gradeOneSectionIds.get(sectionName);
+      if (!sectionId) throw new Error(`Grade 1 ${sectionName} is missing from the demo seed.`);
+      const enrolled = await client.query<{ count: number }>(
+        `SELECT COUNT(DISTINCT student_user_id)::int AS count
+           FROM academic.enrollments
+          WHERE org_id = $1 AND section_id = $2
+            AND academic_year = '2026-27' AND status = 'active'`,
+        [orgId, sectionId],
+      );
+      let count = enrolled.rows[0]?.count ?? 0;
+      let slot = count + 1;
+      while (count < 40) {
+        const suffix = String(slot).padStart(3, "0");
+        const email = `grade1-${sectionName.toLowerCase()}-${suffix}@demo.edu`;
+        const name = `Grade 1 ${sectionName} Student ${suffix}`;
+        const studentResult = await client.query<{ id: string }>(
+          `INSERT INTO identity.users (org_id, email, name, password_hash)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (org_id, email) DO UPDATE SET name = EXCLUDED.name
+           RETURNING id`,
+          [orgId, email, name, demoPasswordHash],
+        );
+        const studentId = studentResult.rows[0]?.id;
+        if (!studentId) throw new Error(`Could not seed demo student ${email}.`);
+        await client.query(
+          `INSERT INTO identity.user_roles (org_id, user_id, role)
+           VALUES ($1, $2, 'student')
+           ON CONFLICT (org_id, user_id, role) DO NOTHING`,
+          [orgId, studentId],
+        );
+        await client.query(
+          `INSERT INTO academic.enrollments
+             (org_id, student_user_id, section_id, admission_no, academic_year)
+           VALUES ($1, $2, $3, $4, '2026-27')
+           ON CONFLICT (org_id, student_user_id, academic_year) WHERE status = 'active'
+           DO UPDATE SET section_id = EXCLUDED.section_id`,
+          [orgId, studentId, sectionId, `DEMO-G1-${sectionName}-${suffix}`],
+        );
+        count += 1;
+        slot += 1;
+      }
     }
 
     for (let index = 0; index < teacherUsers.length; index += 1) {
@@ -291,7 +346,7 @@ try {
     client.release();
   }
 
-  console.log(`Seeded ${users.length} development users in the demo organization.`);
+  console.log(`Seeded ${users.length} baseline development users; Grade 1 sections A–E now have at least 40 students each.`);
 } finally {
   await migrator.end();
 }
