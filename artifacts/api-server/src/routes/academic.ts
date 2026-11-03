@@ -28,12 +28,19 @@ import {
   CommitEnrollmentTransferBody,
   PreviewEnrollmentPromotionBody,
   CommitEnrollmentPromotionBody,
+  RemoveClassParams,
+  RemoveSectionParams,
+  SetClassActivityBody,
+  SetClassActivityParams,
+  SetSectionActivityBody,
+  SetSectionActivityParams,
 } from "@workspace/api-zod";
 import { withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
 import { hashPassword, requireAuth, type CampusRole } from "../lib/auth";
 import { canManageAcademicSetup, sectionHasCapacity } from "../lib/academic-scheduling-policy";
 import { generateTemporaryPassword } from "../lib/identity-security";
+import { hasForeignKeyReferences } from "../lib/foreign-key-usage";
 
 const routes: FastifyPluginAsync = async (fastify) => {
 const router = createRouteRegistrar(fastify);
@@ -552,19 +559,27 @@ router.get("/academic/classes", requireAuth, async (req, res, next) => {
   const user = req.campusUser;
   if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
   const flags = roleFlags(user.roles);
+  const query = req.query as Record<string, unknown>;
+  const includeArchived = query.includeArchived === true || query.includeArchived === "true";
+  if (includeArchived && !flags.isAdmin) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can view archived classes."));
+  }
 
   try {
     const result = await withOrg(user.orgId, (client) =>
       client.query(
         `SELECT c.id, c.name, c.grade_level,
+                c.is_active,
                 COUNT(DISTINCT s.id)::int AS section_count,
                 COUNT(DISTINCT e.student_user_id)::int AS student_count
            FROM academic.classes c
            LEFT JOIN academic.sections s
              ON s.class_id = c.id AND s.org_id = c.org_id
+            AND (NOT $2::boolean OR $7::boolean OR s.is_active = true)
            LEFT JOIN academic.enrollments e
              ON e.section_id = s.id AND e.org_id = c.org_id AND e.status = 'active'
           WHERE c.org_id = $1
+             AND (NOT $2::boolean OR $7::boolean OR c.is_active = true)
             AND (
               $2::boolean
               OR ($3::boolean AND EXISTS (
@@ -593,7 +608,7 @@ router.get("/academic/classes", requireAuth, async (req, res, next) => {
             )
           GROUP BY c.id
           ORDER BY c.grade_level, c.name`,
-        [user.orgId, flags.isAdmin, flags.isTeacher, user.id, flags.isStudent, flags.isParent],
+        [user.orgId, flags.isAdmin, flags.isTeacher, user.id, flags.isStudent, flags.isParent, includeArchived],
       ),
     );
 
@@ -604,6 +619,7 @@ router.get("/academic/classes", requireAuth, async (req, res, next) => {
         gradeLevel: row.grade_level,
         sectionCount: row.section_count,
         studentCount: row.student_count,
+        isActive: row.is_active,
       })),
       total: result.rowCount ?? result.rows.length,
     });
@@ -649,6 +665,7 @@ router.post("/academic/classes", requireAuth, async (req, res, next) => {
         gradeLevel: body.data.gradeLevel,
         sectionCount: 1,
         studentCount: 0,
+        isActive: true,
       };
     });
     res.status(201).json(created);
@@ -663,19 +680,139 @@ router.post("/academic/classes", requireAuth, async (req, res, next) => {
   }
 });
 
+router.patch("/academic/classes/:classId/status", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can manage classes."));
+  }
+  const params = SetClassActivityParams.safeParse(req.params);
+  const body = SetClassActivityBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid class ID and activity state."));
+  }
+
+  try {
+    const summary = await withOrg(user.orgId, async (client) => {
+      const updated = await client.query(
+        `UPDATE academic.classes
+            SET is_active = $3
+          WHERE org_id = $1 AND id = $2
+          RETURNING id`,
+        [user.orgId, params.data.classId, body.data.isActive],
+      );
+      if (!updated.rowCount) return null;
+      const result = await client.query(
+        `SELECT c.id, c.name, c.grade_level, c.is_active,
+                COUNT(DISTINCT s.id)::int AS section_count,
+                COUNT(DISTINCT e.student_user_id)::int AS student_count
+           FROM academic.classes c
+           LEFT JOIN academic.sections s ON s.org_id = c.org_id AND s.class_id = c.id
+           LEFT JOIN academic.enrollments e
+             ON e.org_id = c.org_id AND e.section_id = s.id AND e.status = 'active'
+          WHERE c.org_id = $1 AND c.id = $2
+          GROUP BY c.id`,
+        [user.orgId, params.data.classId],
+      );
+      const row = result.rows[0];
+      return {
+        id: row.id,
+        name: row.name,
+        gradeLevel: row.grade_level,
+        sectionCount: row.section_count,
+        studentCount: row.student_count,
+        isActive: row.is_active,
+      };
+    });
+    if (!summary) return void res.status(404).json(errorBody("NOT_FOUND", "Class not found."));
+    res.json(summary);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/academic/classes/:classId", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can remove classes."));
+  }
+  const params = RemoveClassParams.safeParse(req.params);
+  if (!params.success) return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid class ID."));
+
+  try {
+    const result = await withOrg(user.orgId, async (client) => {
+      const classResult = await client.query(
+        "SELECT * FROM academic.classes WHERE org_id = $1 AND id = $2 FOR UPDATE",
+        [user.orgId, params.data.classId],
+      );
+      const schoolClass = classResult.rows[0];
+      if (!schoolClass) return null;
+
+      const sectionResult = await client.query(
+        "SELECT * FROM academic.sections WHERE org_id = $1 AND class_id = $2 ORDER BY id FOR UPDATE",
+        [user.orgId, params.data.classId],
+      );
+      let hasRecords = false;
+      for (const section of sectionResult.rows) {
+        if (await hasForeignKeyReferences(client, "academic", "sections", section)) {
+          hasRecords = true;
+          break;
+        }
+      }
+      if (!hasRecords) {
+        hasRecords = await hasForeignKeyReferences(
+          client,
+          "academic",
+          "classes",
+          schoolClass,
+          ["academic.sections"],
+        );
+      }
+
+      if (hasRecords) {
+        await client.query(
+          "UPDATE academic.classes SET is_active = false WHERE org_id = $1 AND id = $2",
+          [user.orgId, params.data.classId],
+        );
+        return { id: schoolClass.id, outcome: "archived" as const, isActive: false };
+      }
+
+      await client.query(
+        "DELETE FROM academic.classes WHERE org_id = $1 AND id = $2",
+        [user.orgId, params.data.classId],
+      );
+      return { id: schoolClass.id, outcome: "deleted" as const, isActive: false };
+    });
+    if (!result) return void res.status(404).json(errorBody("NOT_FOUND", "Class not found."));
+    res.json(result);
+  } catch (error: any) {
+    if (error?.code === "23503") {
+      return void res.status(409).json(errorBody("CONFLICT", "Related records changed during removal. Nothing was deleted; try again to archive it."));
+    }
+    next(error);
+  }
+});
+
 router.get("/academic/sections", requireAuth, async (req, res, next) => {
   const user = req.campusUser;
   if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
-  const classId = typeof req.query.classId === "string" ? req.query.classId : null;
+  const query = req.query as Record<string, unknown>;
+  const classId = typeof query.classId === "string" ? query.classId : null;
+  const includeArchived = query.includeArchived === true || query.includeArchived === "true";
   if (classId && !/^[0-9a-f-]{36}$/i.test(classId)) {
     return void res.status(400).json(errorBody("INVALID_REQUEST", "classId must be a UUID."));
   }
   const flags = roleFlags(user.roles);
+  if (includeArchived && !flags.isAdmin) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can view archived sections."));
+  }
 
   try {
     const result = await withOrg(user.orgId, (client) =>
       client.query(
-        `SELECT s.id, s.class_id, c.name AS class_name, s.name, s.capacity,
+        `SELECT s.id, s.class_id, c.name AS class_name, c.is_active AS class_is_active,
+                s.name, s.capacity, s.is_active,
                 COUNT(DISTINCT e.student_user_id)::int AS student_count
            FROM academic.sections s
            JOIN academic.classes c
@@ -684,6 +821,7 @@ router.get("/academic/sections", requireAuth, async (req, res, next) => {
              ON e.section_id = s.id AND e.org_id = s.org_id AND e.status = 'active'
           WHERE s.org_id = $1
             AND ($2::uuid IS NULL OR s.class_id = $2)
+             AND (NOT $3::boolean OR $8::boolean OR (s.is_active = true AND c.is_active = true))
             AND (
               $3::boolean
               OR ($4::boolean AND EXISTS (
@@ -710,9 +848,9 @@ router.get("/academic/sections", requireAuth, async (req, res, next) => {
                    AND child.status = 'active'
               ))
             )
-          GROUP BY s.id, c.name
+          GROUP BY s.id, c.name, c.is_active
           ORDER BY c.name, s.name`,
-        [user.orgId, classId, flags.isAdmin, flags.isTeacher, user.id, flags.isStudent, flags.isParent],
+        [user.orgId, classId, flags.isAdmin, flags.isTeacher, user.id, flags.isStudent, flags.isParent, includeArchived],
       ),
     );
 
@@ -721,9 +859,11 @@ router.get("/academic/sections", requireAuth, async (req, res, next) => {
         id: row.id,
         classId: row.class_id,
         className: row.class_name,
+        classIsActive: row.class_is_active,
         name: row.name,
         studentCount: row.student_count,
         capacity: row.capacity,
+        isActive: row.is_active,
       })),
       total: result.rowCount ?? result.rows.length,
     });
@@ -748,7 +888,7 @@ router.post("/academic/sections", requireAuth, async (req, res, next) => {
   try {
     const section = await withOrg(user.orgId, async (client) => {
       const classResult = await client.query<{ name: string }>(
-        "SELECT name FROM academic.classes WHERE org_id = $1 AND id = $2",
+        "SELECT name FROM academic.classes WHERE org_id = $1 AND id = $2 AND is_active = true",
         [user.orgId, body.data.classId],
       );
       const className = classResult.rows[0]?.name;
@@ -768,6 +908,8 @@ router.post("/academic/sections", requireAuth, async (req, res, next) => {
         name,
         studentCount: 0,
         capacity: null,
+        isActive: true,
+        classIsActive: true,
       };
     });
     if (!section) return void res.status(404).json(errorBody("NOT_FOUND", "Class not found."));
@@ -778,6 +920,106 @@ router.post("/academic/sections", requireAuth, async (req, res, next) => {
         "CONFLICT",
         "That section name is already in use for this class. Choose a different section name.",
       ));
+    }
+    next(error);
+  }
+});
+
+router.patch("/academic/sections/:sectionId/status", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can manage sections."));
+  }
+  const params = SetSectionActivityParams.safeParse(req.params);
+  const body = SetSectionActivityBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid section ID and activity state."));
+  }
+
+  try {
+    const section = await withOrg(user.orgId, async (client) => {
+      const updated = await client.query(
+        `UPDATE academic.sections AS section
+            SET is_active = $3
+          WHERE section.org_id = $1 AND section.id = $2
+            AND ($3::boolean = false OR EXISTS (
+              SELECT 1 FROM academic.classes c
+               WHERE c.org_id = section.org_id
+                 AND c.id = section.class_id
+                 AND c.is_active = true
+            ))
+          RETURNING section.id`,
+        [user.orgId, params.data.sectionId, body.data.isActive],
+      );
+      if (!updated.rowCount) return null;
+      const result = await client.query(
+        `SELECT s.id, s.class_id, c.name AS class_name, c.is_active AS class_is_active,
+                s.name, s.capacity, s.is_active,
+                COUNT(DISTINCT e.student_user_id)::int AS student_count
+           FROM academic.sections s
+           JOIN academic.classes c ON c.id = s.class_id AND c.org_id = s.org_id
+           LEFT JOIN academic.enrollments e
+             ON e.org_id = s.org_id AND e.section_id = s.id AND e.status = 'active'
+          WHERE s.org_id = $1 AND s.id = $2
+          GROUP BY s.id, c.name, c.is_active`,
+        [user.orgId, params.data.sectionId],
+      );
+      const row = result.rows[0];
+      return {
+        id: row.id,
+        classId: row.class_id,
+        className: row.class_name,
+        classIsActive: row.class_is_active,
+        name: row.name,
+        capacity: row.capacity,
+        studentCount: row.student_count,
+        isActive: row.is_active,
+      };
+    });
+    if (!section) return void res.status(404).json(errorBody("NOT_FOUND", "Section or active class not found."));
+    res.json(section);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/academic/sections/:sectionId", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can remove sections."));
+  }
+  const params = RemoveSectionParams.safeParse(req.params);
+  if (!params.success) return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid section ID."));
+
+  try {
+    const result = await withOrg(user.orgId, async (client) => {
+      const sectionResult = await client.query(
+        "SELECT * FROM academic.sections WHERE org_id = $1 AND id = $2 FOR UPDATE",
+        [user.orgId, params.data.sectionId],
+      );
+      const section = sectionResult.rows[0];
+      if (!section) return null;
+      const hasRecords = await hasForeignKeyReferences(client, "academic", "sections", section);
+      if (hasRecords) {
+        await client.query(
+          "UPDATE academic.sections SET is_active = false WHERE org_id = $1 AND id = $2",
+          [user.orgId, params.data.sectionId],
+        );
+        return { id: section.id, outcome: "archived" as const, isActive: false };
+      }
+      await client.query(
+        "DELETE FROM academic.sections WHERE org_id = $1 AND id = $2",
+        [user.orgId, params.data.sectionId],
+      );
+      return { id: section.id, outcome: "deleted" as const, isActive: false };
+    });
+    if (!result) return void res.status(404).json(errorBody("NOT_FOUND", "Section not found."));
+    res.json(result);
+  } catch (error: any) {
+    if (error?.code === "23503") {
+      return void res.status(409).json(errorBody("CONFLICT", "Related records changed during removal. Nothing was deleted; try again to archive it."));
     }
     next(error);
   }
@@ -798,22 +1040,30 @@ router.patch("/academic/sections/:sectionId", requireAuth, async (req, res, next
   try {
     const section = await withOrg(user.orgId, async (client) => {
       const updated = await client.query(
-        `UPDATE academic.sections
+        `UPDATE academic.sections AS section
             SET capacity = $3
-          WHERE org_id = $1 AND id = $2
-          RETURNING id`,
+          WHERE section.org_id = $1 AND section.id = $2
+            AND section.is_active = true
+            AND EXISTS (
+              SELECT 1 FROM academic.classes c
+               WHERE c.org_id = section.org_id
+                 AND c.id = section.class_id
+                 AND c.is_active = true
+            )
+          RETURNING section.id`,
         [user.orgId, params.data.sectionId, body.data.capacity],
       );
       if (!updated.rowCount) return null;
       const result = await client.query(
-        `SELECT s.id, s.class_id, c.name AS class_name, s.name, s.capacity,
+        `SELECT s.id, s.class_id, c.name AS class_name, c.is_active AS class_is_active,
+                s.name, s.capacity, s.is_active,
                 COUNT(DISTINCT e.student_user_id)::int AS student_count
            FROM academic.sections s
            JOIN academic.classes c ON c.id = s.class_id AND c.org_id = s.org_id
            LEFT JOIN academic.enrollments e
              ON e.org_id = s.org_id AND e.section_id = s.id AND e.status = 'active'
           WHERE s.org_id = $1 AND s.id = $2
-          GROUP BY s.id, c.name`,
+          GROUP BY s.id, c.name, c.is_active`,
         [user.orgId, params.data.sectionId],
       );
       const row = result.rows[0];
@@ -821,9 +1071,11 @@ router.patch("/academic/sections/:sectionId", requireAuth, async (req, res, next
         id: row.id,
         classId: row.class_id,
         className: row.class_name,
+        classIsActive: row.class_is_active,
         name: row.name,
         capacity: row.capacity,
         studentCount: row.student_count,
+        isActive: row.is_active,
       };
     });
     if (!section) return void res.status(404).json(errorBody("NOT_FOUND", "Section not found."));

@@ -12,4 +12,5 @@ export interface ClassSummary {
   gradeLevel: number;
   sectionCount: number;
   studentCount: number;
+  isActive: boolean;
 }

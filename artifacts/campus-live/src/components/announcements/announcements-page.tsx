@@ -56,7 +56,7 @@ export function AnnouncementsPage({ roles, userId }: Props) {
 
   const params = useMemo(() => unreadOnly ? { unread: true } : undefined, [unreadOnly]);
   const feed = useGetAnnouncements(params, { query: { queryKey: getGetAnnouncementsQueryKey(params) } });
-  const classes = useGetClasses({ query: { enabled: canPublish } });
+  const classes = useGetClasses(undefined, { query: { enabled: canPublish } });
   const [classId, setClassId] = useState("");
   const sectionsParams = useMemo(() => classId ? { classId } : undefined, [classId]);
   const sections = useGetSections(sectionsParams, { query: { enabled: canPublish, queryKey: getGetSectionsQueryKey(sectionsParams) } });

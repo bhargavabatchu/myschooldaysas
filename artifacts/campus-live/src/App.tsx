@@ -35,6 +35,7 @@ import { LearningPage } from '@/components/learning/learning-page';
 import { AttendancePage } from '@/components/attendance/attendance-page';
 import { TimetablePage } from '@/components/academic/timetable-page';
 import { SectionCapacityField } from '@/components/academic/section-capacity-field';
+import { ClassRemovalControls, SectionRemovalControls } from '@/components/academic/class-removal-controls';
 import { EnrollmentYearField } from '@/components/academic/enrollment-year-field';
 import { EnrollmentForm } from '@/components/academic/enrollment-form';
 import { AdmissionIntake } from '@/components/academic/admission-intake';
@@ -537,14 +538,17 @@ function StatusTag({ status }: { status: string }) { return <span className={`ta
 
 function ClassesPage({ roles }: { roles: string[] }) {
   const canManage = roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role));
-  const classes = useGetClasses(); const sections = useGetSections();
+  const archivedParams = canManage ? { includeArchived: true } : undefined;
+  const classes = useGetClasses(archivedParams); const sections = useGetSections(archivedParams);
+  const [notice, setNotice] = useState('');
   const byClass = useMemo(() => (sections.data?.items ?? []).reduce<Record<string, SectionSummary[]>>((acc, section) => { (acc[section.classId] ??= []).push(section); return acc; }, {}), [sections.data]);
   const err = classes.error || sections.error;
   return (
     <div className="directory-page classes-page">
       <PageHeading eyebrow="Academic directory" title="Classes & sections" description="A clear view of the classes and sections in your school." />
       {canManage && <ClassSetupPanel />}
-      {canManage && classes.data && sections.data && <ClassPromotionWizard classes={classes.data.items} sections={sections.data.items} />}
+      {notice && <div role="status" className="rounded-xl border border-[hsl(var(--status-good)/.3)] bg-[hsl(var(--status-good-bg))] px-4 py-3 text-sm text-[hsl(var(--brand-mint-ink))]">{notice}</div>}
+      {canManage && classes.data && sections.data && <ClassPromotionWizard classes={classes.data.items.filter(item => item.isActive)} sections={sections.data.items.filter(section => section.isActive && section.classIsActive)} />}
       <QueryState
         loading={classes.isLoading || sections.isLoading}
         error={err}
@@ -558,7 +562,7 @@ function ClassesPage({ roles }: { roles: string[] }) {
                 <summary data-testid={`class-summary-${item.id}`} className="flex cursor-pointer list-none flex-wrap items-center gap-4 p-4 md:p-5">
                   <div className="grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><BookOpen size={19} /></div>
                   <div className="min-w-[150px] flex-1">
-                    <div className="display text-[15px] font-extrabold">{item.name}</div>
+                    <div className="flex flex-wrap items-center gap-2"><div className="display text-[15px] font-extrabold">{item.name}</div>{!item.isActive && <span className="tag">Archived</span>}</div>
                     <div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">Grade {item.gradeLevel}</div>
                   </div>
                   <div className="flex gap-5 text-center">
@@ -568,25 +572,27 @@ function ClassesPage({ roles }: { roles: string[] }) {
                   <ChevronDown className="ml-2 text-[hsl(var(--muted-foreground))] transition group-open:rotate-180" size={17} />
                 </summary>
                 <div className="space-y-3 border-t border-[hsl(var(--border))] px-4 py-3 md:px-5">
+                  {canManage && <div className="flex justify-end"><ClassRemovalControls classId={item.id} className={item.name} isActive={item.isActive} onComplete={setNotice} /></div>}
                   {byClass[item.id]?.length ? (
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                       {byClass[item.id].map((section) => (
                         <div key={section.id} data-testid={`section-card-${section.id}`} className="space-y-3 rounded-lg bg-[hsl(var(--background))] p-3">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-start justify-between gap-3">
                             <div>
-                              <div className="text-xs font-bold">{section.name}</div>
+                              <div className="flex flex-wrap items-center gap-2 text-xs font-bold">{section.name}{(!section.isActive || !section.classIsActive) && <span className="tag">Archived</span>}</div>
                               <div className="mt-1 text-[10px] text-[hsl(var(--muted-foreground))]">{section.studentCount} students · capacity {section.capacity ?? "not set"}</div>
                             </div>
                             <Users size={15} className="text-[hsl(var(--primary))]" />
                           </div>
-                          {canManage && <SectionCapacityField sectionId={section.id} sectionName={section.name} capacity={section.capacity} />}
+                          {canManage && section.isActive && section.classIsActive && <SectionCapacityField sectionId={section.id} sectionName={section.name} capacity={section.capacity} />}
+                          {canManage && <SectionRemovalControls sectionId={section.id} sectionName={section.name} isActive={section.isActive} classIsActive={section.classIsActive} onComplete={setNotice} />}
                         </div>
                       ))}
                     </div>
                   ) : (
                     <p className="m-0 text-xs text-[hsl(var(--muted-foreground))]">No sections have been assigned to this class.</p>
                   )}
-                  {canManage && <AddSectionForm classId={item.id} className={item.name} existingSections={byClass[item.id] ?? []} />}
+                  {canManage && item.isActive && <AddSectionForm classId={item.id} className={item.name} existingSections={byClass[item.id] ?? []} />}
                 </div>
               </details>
             ))}

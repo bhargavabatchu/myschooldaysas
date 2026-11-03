@@ -187,9 +187,11 @@ const routes: FastifyPluginAsync = async (fastify) => {
         const valid = await client.query(
           `SELECT 1
              FROM academic.sections s
+             JOIN academic.classes c ON c.org_id=s.org_id AND c.id=s.class_id
              JOIN academic.subjects sub ON sub.org_id=s.org_id AND sub.id=$3 AND sub.is_active=true
              JOIN identity.users teacher ON teacher.org_id=s.org_id AND teacher.id=$4 AND teacher.status='active'
              WHERE s.org_id=$1 AND s.id=$2
+               AND s.is_active=true AND c.is_active=true
                AND EXISTS (SELECT 1 FROM identity.user_roles r WHERE r.org_id=s.org_id AND r.user_id=teacher.id AND r.role=ANY($5::text[]))`,
           [user.orgId, parsed.data.sectionId, parsed.data.subjectId, parsed.data.teacherId, teacherRoles],
         );

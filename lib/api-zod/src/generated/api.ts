@@ -522,13 +522,20 @@ export const GetDashboardOverviewResponse = zod.object({
 /**
  * @summary List classes
  */
+export const getClassesQueryIncludeArchivedDefault = false;
+
+export const GetClassesQueryParams = zod.object({
+  "includeArchived": zod.coerce.boolean().default(getClassesQueryIncludeArchivedDefault)
+})
+
 export const GetClassesResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.uuid(),
   "name": zod.string(),
   "gradeLevel": zod.int(),
   "sectionCount": zod.int(),
-  "studentCount": zod.int()
+  "studentCount": zod.int(),
+  "isActive": zod.boolean()
 })),
   "total": zod.int()
 })
@@ -556,15 +563,54 @@ export const CreateClassResponse = zod.object({
   "name": zod.string(),
   "gradeLevel": zod.int(),
   "sectionCount": zod.int(),
-  "studentCount": zod.int()
+  "studentCount": zod.int(),
+  "isActive": zod.boolean()
+})
+
+
+/**
+ * @summary Restore or archive a class
+ */
+export const SetClassActivityParams = zod.object({
+  "classId": zod.uuid()
+})
+
+export const SetClassActivityBody = zod.object({
+  "isActive": zod.boolean()
+})
+
+export const SetClassActivityResponse = zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "gradeLevel": zod.int(),
+  "sectionCount": zod.int(),
+  "studentCount": zod.int(),
+  "isActive": zod.boolean()
+})
+
+
+/**
+ * @summary Delete an unused class or archive a class with records
+ */
+export const RemoveClassParams = zod.object({
+  "classId": zod.uuid()
+})
+
+export const RemoveClassResponse = zod.object({
+  "id": zod.uuid(),
+  "outcome": zod.enum(['deleted', 'archived']),
+  "isActive": zod.boolean()
 })
 
 
 /**
  * @summary List sections
  */
+export const getSectionsQueryIncludeArchivedDefault = false;
+
 export const GetSectionsQueryParams = zod.object({
-  "classId": zod.uuid().optional()
+  "classId": zod.uuid().optional(),
+  "includeArchived": zod.coerce.boolean().default(getSectionsQueryIncludeArchivedDefault)
 })
 
 
@@ -577,7 +623,9 @@ export const GetSectionsResponse = zod.object({
   "className": zod.string(),
   "name": zod.string(),
   "studentCount": zod.int(),
-  "capacity": zod.int().min(1).nullable()
+  "capacity": zod.int().min(1).nullable(),
+  "isActive": zod.boolean(),
+  "classIsActive": zod.boolean()
 })),
   "total": zod.int()
 })
@@ -604,7 +652,9 @@ export const CreateSectionResponse = zod.object({
   "className": zod.string(),
   "name": zod.string(),
   "studentCount": zod.int(),
-  "capacity": zod.int().min(1).nullable()
+  "capacity": zod.int().min(1).nullable(),
+  "isActive": zod.boolean(),
+  "classIsActive": zod.boolean()
 })
 
 
@@ -631,7 +681,49 @@ export const UpdateSectionResponse = zod.object({
   "className": zod.string(),
   "name": zod.string(),
   "studentCount": zod.int(),
-  "capacity": zod.int().min(1).nullable()
+  "capacity": zod.int().min(1).nullable(),
+  "isActive": zod.boolean(),
+  "classIsActive": zod.boolean()
+})
+
+
+/**
+ * @summary Delete an unused section or archive a section with records
+ */
+export const RemoveSectionParams = zod.object({
+  "sectionId": zod.uuid()
+})
+
+export const RemoveSectionResponse = zod.object({
+  "id": zod.uuid(),
+  "outcome": zod.enum(['deleted', 'archived']),
+  "isActive": zod.boolean()
+})
+
+
+/**
+ * @summary Restore or archive a section
+ */
+export const SetSectionActivityParams = zod.object({
+  "sectionId": zod.uuid()
+})
+
+export const SetSectionActivityBody = zod.object({
+  "isActive": zod.boolean()
+})
+
+
+
+
+export const SetSectionActivityResponse = zod.object({
+  "id": zod.uuid(),
+  "classId": zod.uuid(),
+  "className": zod.string(),
+  "name": zod.string(),
+  "studentCount": zod.int(),
+  "capacity": zod.int().min(1).nullable(),
+  "isActive": zod.boolean(),
+  "classIsActive": zod.boolean()
 })
 
 

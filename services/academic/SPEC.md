@@ -4,8 +4,9 @@ This is a convenience summary derived from `MASTER_SPEC.md`; these routes now re
 
 ## Implemented contract
 
-- `GET /api/academic/classes` lists classes visible to the caller.
-- `GET /api/academic/sections` lists sections visible to the caller and accepts optional `classId`.
+- `GET /api/academic/classes` lists classes visible to the caller; administrators may pass `includeArchived=true` to manage archived classes.
+- `GET /api/academic/sections` lists sections visible to the caller, accepts optional `classId`, and lets administrators pass `includeArchived=true`.
+- Administrators can set a class or section active/inactive. Removing an unused entity permanently deletes it; if any foreign-key-linked records exist, removal archives it and preserves those records. Archived entities can be restored; new sections cannot be added to archived classes.
 - `GET /api/academic/students` supports `q`, `classId`, `sectionId`, `limit` (1–100), and `offset`; returns `{ items, total, limit, offset }`. Administrators may omit both scope filters to search school-wide or filter by class/section. Other roles must provide a section and remain within their own student, linked-child, or assigned-teacher scope. Admin search includes student email/phone and guardian contact details; non-admin search is limited to student name and admission number.
 - `GET /api/academic/students/:studentId/profile` and `PUT /api/academic/students/:studentId/profile` are admin-only and organization-scoped. The response includes account status, current enrollment, and profile fields; updates can clear optional values. Guardian contact data does not create a guardian account or access link.
 - `GET /api/academic/students/:studentId/enrollments` is admin-only and returns the student's current and ended enrollment records.

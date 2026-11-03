@@ -6,7 +6,7 @@ This is a convenience summary derived from `MASTER_SPEC.md`; the master spec rem
 
 - Organization sign-in.
 - Role-aware dashboard with live-session summaries.
-- Class and section directory with paginated student roster.
+- Class and section directory with paginated student roster; administrators can remove unused classes/sections, archive used ones without deleting history, and restore archived entities.
 - Live-session listing, scheduling, start/end controls, and classroom entry state.
 - Board-template listing and configuration editing.
 

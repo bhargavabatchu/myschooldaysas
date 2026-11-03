@@ -26,8 +26,8 @@ function suggestSectionName(sections: ExistingSection[]) {
 
 export function ClassSetupPanel() {
   const queryClient = useQueryClient();
-  const classes = useGetClasses();
-  const sections = useGetSections();
+  const classes = useGetClasses({ includeArchived: true });
+  const sections = useGetSections({ includeArchived: true });
   const [name, setName] = useState("");
   const [gradeLevel, setGradeLevel] = useState("1");
   const [firstSectionName, setFirstSectionName] = useState("A");

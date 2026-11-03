@@ -17,4 +17,6 @@ export interface SectionSummary {
      * @nullable
      */
   capacity: number | null;
+  isActive: boolean;
+  classIsActive: boolean;
 }

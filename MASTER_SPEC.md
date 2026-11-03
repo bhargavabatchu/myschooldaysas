@@ -33,6 +33,8 @@ Where older docs disagree with this file, *this file wins*.
 
 *Revision 15 (2026-10-27): announcements MVP.* Added an authenticated announcement feed for administrators, teachers, students, and parents; staff can publish immediately to the school, a class, a section, or selected roles, with urgent priority and optional expiry. Readers can filter to unread items and mark announcements read; staff can view authorized read counts. Local API/PostgreSQL integration verified role and section visibility, teacher publish restrictions, read receipts, and stats authorization. `npm run rls:check` and `npm run rls:write-check` passed for all 40 tenant tables; all-workspace typecheck passed. The signed-in page was not browser-verified. Delivery logs, attachments, and external notification providers remain open (G-06, G-26).
 
+*Revision 16 (2026-11-03): history-safe class and section removal.* Administrators can permanently remove classes/sections only when no foreign-key-linked records exist; otherwise the entity is archived and its records are preserved. Archived entities can be restored and are hidden from active admin selectors by default. Development migration `academic:008` was applied and its columns verified with a restricted read-only query; API/web typecheck and build plus 62 API unit tests passed. Gated database integration was added but not run against the shared development database; the authenticated admin screen was not browser-verified.
+
 ---
 
 ## 1. Product
@@ -726,7 +728,7 @@ MVP ships in the first pilot, P2 follows, P3 later. "Code" = status today.
 | | Backups, restore drill, data export | Super Admin | MVP | ABSENT (PR-D2, PR-D4) |
 | | Per-tenant branding; audited impersonation | Org/Super Admin | P2 | ROADMAP |
 | | Subscriptions/billing, white-label, public API/webhooks/SSO | Super/Org Admin | P3 | ROADMAP |
-| Academics | Classes, sections, subjects, offerings | Campus Admin | MVP | BUILT (no offerings entity) |
+| Academics | Classes, sections, subjects, offerings | Campus Admin | MVP | BUILT (unused classes/sections can be deleted; referenced entities are archived/restorable; no offerings entity) |
 | | Timetable + substitute teachers | Campus Admin, Teacher | MVP | BUILT |
 | | Academic calendar, holidays, events | Campus Admin | MVP | BUILT |
 | | Attendance (manual, live-join, bus boarding) | Teacher, Student, Parent | MVP | manual + live BUILT; bus ROADMAP |

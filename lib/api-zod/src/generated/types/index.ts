@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './academicEntityRemovalResult';
+export * from './academicEntityRemovalResultOutcome';
 export * from './academicSubject';
 export * from './academicSubjectInput';
 export * from './academicSubjectPage';
@@ -107,6 +109,7 @@ export * from './getAnnouncementsParams';
 export * from './getAvailableStudentsParams';
 export * from './getBoardTemplates200';
 export * from './getClasses200';
+export * from './getClassesParams';
 export * from './getConsents200';
 export * from './getFeeInvoicesParams';
 export * from './getGuardianLinksParams';
@@ -181,6 +184,7 @@ export * from './schoolAttendanceStudent';
 export * from './sectionCapacityUpdateInput';
 export * from './sectionCreateInput';
 export * from './sectionSummary';
+export * from './setAcademicEntityActivityInput';
 export * from './studentCurrentEnrollment';
 export * from './studentEnrollmentHistoryItem';
 export * from './studentEnrollmentHistoryItemEndedReason';

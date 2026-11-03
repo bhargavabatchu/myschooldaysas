@@ -57,8 +57,12 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
   let restoreDestinationCapacity;
   let restorePromotionCapacity;
   let cleanupOrgId;
+  let cleanupAdmin;
   const createdEnrollmentIds = [];
   const createdIdentityUserIds = [];
+  const createdRemovalClassIds = [];
+  const createdRemovalSectionIds = [];
+  const createdRemovalAssignmentIds = [];
 
   try {
     const identity = (await pool.query(`
@@ -123,6 +127,7 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
         && person.roles.some((role) => teacherRoles.includes(role))),
     );
     assert.ok(admin, "A seeded administrator is required.");
+    cleanupAdmin = admin;
     assert.ok(assignment, "A seeded teacher assignment is required.");
     const teacher = people.find((person) => person.id === assignment.teacher_user_id);
     const student = people.find((person) => person.roles.includes("student"));
@@ -241,6 +246,102 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.ok(targetSection, "A section in another class is required for transfer and promotion checks.");
     const classList = await api("/academic/classes", admin);
     assert.equal(classList.status, 200, JSON.stringify(classList.body));
+    const emptyClass = await api("/academic/classes", admin, "POST", {
+      name: `Delete Empty ${randomUUID().slice(0, 8)}`,
+      gradeLevel: 11,
+      firstSectionName: "A",
+    });
+    assert.equal(emptyClass.status, 201, JSON.stringify(emptyClass.body));
+    createdRemovalClassIds.push(emptyClass.body.id);
+    const emptyClassSections = await api(`/academic/sections?classId=${encodeURIComponent(emptyClass.body.id)}`, admin);
+    const emptySection = emptyClassSections.body.items[0];
+    assert.ok(emptySection?.id);
+    createdRemovalSectionIds.push(emptySection.id);
+    const deletedEmptySection = await api(`/academic/sections/${emptySection.id}`, admin, "DELETE");
+    assert.equal(deletedEmptySection.status, 200);
+    assert.equal(deletedEmptySection.body.outcome, "deleted");
+    const deletedEmptyClass = await api(`/academic/classes/${emptyClass.body.id}`, admin, "DELETE");
+    assert.equal(deletedEmptyClass.status, 200);
+    assert.equal(deletedEmptyClass.body.outcome, "deleted");
+    createdRemovalSectionIds.pop();
+    createdRemovalClassIds.pop();
+
+    const usedClass = await api("/academic/classes", admin, "POST", {
+      name: `Archive Used ${randomUUID().slice(0, 8)}`,
+      gradeLevel: 11,
+      firstSectionName: "A",
+    });
+    assert.equal(usedClass.status, 201, JSON.stringify(usedClass.body));
+    createdRemovalClassIds.push(usedClass.body.id);
+    const usedClassSections = await api(`/academic/sections?classId=${encodeURIComponent(usedClass.body.id)}`, admin);
+    const usedSection = usedClassSections.body.items[0];
+    assert.ok(usedSection?.id);
+    createdRemovalSectionIds.push(usedSection.id);
+    const usedAssignment = await api("/academic/teacher-assignments", admin, "POST", {
+      sectionId: usedSection.id,
+      subjectId: assignment.subject_id,
+      teacherId: assignment.teacher_user_id,
+      isClassTeacher: false,
+    });
+    assert.equal(usedAssignment.status, 201, JSON.stringify(usedAssignment.body));
+    createdRemovalAssignmentIds.push(usedAssignment.body.id);
+    const archivedClass = await api(`/academic/classes/${usedClass.body.id}`, admin, "DELETE");
+    assert.equal(archivedClass.status, 200);
+    assert.equal(archivedClass.body.outcome, "archived");
+    const allClasses = await api("/academic/classes?includeArchived=true", admin);
+    assert.ok(allClasses.body.items.some((item) => item.id === usedClass.body.id && !item.isActive));
+    const activeClasses = await api("/academic/classes", admin);
+    assert.ok(!activeClasses.body.items.some((item) => item.id === usedClass.body.id));
+    const allSections = await api(
+      `/academic/sections?classId=${encodeURIComponent(usedClass.body.id)}&includeArchived=true`,
+      admin,
+    );
+    assert.ok(allSections.body.items.some((item) => item.id === usedSection.id && !item.classIsActive));
+    const keptAssignments = await api(`/academic/teacher-assignments?sectionId=${encodeURIComponent(usedSection.id)}`, admin);
+    assert.ok(keptAssignments.body.items.some((item) => item.id === usedAssignment.body.id));
+    const restoredClass = await api(`/academic/classes/${usedClass.body.id}/status`, admin, "PATCH", { isActive: true });
+    assert.equal(restoredClass.status, 200);
+    const removedAssignment = await api(`/academic/teacher-assignments/${usedAssignment.body.id}`, admin, "DELETE");
+    assert.equal(removedAssignment.status, 204);
+    createdRemovalAssignmentIds.pop();
+    const deletedUsedSection = await api(`/academic/sections/${usedSection.id}`, admin, "DELETE");
+    assert.equal(deletedUsedSection.status, 200);
+    assert.equal(deletedUsedSection.body.outcome, "deleted");
+    createdRemovalSectionIds.pop();
+    const deletedUsedClass = await api(`/academic/classes/${usedClass.body.id}`, admin, "DELETE");
+    assert.equal(deletedUsedClass.status, 200);
+    assert.equal(deletedUsedClass.body.outcome, "deleted");
+    createdRemovalClassIds.pop();
+
+    const usedSectionInActiveClass = await api("/academic/sections", admin, "POST", {
+      classId: section.classId,
+      name: `Archive ${randomUUID().slice(0, 8)}`,
+    });
+    assert.equal(usedSectionInActiveClass.status, 201, JSON.stringify(usedSectionInActiveClass.body));
+    createdRemovalSectionIds.push(usedSectionInActiveClass.body.id);
+    const sectionAssignment = await api("/academic/teacher-assignments", admin, "POST", {
+      sectionId: usedSectionInActiveClass.body.id,
+      subjectId: assignment.subject_id,
+      teacherId: assignment.teacher_user_id,
+      isClassTeacher: false,
+    });
+    assert.equal(sectionAssignment.status, 201, JSON.stringify(sectionAssignment.body));
+    createdRemovalAssignmentIds.push(sectionAssignment.body.id);
+    const archivedSection = await api(`/academic/sections/${usedSectionInActiveClass.body.id}`, admin, "DELETE");
+    assert.equal(archivedSection.status, 200);
+    assert.equal(archivedSection.body.outcome, "archived");
+    const allSectionsAfterArchive = await api("/academic/sections?includeArchived=true", admin);
+    assert.ok(allSectionsAfterArchive.body.items.some((item) => item.id === usedSectionInActiveClass.body.id && !item.isActive));
+    const activeSections = await api("/academic/sections", admin);
+    assert.ok(!activeSections.body.items.some((item) => item.id === usedSectionInActiveClass.body.id));
+    const removedSectionAssignment = await api(`/academic/teacher-assignments/${sectionAssignment.body.id}`, admin, "DELETE");
+    assert.equal(removedSectionAssignment.status, 204);
+    createdRemovalAssignmentIds.pop();
+    const deletedArchivedSection = await api(`/academic/sections/${usedSectionInActiveClass.body.id}`, admin, "DELETE");
+    assert.equal(deletedArchivedSection.status, 200);
+    assert.equal(deletedArchivedSection.body.outcome, "deleted");
+    createdRemovalSectionIds.pop();
+
     const finalGradeClass = classList.body.items.find((item) => item.gradeLevel === 12);
     const firstGradeClass = classList.body.items.find((item) => item.gradeLevel === 1);
     assert.ok(finalGradeClass && firstGradeClass, "Grade 1 and Grade 12 must be configured.");
@@ -897,6 +998,17 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
 
     console.log("Verified admissions, profile privacy, reviewed transfers and promotions, enrollment history, Grade 12 graduation, authorization, capacity and duplicate conflicts, consent review, and timetable behavior.");
   } finally {
+    if (cleanupAdmin) {
+      for (const assignmentId of createdRemovalAssignmentIds) {
+        await api(`/academic/teacher-assignments/${assignmentId}`, cleanupAdmin, "DELETE").catch(() => {});
+      }
+      for (const sectionId of createdRemovalSectionIds) {
+        await api(`/academic/sections/${sectionId}`, cleanupAdmin, "DELETE").catch(() => {});
+      }
+      for (const classId of createdRemovalClassIds) {
+        await api(`/academic/classes/${classId}`, cleanupAdmin, "DELETE").catch(() => {});
+      }
+    }
     if (createdSlotId) await api(`/academic/timetable/${createdSlotId}`, restoreCapacity?.user, "DELETE").catch(() => {});
     if (restoreEnrollment) {
       await api(`/academic/enrollments/${restoreEnrollment.enrollmentId}`, restoreEnrollment.user, "PATCH", {

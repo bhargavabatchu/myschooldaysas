@@ -34,7 +34,7 @@ export function LearningOperations({ roles }: Props) {
   const [notice, setNotice] = useState('');
   const client = useQueryClient();
   const sections = useGetSections(undefined, { query: { enabled: canStaff } });
-  const classes = useGetClasses({ query: { enabled: tab === 'catalog' && canAdmin } });
+  const classes = useGetClasses(undefined, { query: { enabled: tab === 'catalog' && canAdmin } });
   const teacherSections = useGetAcademicTeacherAssignments(undefined, { query: { enabled: canStaff && !canAdmin } });
   const subjects = useGetAcademicSubjects({ query: { enabled: tab === 'catalog' && canAdmin } });
   const teachers = useGetAcademicTeachers({ query: { enabled: tab === 'catalog' && canAdmin } });

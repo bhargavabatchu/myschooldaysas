@@ -411,6 +411,10 @@ paths:
       summary: List classes
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: includeArchived
+          schema: { type: boolean, default: false }
       responses:
         "200":
           description: Classes available to the current user
@@ -446,6 +450,52 @@ paths:
         "400": { description: Invalid request }
         "403": { description: Administrator role required }
         "409": { description: Class or first section already exists }
+  /academic/classes/{classId}/status:
+    patch:
+      operationId: setClassActivity
+      tags: [academic]
+      summary: Restore or archive a class
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetAcademicEntityActivityInput" }
+      responses:
+        "200":
+          description: Updated class activity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClassSummary" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "404": { description: Class not found }
+  /academic/classes/{classId}:
+    delete:
+      operationId: removeClass
+      tags: [academic]
+      summary: Delete an unused class or archive a class with records
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Class deleted or archived without deleting related records
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicEntityRemovalResult" }
+        "403": { description: Administrator role required }
+        "404": { description: Class not found }
   /academic/sections:
     get:
       operationId: getSections
@@ -459,6 +509,9 @@ paths:
           schema:
             type: string
             format: uuid
+        - in: query
+          name: includeArchived
+          schema: { type: boolean, default: false }
       responses:
         "200":
           description: Sections available to the current user
@@ -521,6 +574,51 @@ paths:
         "400": { description: Invalid request }
         "403": { description: Administrator role required }
         "404": { description: Section not found }
+    delete:
+      operationId: removeSection
+      tags: [academic]
+      summary: Delete an unused section or archive a section with records
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: sectionId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Section deleted or archived without deleting related records
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicEntityRemovalResult" }
+        "403": { description: Administrator role required }
+        "404": { description: Section not found }
+  /academic/sections/{sectionId}/status:
+    patch:
+      operationId: setSectionActivity
+      tags: [academic]
+      summary: Restore or archive a section
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: sectionId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetAcademicEntityActivityInput" }
+      responses:
+        "200":
+          description: Updated section activity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SectionSummary" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "404": { description: Section or class not found }
   /academic/students/available:
     get:
       operationId: getAvailableStudents
@@ -2048,16 +2146,17 @@ components:
         occurredAt: { type: string, format: date-time }
     ClassSummary:
       type: object
-      required: [id, name, gradeLevel, sectionCount, studentCount]
+      required: [id, name, gradeLevel, sectionCount, studentCount, isActive]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         gradeLevel: { type: integer }
         sectionCount: { type: integer }
         studentCount: { type: integer }
+        isActive: { type: boolean }
     SectionSummary:
       type: object
-      required: [id, classId, className, name, studentCount, capacity]
+      required: [id, classId, className, name, studentCount, capacity, isActive, classIsActive]
       properties:
         id: { type: string, format: uuid }
         classId: { type: string, format: uuid }
@@ -2065,6 +2164,21 @@ components:
         name: { type: string }
         studentCount: { type: integer }
         capacity: { type: [integer, "null"], minimum: 1 }
+        isActive: { type: boolean }
+        classIsActive: { type: boolean }
+    SetAcademicEntityActivityInput:
+      type: object
+      required: [isActive]
+      additionalProperties: false
+      properties:
+        isActive: { type: boolean }
+    AcademicEntityRemovalResult:
+      type: object
+      required: [id, outcome, isActive]
+      properties:
+        id: { type: string, format: uuid }
+        outcome: { type: string, enum: [deleted, archived] }
+        isActive: { type: boolean }
     StudentSummary:
       type: object
       required: [id, enrollmentId, name, admissionNo, sectionId, sectionName, status, academicYear]

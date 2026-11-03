@@ -8,4 +8,5 @@
 
 export type GetSectionsParams = {
 classId?: string;
+includeArchived?: boolean;
 };

@@ -25,6 +25,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AcademicEntityRemovalResult,
   AcademicSubject,
   AcademicSubjectInput,
   AcademicSubjectPage,
@@ -80,6 +81,7 @@ import type {
   GetAvailableStudentsParams,
   GetBoardTemplates200,
   GetClasses200,
+  GetClassesParams,
   GetConsents200,
   GetFeeInvoicesParams,
   GetGuardianLinksParams,
@@ -136,6 +138,7 @@ import type {
   SectionCapacityUpdateInput,
   SectionCreateInput,
   SectionSummary,
+  SetAcademicEntityActivityInput,
   StudentEnrollmentHistoryPage,
   StudentPage,
   StudentProfileFields,
@@ -2255,20 +2258,27 @@ export function useGetDashboardOverview<TData = Awaited<ReturnType<typeof getDas
 
 
 
-export const getGetClassesUrl = () => {
+export const getGetClassesUrl = (params?: GetClassesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/academic/classes`
+  return stringifiedParams.length > 0 ? `/api/academic/classes?${stringifiedParams}` : `/api/academic/classes`
 }
 
 /**
  * @summary List classes
  */
-export const getClasses = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetClasses200> => {
+export const getClasses = async (params?: GetClassesParams, options?: Parameters<typeof customFetch>[1]): Promise<GetClasses200> => {
 
-  return customFetch<GetClasses200>(getGetClassesUrl(),
+  return customFetch<GetClasses200>(getGetClassesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -2281,23 +2291,23 @@ export const getClasses = async ( options?: Parameters<typeof customFetch>[1]): 
 
 
 
-export const getGetClassesQueryKey = () => {
+export const getGetClassesQueryKey = (params?: GetClassesParams,) => {
     return [
-    `/api/academic/classes`
+    `/api/academic/classes`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetClassesQueryOptions = <TData = Awaited<ReturnType<typeof getClasses>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClasses>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetClassesQueryOptions = <TData = Awaited<ReturnType<typeof getClasses>>, TError = ErrorType<unknown>>(params?: GetClassesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClasses>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetClassesQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetClassesQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getClasses>>> = ({ signal }) => getClasses({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getClasses>>> = ({ signal }) => getClasses(params, { signal, ...requestOptions });
 
 
 
@@ -2311,7 +2321,7 @@ export type GetClassesQueryError = ErrorType<unknown>
 
 
 export function useGetClasses<TData = Awaited<ReturnType<typeof getClasses>>, TError = ErrorType<unknown>>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClasses>>, TError, TData>> & Pick<
+ params: undefined |  GetClassesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClasses>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getClasses>>,
           TError,
@@ -2321,7 +2331,7 @@ export function useGetClasses<TData = Awaited<ReturnType<typeof getClasses>>, TE
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetClasses<TData = Awaited<ReturnType<typeof getClasses>>, TError = ErrorType<unknown>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClasses>>, TError, TData>> & Pick<
+ params?: GetClassesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClasses>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getClasses>>,
           TError,
@@ -2331,7 +2341,7 @@ export function useGetClasses<TData = Awaited<ReturnType<typeof getClasses>>, TE
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetClasses<TData = Awaited<ReturnType<typeof getClasses>>, TError = ErrorType<unknown>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClasses>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ params?: GetClassesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClasses>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -2339,11 +2349,11 @@ export function useGetClasses<TData = Awaited<ReturnType<typeof getClasses>>, TE
  */
 
 export function useGetClasses<TData = Awaited<ReturnType<typeof getClasses>>, TError = ErrorType<unknown>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClasses>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ params?: GetClassesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getClasses>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetClassesQueryOptions(options)
+  const queryOptions = getGetClassesQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -2442,6 +2452,169 @@ export const useCreateClass = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCreateClassMutationOptions(options), queryClient);
+    }
+
+export const getSetClassActivityUrl = (classId: string,) => {
+
+
+
+
+  return `/api/academic/classes/${classId}/status`
+}
+
+/**
+ * @summary Restore or archive a class
+ */
+export const setClassActivity = async (classId: string,
+    setAcademicEntityActivityInput: SetAcademicEntityActivityInput, options?: Parameters<typeof customFetch>[1]): Promise<ClassSummary> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ClassSummary>(getSetClassActivityUrl(classId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(setAcademicEntityActivityInput)
+  }
+);}
+
+
+
+
+
+export const getSetClassActivityMutationKey = () => ['setClassActivity'] as const;
+
+export const getSetClassActivityMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setClassActivity>>, TError,SetClassActivityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setClassActivity>>, TError,SetClassActivityMutationVariables, TContext> => {
+
+const mutationKey = getSetClassActivityMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setClassActivity>>, SetClassActivityMutationVariables> = (props) => {
+          const {classId,data} = props ?? {};
+
+          return  setClassActivity(classId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetClassActivityMutationResult = NonNullable<Awaited<ReturnType<typeof setClassActivity>>>
+    export type SetClassActivityMutationBody = BodyType<SetAcademicEntityActivityInput>
+    export type SetClassActivityMutationError = ErrorType<void>
+    export type SetClassActivityMutationVariables = {classId: string;data: BodyType<SetAcademicEntityActivityInput>}
+
+    /**
+ * @summary Restore or archive a class
+ */
+export const useSetClassActivity = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setClassActivity>>, TError,SetClassActivityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setClassActivity>>,
+        TError,
+        SetClassActivityMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetClassActivityMutationOptions(options), queryClient);
+    }
+
+export const getRemoveClassUrl = (classId: string,) => {
+
+
+
+
+  return `/api/academic/classes/${classId}`
+}
+
+/**
+ * @summary Delete an unused class or archive a class with records
+ */
+export const removeClass = async (classId: string, options?: Parameters<typeof customFetch>[1]): Promise<AcademicEntityRemovalResult> => {
+
+  return customFetch<AcademicEntityRemovalResult>(getRemoveClassUrl(classId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveClassMutationKey = () => ['removeClass'] as const;
+
+export const getRemoveClassMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeClass>>, TError,RemoveClassMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeClass>>, TError,RemoveClassMutationVariables, TContext> => {
+
+const mutationKey = getRemoveClassMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeClass>>, RemoveClassMutationVariables> = (props) => {
+          const {classId} = props ?? {};
+
+          return  removeClass(classId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveClassMutationResult = NonNullable<Awaited<ReturnType<typeof removeClass>>>
+
+    export type RemoveClassMutationError = ErrorType<void>
+    export type RemoveClassMutationVariables = {classId: string}
+
+    /**
+ * @summary Delete an unused class or archive a class with records
+ */
+export const useRemoveClass = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeClass>>, TError,RemoveClassMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeClass>>,
+        TError,
+        RemoveClassMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveClassMutationOptions(options), queryClient);
     }
 
 export const getGetSectionsUrl = (params?: GetSectionsParams,) => {
@@ -2727,6 +2900,169 @@ export const useUpdateSection = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateSectionMutationOptions(options), queryClient);
+    }
+
+export const getRemoveSectionUrl = (sectionId: string,) => {
+
+
+
+
+  return `/api/academic/sections/${sectionId}`
+}
+
+/**
+ * @summary Delete an unused section or archive a section with records
+ */
+export const removeSection = async (sectionId: string, options?: Parameters<typeof customFetch>[1]): Promise<AcademicEntityRemovalResult> => {
+
+  return customFetch<AcademicEntityRemovalResult>(getRemoveSectionUrl(sectionId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveSectionMutationKey = () => ['removeSection'] as const;
+
+export const getRemoveSectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeSection>>, TError,RemoveSectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeSection>>, TError,RemoveSectionMutationVariables, TContext> => {
+
+const mutationKey = getRemoveSectionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeSection>>, RemoveSectionMutationVariables> = (props) => {
+          const {sectionId} = props ?? {};
+
+          return  removeSection(sectionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveSectionMutationResult = NonNullable<Awaited<ReturnType<typeof removeSection>>>
+
+    export type RemoveSectionMutationError = ErrorType<void>
+    export type RemoveSectionMutationVariables = {sectionId: string}
+
+    /**
+ * @summary Delete an unused section or archive a section with records
+ */
+export const useRemoveSection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeSection>>, TError,RemoveSectionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeSection>>,
+        TError,
+        RemoveSectionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveSectionMutationOptions(options), queryClient);
+    }
+
+export const getSetSectionActivityUrl = (sectionId: string,) => {
+
+
+
+
+  return `/api/academic/sections/${sectionId}/status`
+}
+
+/**
+ * @summary Restore or archive a section
+ */
+export const setSectionActivity = async (sectionId: string,
+    setAcademicEntityActivityInput: SetAcademicEntityActivityInput, options?: Parameters<typeof customFetch>[1]): Promise<SectionSummary> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SectionSummary>(getSetSectionActivityUrl(sectionId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(setAcademicEntityActivityInput)
+  }
+);}
+
+
+
+
+
+export const getSetSectionActivityMutationKey = () => ['setSectionActivity'] as const;
+
+export const getSetSectionActivityMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setSectionActivity>>, TError,SetSectionActivityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setSectionActivity>>, TError,SetSectionActivityMutationVariables, TContext> => {
+
+const mutationKey = getSetSectionActivityMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setSectionActivity>>, SetSectionActivityMutationVariables> = (props) => {
+          const {sectionId,data} = props ?? {};
+
+          return  setSectionActivity(sectionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetSectionActivityMutationResult = NonNullable<Awaited<ReturnType<typeof setSectionActivity>>>
+    export type SetSectionActivityMutationBody = BodyType<SetAcademicEntityActivityInput>
+    export type SetSectionActivityMutationError = ErrorType<void>
+    export type SetSectionActivityMutationVariables = {sectionId: string;data: BodyType<SetAcademicEntityActivityInput>}
+
+    /**
+ * @summary Restore or archive a section
+ */
+export const useSetSectionActivity = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setSectionActivity>>, TError,SetSectionActivityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setSectionActivity>>,
+        TError,
+        SetSectionActivityMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetSectionActivityMutationOptions(options), queryClient);
     }
 
 export const getGetAvailableStudentsUrl = (params: GetAvailableStudentsParams,) => {

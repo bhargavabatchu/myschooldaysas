@@ -201,6 +201,7 @@ export interface ClassSummary {
   gradeLevel: number;
   sectionCount: number;
   studentCount: number;
+  isActive: boolean;
 }
 
 export interface SectionSummary {
@@ -214,6 +215,26 @@ export interface SectionSummary {
      * @nullable
      */
   capacity: number | null;
+  isActive: boolean;
+  classIsActive: boolean;
+}
+
+export interface SetAcademicEntityActivityInput {
+  isActive: boolean;
+}
+
+export type AcademicEntityRemovalResultOutcome = typeof AcademicEntityRemovalResultOutcome[keyof typeof AcademicEntityRemovalResultOutcome];
+
+
+export const AcademicEntityRemovalResultOutcome = {
+  deleted: 'deleted',
+  archived: 'archived',
+} as const;
+
+export interface AcademicEntityRemovalResult {
+  id: string;
+  outcome: AcademicEntityRemovalResultOutcome;
+  isActive: boolean;
 }
 
 export type StudentSummaryStatus = typeof StudentSummaryStatus[keyof typeof StudentSummaryStatus];
@@ -1827,6 +1848,10 @@ export type GetAnnouncementsParams = {
 unread?: boolean;
 };
 
+export type GetClassesParams = {
+includeArchived?: boolean;
+};
+
 export type GetClasses200 = {
   items: ClassSummary[];
   total: number;
@@ -1834,6 +1859,7 @@ export type GetClasses200 = {
 
 export type GetSectionsParams = {
 classId?: string;
+includeArchived?: boolean;
 };
 
 export type GetSections200 = {
