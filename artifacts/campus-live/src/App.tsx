@@ -105,6 +105,17 @@ function canViewStudentRoster(roles: string[]) {
   ].includes(role));
 }
 
+function canViewAcademicDirectory(roles: string[]) {
+  return roles.some(role => [
+    'super_admin',
+    'org_admin',
+    'campus_admin',
+    'hod',
+    'teacher',
+    'class_teacher',
+  ].includes(role));
+}
+
 function ProtectedApp() {
   const [path, setPath] = useLocation();
   const me = useGetMe({ query: { retry: false } });
@@ -130,7 +141,7 @@ function ProtectedApp() {
       <Switch>
         <Route path="/" component={() => <DashboardPage roles={user.roles} userName={user.name} />} />
         <Route path="/dashboard" component={() => <DashboardPage roles={user.roles} userName={user.name} />} />
-        <Route path="/admin/classes" component={() => <ClassesPage roles={user.roles} />} />
+        <Route path="/admin/classes" component={() => canViewAcademicDirectory(user.roles) ? <ClassesPage roles={user.roles} /> : <NotFound />} />
         <Route path="/admin/teachers" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <TeachersPage /> : <NotFound />} />
         <Route path="/admin/students" component={() => canViewStudentRoster(user.roles) ? <StudentsPage roles={user.roles} /> : <NotFound />} />
         <Route path="/admin/admissions" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <AdmissionsInbox/> : <NotFound/>} />
@@ -160,7 +171,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
   const isStudent = user.roles.includes('student');
   const nav = [
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Classes', href: '/admin/classes', icon: BookOpen },
+    ...(canViewAcademicDirectory(user.roles) ? [{ label: 'Classes', href: '/admin/classes', icon: BookOpen }] : []),
     ...(canViewStudentRoster(user.roles) ? [{ label: 'Students', href: '/admin/students', icon: Users }] : []),
     ...(liveClassesEnabled ? [{ label: 'Live classes', href: '/live/sessions', icon: Video }] : []),
     { label: 'Smartboards', href: '/boards/templates', icon: Library },
