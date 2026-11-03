@@ -49,6 +49,7 @@ import { AnnouncementsPage } from '@/components/announcements/announcements-page
 import { PLATFORM_NAME, SCHOOL_NAME } from '@/lib/branding';
 import { liveClassesEnabled } from '@/lib/features';
 import { PwaInstallButton } from '@/components/pwa/pwa-install-button';
+import { StudentMobileDashboard, StudentMobileNavigation } from '@/components/dashboard/student-mobile-dashboard';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
@@ -125,14 +126,15 @@ function ProtectedApp() {
   return <div className="shell grain"><AppShell user={user} path={path} onLogout={logout}>
     <ErrorBoundary resetKey={path}>
       <Switch>
-        <Route path="/" component={() => <DashboardPage />} />
-        <Route path="/dashboard" component={() => <DashboardPage />} />
+        <Route path="/" component={() => <DashboardPage roles={user.roles} userName={user.name} />} />
+        <Route path="/dashboard" component={() => <DashboardPage roles={user.roles} userName={user.name} />} />
         <Route path="/admin/classes" component={() => <ClassesPage roles={user.roles} />} />
         <Route path="/admin/students" component={() => canViewStudentRoster(user.roles) ? <StudentsPage roles={user.roles} /> : <NotFound />} />
         <Route path="/admin/admissions" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <AdmissionsInbox/> : <NotFound/>} />
         <Route path="/admin/guardians" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <GuardianAccessPage/> : <NotFound/>} />
         <Route path="/live/sessions" component={() => liveClassesEnabled ? <SessionsPage userRoles={user.roles} /> : <LiveClassesUnavailable />} />
         <Route path="/boards/templates" component={() => <TemplatesPage roles={user.roles} />} />
+        <Route path="/learning/reports" component={() => <LearningPage roles={user.roles} initialTab="reports" />} />
         <Route path="/learning" component={() => <LearningPage roles={user.roles} />} />
         <Route path="/announcements" component={() => <AnnouncementsPage roles={user.roles} userId={user.id} />} />
         <Route path="/attendance" component={() => <AttendancePage roles={user.roles} />} />
@@ -152,6 +154,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
   const [dark, setDark] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
   const toggleTheme = () => { document.documentElement.classList.toggle('dark'); setDark(!dark); };
   const isDashboard = path === '/' || path === '/dashboard';
+  const isStudent = user.roles.includes('student');
   const nav = [
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Classes', href: '/admin/classes', icon: BookOpen },
@@ -203,15 +206,16 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     </aside>
     {mobileNav && <button aria-label="Close menu overlay" onClick={() => setMobileNav(false)} className="fixed inset-0 z-30 bg-black/40 md:hidden"/>}
     <main className="min-w-0 flex-1 md:ml-[260px]">
-      <header className="sticky top-0 z-20 flex h-[68px] items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--background)/.94)] px-4 backdrop-blur-md md:px-9">
+      <header className={`sticky top-0 z-20 ${isStudent ? 'hidden md:flex' : 'flex'} h-[68px] items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--background)/.94)] px-4 backdrop-blur-md md:px-9`}>
         <div className="flex items-center gap-3">
           <button aria-label="Open navigation" data-testid="button-open-navigation" onClick={() => setMobileNav(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-[hsl(var(--border))] md:hidden"><Menu size={18}/></button>
           <div className="text-[11px] text-[hsl(var(--muted-foreground))]">Workspace / <span className="font-semibold capitalize text-[hsl(var(--foreground))]">{nav.find(item => path.startsWith(item.href))?.label ?? 'Classroom'}</span></div>
         </div>
         <div className="flex items-center gap-3 text-[11px] text-[hsl(var(--muted-foreground))]"><span className="max-w-[118px] truncate sm:max-w-none"><span className="mr-2 inline-block h-2 w-2 rounded-full bg-[hsl(var(--status-good))]"/>{SCHOOL_NAME}</span><div className="grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--secondary))] font-bold text-[hsl(var(--secondary-foreground))]">{user.name.slice(0, 1).toUpperCase()}</div></div>
       </header>
-      <div className="page-enter mx-auto w-full max-w-[1450px] px-4 py-7 md:px-9 md:py-9">{children}</div>
+      <div className={`page-enter mx-auto w-full max-w-[1450px] px-4 md:px-9 ${isStudent ? 'pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:py-9' : 'py-7 md:py-9'}`}>{children}</div>
     </main>
+    {isStudent && <StudentMobileNavigation path={path} menuOpen={mobileNav} onMore={() => setMobileNav(true)} />}
   </div>;
 }
 
@@ -395,9 +399,10 @@ function QueryState({ loading, error, empty, retry, children }: { loading: boole
   return <>{children}</>;
 }
 
-function DashboardPage() {
+function DashboardPage({ roles, userName }: { roles: string[]; userName: string }) {
   const overview = useGetDashboardOverview();
   const data = overview.data;
+  const isStudent = roles.includes('student');
   const adminInsights = data?.adminInsights;
   const formatRupees = (paise: number) => new Intl.NumberFormat('en-IN', {
     style: 'currency', currency: 'INR', maximumFractionDigits: 2,
@@ -410,6 +415,8 @@ function DashboardPage() {
     return `${x},${y}`;
   }).join(' ');
   return <div className="dashboard-page">
+    {isStudent && <div className="md:hidden"><StudentMobileDashboard userName={data?.userName ?? userName} /></div>}
+    <div className={isStudent ? 'hidden md:block' : ''}>
     <section className="dashboard-welcome" aria-labelledby="dashboard-welcome-title">
       <div className="dashboard-welcome-copy">
         <div className="dashboard-eyebrow"><span aria-hidden="true"/>ST JOSEPH’S · SCHOOL DAY</div>
@@ -509,6 +516,7 @@ function DashboardPage() {
         <footer className="dashboard-footer"><BookOpen size={14}/><span>Learning, belonging, becoming.</span><span className="dashboard-footer-rule"/><span>{SCHOOL_NAME.toUpperCase()}</span></footer>
       </div>}
     </QueryState>
+    </div>
   </div>;
 }
 function InlineEmpty({ text }: { text: string }) { return <div className="rounded-xl border border-dashed border-[hsl(var(--border))] p-5 text-center text-xs text-[hsl(var(--muted-foreground))]">{text}</div>; }

@@ -17,7 +17,7 @@ import {
   GraduationCap, MessageSquareText, Plus, Save, Send, Settings2, UsersRound, X,
 } from 'lucide-react';
 
-type Props = { roles: string[] };
+type Props = { roles: string[]; initialTab?: Tab };
 type Tab = 'assignments' | 'exams' | 'terms' | 'catalog' | 'reports';
 const canManage = (roles: string[]) => roles.some(role => ['teacher', 'class_teacher', 'hod', 'org_admin', 'campus_admin', 'super_admin'].includes(role));
 const canAdminister = (roles: string[]) => roles.some(role => ['org_admin', 'campus_admin', 'super_admin'].includes(role));
@@ -32,10 +32,10 @@ const localValue = (value?: string) => value ? value.slice(0, 16) : '';
 const toIsoDate = (value: string) => new Date(value).toISOString();
 const statusStyle = (status: string) => status === 'published' ? 'bg-[hsl(var(--status-good-bg))] text-[hsl(var(--brand-mint-ink))]' : status === 'closed' ? 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]' : 'bg-[hsl(var(--accent)/.16)] text-[hsl(var(--foreground))]';
 
-export function LearningPage({ roles }: Props) {
+export function LearningPage({ roles, initialTab = 'assignments' }: Props) {
   const manager = canManage(roles);
   const administrator = canAdminister(roles);
-  const [tab, setTab] = useState<Tab>('assignments');
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [sectionId, setSectionId] = useState('');
   const [activeAssignment, setActiveAssignment] = useState<LearningAssignment | null>(null);
   const [activeExam, setActiveExam] = useState<LearningExam | null>(null);
