@@ -1483,6 +1483,21 @@ export interface FeeInvoiceConcessionInput {
   reason: string;
 }
 
+export type FeeInvoiceConcessionHistoryItemsItem = {
+  id: string;
+  /** @minimum 0 */
+  previousConcessionPaise: number;
+  /** @minimum 0 */
+  newConcessionPaise: number;
+  reason: string;
+  actorName: string;
+  createdAt: string;
+};
+
+export interface FeeInvoiceConcessionHistory {
+  items: FeeInvoiceConcessionHistoryItemsItem[];
+}
+
 export interface FeeInvoicePage {
   items: FeeInvoice[];
   total: number;

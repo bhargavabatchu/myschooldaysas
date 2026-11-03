@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetFeeInvoicesQueryKey,
   getGetMyFeeInvoicesQueryKey,
+  useGetFeeInvoiceConcessionHistory,
   useUpdateFeeInvoiceConcession,
   type FeeInvoice,
 } from "@workspace/api-client-react";
@@ -24,6 +25,7 @@ export function FeeConcessionEditor({ invoice, onClose, onSaved }: FeeConcession
   const [reason, setReason] = useState(invoice.concessionReason ?? "");
   const [validationMessage, setValidationMessage] = useState("");
   const maximumConcessionPaise = invoice.concessionPaise + invoice.balancePaise;
+  const history = useGetFeeInvoiceConcessionHistory(invoice.id);
   const update = useUpdateFeeInvoiceConcession({
     mutation: {
       onSuccess: async (updatedInvoice) => {
@@ -71,7 +73,7 @@ export function FeeConcessionEditor({ invoice, onClose, onSaved }: FeeConcession
       }}
     >
       <section
-        className="surface w-full max-w-lg p-5 shadow-2xl md:p-6"
+        className="surface w-full max-w-2xl p-5 shadow-2xl md:p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="fee-concession-title"
@@ -99,6 +101,32 @@ export function FeeConcessionEditor({ invoice, onClose, onSaved }: FeeConcession
             <dd className="mt-1 font-semibold">{money(invoice.balancePaise)}</dd>
           </div>
         </dl>
+
+        <section className="mt-5" aria-labelledby="fee-concession-history-title">
+          <h3 id="fee-concession-history-title" className="display text-base font-bold">Adjustment history</h3>
+          {history.isLoading ? (
+            <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Loading history…</p>
+          ) : history.isError ? (
+            <p className="mt-2 text-sm text-red-700" role="alert">Adjustment history could not be loaded. Refresh and try again.</p>
+          ) : history.data?.items.length ? (
+            <ol className="mt-3 max-h-56 space-y-3 overflow-y-auto">
+              {history.data.items.map((entry) => (
+                <li className="rounded-xl border border-[hsl(var(--border))] p-3 text-sm" key={entry.id}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="font-semibold">{money(entry.previousConcessionPaise)} → {money(entry.newConcessionPaise)}</p>
+                    <time className="text-xs text-[hsl(var(--muted-foreground))]" dateTime={entry.createdAt}>
+                      {new Date(entry.createdAt).toLocaleString()}
+                    </time>
+                  </div>
+                  <p className="mt-1">{entry.reason}</p>
+                  <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Changed by {entry.actorName}</p>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">No concession changes have been recorded for this invoice.</p>
+          )}
+        </section>
 
         <form className="mt-5 space-y-4" onSubmit={submit}>
           <label className="block text-sm font-semibold">

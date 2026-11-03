@@ -377,6 +377,57 @@ const routes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
+  router.get("/fees/invoices/:invoiceId/concession-history", requireAuth, async (req, res, next) => {
+    const user = req.campusUser;
+    if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+    if (!user.roles.some((role) => adminRoles.includes(role))) {
+      return void res.status(403).json(errorBody("FORBIDDEN", "Administrator role required."));
+    }
+    const params = UpdateFeeInvoiceConcessionParams.safeParse(req.params);
+    if (!params.success) return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid invoice ID."));
+
+    try {
+      const result = await withOrg(user.orgId, async (client) => {
+        const invoice = await client.query<{ id: string }>(
+          "SELECT id FROM fees.invoices WHERE org_id = $1 AND id = $2",
+          [user.orgId, params.data.invoiceId],
+        );
+        if (!invoice.rowCount) return null;
+
+        const history = await client.query<{
+          id: string;
+          previous_concession_paise: string | number;
+          new_concession_paise: string | number;
+          reason: string;
+          actor_name: string;
+          created_at: Date | string;
+        }>(
+          `SELECT audit.id, audit.previous_concession_paise, audit.new_concession_paise,
+                  audit.reason, actor.name AS actor_name, audit.created_at
+             FROM fees.invoice_concession_audit audit
+             JOIN identity.users actor
+               ON actor.org_id = audit.org_id AND actor.id = audit.actor_user_id
+            WHERE audit.org_id = $1 AND audit.invoice_id = $2
+            ORDER BY audit.created_at DESC, audit.id DESC`,
+          [user.orgId, params.data.invoiceId],
+        );
+        return history.rows.map((entry) => ({
+          id: entry.id,
+          previousConcessionPaise: Number(entry.previous_concession_paise),
+          newConcessionPaise: Number(entry.new_concession_paise),
+          reason: entry.reason,
+          actorName: entry.actor_name,
+          createdAt: dateTimeValue(entry.created_at)!,
+        }));
+      });
+
+      if (result === null) return void res.status(404).json(errorBody("NOT_FOUND", "Invoice not found."));
+      res.json({ items: result });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.get("/fees/my-invoices", requireAuth, async (req, res, next) => {
     const user = req.campusUser;
     if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));

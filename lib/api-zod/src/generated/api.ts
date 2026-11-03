@@ -2924,6 +2924,31 @@ export const UpdateFeeInvoiceConcessionResponse = zod.object({
 
 
 /**
+ * @summary View concession change history for one invoice
+ */
+export const GetFeeInvoiceConcessionHistoryParams = zod.object({
+  "invoiceId": zod.uuid()
+})
+
+export const getFeeInvoiceConcessionHistoryResponseItemsItemPreviousConcessionPaiseMin = 0;
+
+export const getFeeInvoiceConcessionHistoryResponseItemsItemNewConcessionPaiseMin = 0;
+
+
+
+export const GetFeeInvoiceConcessionHistoryResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "previousConcessionPaise": zod.int().min(getFeeInvoiceConcessionHistoryResponseItemsItemPreviousConcessionPaiseMin),
+  "newConcessionPaise": zod.int().min(getFeeInvoiceConcessionHistoryResponseItemsItemNewConcessionPaiseMin),
+  "reason": zod.string(),
+  "actorName": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
  * @summary List invoices for a parent's linked children
  */
 

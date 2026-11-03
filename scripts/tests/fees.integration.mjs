@@ -279,6 +279,10 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
     reason: "Unauthorized test adjustment",
   });
   assert.equal(forbiddenStudentConcession.statusCode, 403, "students cannot edit concessions");
+  const forbiddenStudentHistory = await apiRequest("GET", `/fees/invoices/${studentInvoice.id}/concession-history`, studentToken);
+  assert.equal(forbiddenStudentHistory.statusCode, 403, "students cannot access concession history");
+  const forbiddenParentHistory = await apiRequest("GET", `/fees/invoices/${studentInvoice.id}/concession-history`, parentToken);
+  assert.equal(forbiddenParentHistory.statusCode, 403, "parents cannot access concession history");
 
   const concession = await apiRequest("PATCH", `/fees/invoices/${studentInvoice.id}/concession`, adminToken, {
     concessionPaise: 2345,
@@ -304,6 +308,25 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
   assert.equal(auditEntry.rows[0]?.reason, "Approved test concession");
   assert.equal(auditEntry.rows[0]?.actor_user_id, users.admin.id);
 
+  const history = await apiRequest("GET", `/fees/invoices/${studentInvoice.id}/concession-history`, adminToken);
+  assert.equal(history.statusCode, 200, history.body);
+  assert.equal(history.json().items.length, 1);
+  assert.deepEqual(
+    {
+      previousConcessionPaise: history.json().items[0].previousConcessionPaise,
+      newConcessionPaise: history.json().items[0].newConcessionPaise,
+      reason: history.json().items[0].reason,
+      actorName: history.json().items[0].actorName,
+    },
+    {
+      previousConcessionPaise: 0,
+      newConcessionPaise: 2345,
+      reason: "Approved test concession",
+      actorName: users.admin.name,
+    },
+  );
+  assert.ok(Number.isFinite(Date.parse(history.json().items[0].createdAt)), "history includes a valid timestamp");
+
   const excessiveConcession = await apiRequest("PATCH", `/fees/invoices/${studentInvoice.id}/concession`, adminToken, {
     concessionPaise: 12346,
     reason: "Exceeds invoice amount",
@@ -317,6 +340,7 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
   assert.equal(refreshedStudentInvoice.paidPaise, 0);
   assert.equal(refreshedStudentInvoice.balancePaise, 10000);
   assert.equal("concessionReason" in refreshedStudentInvoice, false, "the internal reason must not be shown to students");
+  assert.equal("concessionHistory" in refreshedStudentInvoice, false, "students cannot see concession audit history");
 
   const otherInvoice = generatedBody.items.find((invoice) => invoice.studentId === users.otherStudent.id);
   assert.ok(otherInvoice, "fixture should include another student's invoice");
@@ -354,6 +378,8 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
   assert.equal(parentInvoice.canPay, true);
   assert.equal(studentInvoice.id, parentInvoice.id);
   assert.equal(parentInvoice.concessionPaise, 2345);
+  assert.equal("concessionReason" in parentInvoice, false, "the internal reason must not be shown to parents");
+  assert.equal("concessionHistory" in parentInvoice, false, "parents cannot see concession audit history");
   assert.equal(parentInvoice.balancePaise, 10000);
 
   const firstPayment = await apiRequest("POST", `/fees/invoices/${parentInvoice.id}/pay`, parentToken, { amountPaise: 1 });

@@ -65,6 +65,7 @@ import type {
   EnrollmentTransferInput,
   EnrollmentYearUpdateInput,
   FeeInvoice,
+  FeeInvoiceConcessionHistory,
   FeeInvoiceConcessionInput,
   FeeInvoiceGenerateInput,
   FeeInvoiceGenerateResult,
@@ -8193,6 +8194,107 @@ export const useUpdateFeeInvoiceConcession = <TError = ErrorType<void>,
       > => {
       return useMutation(getUpdateFeeInvoiceConcessionMutationOptions(options), queryClient);
     }
+
+export const getGetFeeInvoiceConcessionHistoryUrl = (invoiceId: string,) => {
+
+
+
+
+  return `/api/fees/invoices/${invoiceId}/concession-history`
+}
+
+/**
+ * @summary View concession change history for one invoice
+ */
+export const getFeeInvoiceConcessionHistory = async (invoiceId: string, options?: Parameters<typeof customFetch>[1]): Promise<FeeInvoiceConcessionHistory> => {
+
+  return customFetch<FeeInvoiceConcessionHistory>(getGetFeeInvoiceConcessionHistoryUrl(invoiceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFeeInvoiceConcessionHistoryQueryKey = (invoiceId: string,) => {
+    return [
+    `/api/fees/invoices/${invoiceId}/concession-history`
+    ] as const;
+    }
+
+
+export const getGetFeeInvoiceConcessionHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>, TError = ErrorType<void>>(invoiceId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFeeInvoiceConcessionHistoryQueryKey(invoiceId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>> = ({ signal }) => getFeeInvoiceConcessionHistory(invoiceId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: invoiceId !== null && invoiceId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFeeInvoiceConcessionHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>>
+export type GetFeeInvoiceConcessionHistoryQueryError = ErrorType<void>
+
+
+export function useGetFeeInvoiceConcessionHistory<TData = Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>, TError = ErrorType<void>>(
+ invoiceId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>,
+          TError,
+          Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFeeInvoiceConcessionHistory<TData = Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>, TError = ErrorType<void>>(
+ invoiceId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>,
+          TError,
+          Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFeeInvoiceConcessionHistory<TData = Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>, TError = ErrorType<void>>(
+ invoiceId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary View concession change history for one invoice
+ */
+
+export function useGetFeeInvoiceConcessionHistory<TData = Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>, TError = ErrorType<void>>(
+ invoiceId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoiceConcessionHistory>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFeeInvoiceConcessionHistoryQueryOptions(invoiceId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetMyFeeInvoicesUrl = () => {
 

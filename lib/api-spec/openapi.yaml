@@ -1733,6 +1733,25 @@ paths:
         "403": { description: Administrator role required }
         "404": { description: Invoice not found }
         "409": { description: "Invoice is paid or void, or concession exceeds unpaid balance" }
+  /fees/invoices/{invoiceId}/concession-history:
+    get:
+      operationId: getFeeInvoiceConcessionHistory
+      tags: [fees]
+      summary: View concession change history for one invoice
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: invoiceId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Invoice concession changes, newest first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeInvoiceConcessionHistory" }
+        "403": { description: Administrator role required }
+        "404": { description: Invoice not found }
   /fees/my-invoices:
     get:
       operationId: getMyFeeInvoices
@@ -2978,6 +2997,22 @@ components:
       properties:
         concessionPaise: { type: integer, minimum: 0, maximum: 1000000000 }
         reason: { type: string, minLength: 3, maxLength: 240 }
+    FeeInvoiceConcessionHistory:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, previousConcessionPaise, newConcessionPaise, reason, actorName, createdAt]
+            properties:
+              id: { type: string, format: uuid }
+              previousConcessionPaise: { type: integer, minimum: 0 }
+              newConcessionPaise: { type: integer, minimum: 0 }
+              reason: { type: string }
+              actorName: { type: string }
+              createdAt: { type: string, format: date-time }
     FeeInvoicePage:
       type: object
       required: [items, total]
