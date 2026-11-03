@@ -31,16 +31,16 @@ function invoiceGenerationError(error: unknown) {
   const code = candidate?.data?.error?.code;
 
   if (code === "INVOICE_CONFLICT") {
-    return "This fee has already been issued for the selected section, academic year, and billing period. Check Recent invoices; no duplicate was created.";
+    return "This fee has already been issued for the selected class or section, academic year, and billing period. Check Recent invoices; no duplicate was created.";
   }
   if (code === "NO_ACTIVE_STUDENTS") {
-    return "No active students are enrolled in this section for that academic year. Check the section and academic year.";
+    return "No active students are enrolled in the selected class or section for that academic year. Check your selection and academic year.";
   }
   if (typeof candidate?.data?.error?.message === "string") {
     return candidate.data.error.message;
   }
   if (candidate?.status === 409) {
-    return "This billing period could not be issued. Check Recent invoices and confirm the section has active students for that academic year.";
+    return "This billing period could not be issued. Check Recent invoices and confirm the class or section has active students for that academic year.";
   }
   return candidate?.message || "Invoices could not be issued.";
 }
@@ -54,11 +54,17 @@ export function FeesPage({ roles }: FeesPageProps) {
   const isStudentOnlyView = isStudent && !isParent;
   const queryClient = useQueryClient();
   const sections = useGetSections(undefined, { query: { enabled: isAdmin } });
+  const sectionItems = sections.data?.items ?? [];
+  const classItems = Array.from(new Map(
+    sectionItems.map((section) => [section.classId, { id: section.classId, name: section.className }]),
+  ).values());
   const invoices = useGetFeeInvoices(
     { limit: 100, offset: 0 },
     { query: { enabled: isAdmin } },
   );
   const myInvoices = useGetMyFeeInvoices({ query: { enabled: isParent || isStudent } });
+  const [targetMode, setTargetMode] = useState<"class" | "section">("class");
+  const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [period, setPeriod] = useState("");
@@ -66,13 +72,21 @@ export function FeesPage({ roles }: FeesPageProps) {
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [notice, setNotice] = useState("");
+  const selectedClassSections = sectionItems.filter((section) => section.classId === classId);
+  const selectedSection = sectionItems.find((section) => section.id === sectionId);
+  const targetSectionCount = targetMode === "class"
+    ? selectedClassSections.length
+    : sectionId ? 1 : 0;
+  const targetLabel = targetMode === "class"
+    ? `${classItems.find((item) => item.id === classId)?.name ?? "selected class"} across ${selectedClassSections.length} section${selectedClassSections.length === 1 ? "" : "s"}`
+    : selectedSection ? `${selectedSection.className} · ${selectedSection.name}` : "selected section";
 
   const generate = useGenerateFeeInvoices({
     mutation: {
       onSuccess: async (result) => {
         setNotice(result.generatedCount
-          ? `${result.generatedCount} invoice${result.generatedCount === 1 ? "" : "s"} issued.`
-          : "These fees have already been issued for that section and billing period. No duplicates were created.");
+          ? `${result.generatedCount} invoice${result.generatedCount === 1 ? "" : "s"} issued for ${targetLabel}.`
+          : `Fees have already been issued for ${targetLabel} in this billing period. No duplicates were created.`);
         await queryClient.invalidateQueries({ queryKey: getGetFeeInvoicesQueryKey() });
       },
       onError: async (error) => {
@@ -99,13 +113,13 @@ export function FeesPage({ roles }: FeesPageProps) {
       setNotice("Enter a valid amount in rupees.");
       return;
     }
+    const target = targetMode === "class" ? { classId } : { sectionId };
     generate.mutate({
-      data: { sectionId, academicYear, period, description, amountPaise, dueDate },
+      data: { ...target, academicYear, period, description, amountPaise, dueDate },
     });
   }
 
   if (isAdmin) {
-    const sectionItems = sections.data?.items ?? [];
     const invoiceItems = invoices.data?.items ?? [];
     return (
       <div className="fees-admin-page mx-auto max-w-6xl space-y-6">
@@ -113,22 +127,47 @@ export function FeesPage({ roles }: FeesPageProps) {
           <p className="eyebrow">School finance</p>
           <h1 className="display text-3xl font-extrabold">Fee invoices</h1>
           <p className="mt-2 max-w-2xl text-sm text-[hsl(var(--muted-foreground))]">
-            Issue one invoice to each active student in a section. Repeating the same period with the same details will not create duplicates.
+            Issue invoices to every active student in a class or target one section. Repeating the same period will not create duplicate invoices.
           </p>
         </header>
 
         <section className="surface fees-issue-panel p-5 md:p-6">
-          <h2 className="display text-lg font-bold">Issue section invoices</h2>
+          <h2 className="display text-lg font-bold">Issue invoices by class or section</h2>
           <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={submitInvoices}>
             <label className="block text-sm font-semibold">
-              Section
-              <select className={`${fieldClass} mt-2`} value={sectionId} onChange={(event) => setSectionId(event.target.value)} required>
-                <option value="">Choose a section</option>
-                {sectionItems.map((section) => (
-                  <option key={section.id} value={section.id}>{section.className} · {section.name}</option>
-                ))}
+              Issue to
+              <select
+                className={`${fieldClass} mt-2`}
+                value={targetMode}
+                onChange={(event) => setTargetMode(event.target.value as "class" | "section")}
+                disabled={generate.isPending}
+              >
+                <option value="class">All sections in a class</option>
+                <option value="section">One section</option>
               </select>
             </label>
+            {targetMode === "class" ? (
+              <label className="block text-sm font-semibold">
+                Class
+                <select className={`${fieldClass} mt-2`} value={classId} onChange={(event) => setClassId(event.target.value)} required disabled={generate.isPending}>
+                  <option value="">Choose a class</option>
+                  {classItems.map((item) => (
+                    <option key={item.id} value={item.id}>{item.name}</option>
+                  ))}
+                </select>
+                {classId && <span className="mt-1 block text-xs font-normal text-[hsl(var(--muted-foreground))]">{selectedClassSections.length} section{selectedClassSections.length === 1 ? "" : "s"} included</span>}
+              </label>
+            ) : (
+              <label className="block text-sm font-semibold">
+                Section
+                <select className={`${fieldClass} mt-2`} value={sectionId} onChange={(event) => setSectionId(event.target.value)} required disabled={generate.isPending}>
+                  <option value="">Choose a section</option>
+                  {sectionItems.map((section) => (
+                    <option key={section.id} value={section.id}>{section.className} · {section.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="block text-sm font-semibold">
               Academic year
               <input className={`${fieldClass} mt-2`} value={academicYear} onChange={(event) => setAcademicYear(event.target.value)} placeholder="2026-2027" minLength={4} maxLength={24} required />
@@ -150,8 +189,8 @@ export function FeesPage({ roles }: FeesPageProps) {
               <input className={`${fieldClass} mt-2`} type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} required />
             </label>
             <div className="md:col-span-2 flex flex-wrap items-center gap-3">
-              <button className="btn btn-primary" type="submit" disabled={generate.isPending || !sectionId}>
-                {generate.isPending ? "Issuing…" : "Issue invoices"}
+              <button className="btn btn-primary" type="submit" disabled={generate.isPending || targetSectionCount === 0}>
+                {generate.isPending ? "Issuing…" : targetMode === "class" ? "Issue class invoices" : "Issue section invoices"}
               </button>
               {notice && <p className="text-sm text-[hsl(var(--muted-foreground))]" role="status">{notice}</p>}
             </div>

@@ -117,21 +117,40 @@ const routes: FastifyPluginAsync = async (fastify) => {
 
     try {
       const result = await withOrg(user.orgId, async (client) => {
-        const section = await client.query(
-          "SELECT id FROM academic.sections WHERE org_id = $1 AND id = $2",
-          [user.orgId, input.sectionId],
-        );
-        if (!section.rowCount) return { kind: "section_missing" as const };
+        let targetSectionIds: string[];
+        if (input.classId) {
+          const classSections = await client.query<{ section_id: string | null }>(
+            `SELECT s.id AS section_id
+               FROM academic.classes c
+               LEFT JOIN academic.sections s
+                 ON s.org_id = c.org_id AND s.class_id = c.id
+              WHERE c.org_id = $1 AND c.id = $2
+              ORDER BY s.name`,
+            [user.orgId, input.classId],
+          );
+          if (!classSections.rowCount) return { kind: "class_missing" as const };
+          targetSectionIds = classSections.rows
+            .map((row) => row.section_id)
+            .filter((sectionId): sectionId is string => sectionId !== null);
+        } else {
+          const section = await client.query<{ id: string }>(
+            "SELECT id FROM academic.sections WHERE org_id = $1 AND id = $2",
+            [user.orgId, input.sectionId],
+          );
+          if (!section.rowCount) return { kind: "section_missing" as const };
+          targetSectionIds = section.rows.map((row) => row.id);
+        }
+        if (!targetSectionIds.length) return { kind: "no_students" as const };
 
-        const students = await client.query<{ student_user_id: string }>(
-          `SELECT e.student_user_id
+        const students = await client.query<{ student_user_id: string; section_id: string }>(
+          `SELECT DISTINCT ON (e.student_user_id) e.student_user_id, e.section_id
              FROM academic.enrollments e
              JOIN identity.users student
                ON student.org_id = e.org_id AND student.id = e.student_user_id
-            WHERE e.org_id = $1 AND e.section_id = $2 AND e.academic_year = $3
+            WHERE e.org_id = $1 AND e.section_id = ANY($2::uuid[]) AND e.academic_year = $3
               AND e.status = 'active' AND student.status = 'active'
-            ORDER BY e.student_user_id`,
-          [user.orgId, input.sectionId, input.academicYear],
+            ORDER BY e.student_user_id, e.section_id`,
+          [user.orgId, targetSectionIds, input.academicYear],
         );
         if (!students.rowCount) return { kind: "no_students" as const };
         const studentIds = students.rows.map((row) => row.student_user_id);
@@ -151,7 +170,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
           [user.orgId, studentIds, input.academicYear, input.period],
         );
         const matchesInput = existing.rows.every((invoice) =>
-          invoice.section_id === input.sectionId
+          targetSectionIds.includes(invoice.section_id)
           && invoice.description === input.description.trim()
           && Number(invoice.amount_paise) === input.amountPaise
           && dateValue(invoice.due_date) === dateValue(input.dueDate),
@@ -159,7 +178,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
         if (!matchesInput) return { kind: "invoice_conflict" as const };
 
         let generatedCount = 0;
-        for (const studentId of studentIds) {
+        for (const student of students.rows) {
           const inserted = await client.query(
             `INSERT INTO fees.invoices
                (org_id, student_user_id, section_id, invoice_number, academic_year, period,
@@ -168,8 +187,8 @@ const routes: FastifyPluginAsync = async (fastify) => {
              ON CONFLICT (org_id, student_user_id, academic_year, period) DO NOTHING`,
             [
               user.orgId,
-              studentId,
-              input.sectionId,
+              student.student_user_id,
+              student.section_id,
               `INV-${randomUUID().slice(0, 12).toUpperCase()}`,
               input.academicYear,
               input.period,
@@ -197,7 +216,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
           [user.orgId, studentIds, input.academicYear, input.period],
         );
         const allInvoicesMatch = rows.rows.every((invoice) =>
-          invoice.section_id === input.sectionId
+          targetSectionIds.includes(invoice.section_id)
           && invoice.description === input.description.trim()
           && Number(invoice.amount_paise) === input.amountPaise
           && dateValue(invoice.due_date) === dateValue(input.dueDate),
@@ -215,12 +234,13 @@ const routes: FastifyPluginAsync = async (fastify) => {
       });
 
       if (result.kind === "section_missing") return void res.status(404).json(errorBody("NOT_FOUND", "Section not found."));
-      if (result.kind === "no_students") return void res.status(409).json(errorBody("NO_ACTIVE_STUDENTS", "No active students are enrolled in that section and academic year."));
-      if (result.kind === "invoice_conflict") return void res.status(409).json(errorBody("INVOICE_CONFLICT", "Invoices already exist for this period with different details."));
+      if (result.kind === "class_missing") return void res.status(404).json(errorBody("NOT_FOUND", "Class not found."));
+      if (result.kind === "no_students") return void res.status(409).json(errorBody("NO_ACTIVE_STUDENTS", "No active students are enrolled in the selected class or section for that academic year."));
+      if (result.kind === "invoice_conflict") return void res.status(409).json(errorBody("INVOICE_CONFLICT", "An invoice already exists for one or more students in this academic year and billing period with different details. Check Recent invoices."));
       res.json({ generatedCount: result.generatedCount, total: result.items.length, items: result.items });
     } catch (error) {
       if (["23505", "FEE_INVOICE_CONFLICT"].includes((error as { code?: string })?.code ?? "")) {
-        return void res.status(409).json(errorBody("INVOICE_CONFLICT", "An invoice was issued for this student and period concurrently."));
+        return void res.status(409).json(errorBody("INVOICE_CONFLICT", "An invoice was issued for this academic year and billing period while this request was processing. Check Recent invoices."));
       }
       next(error);
     }

@@ -6,8 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface FeeInvoiceGenerateInput {
-  sectionId: string;
+export type FeeInvoiceGenerateInput = (unknown & {
+  sectionId?: string;
+  classId?: string;
   /**
      * @minLength 4
      * @maxLength 24
@@ -29,4 +30,4 @@ export interface FeeInvoiceGenerateInput {
      */
   amountPaise: number;
   dueDate: Date;
-}
+});

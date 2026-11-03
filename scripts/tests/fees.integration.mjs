@@ -116,6 +116,7 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
     );
     const parentResult = await client.query(
       `SELECT guardian.id, guardian.name, guardian.email, enrollment.section_id, enrollment.academic_year,
+              section.class_id,
               student.id AS student_id, student.name AS student_name, student.email AS student_email
          FROM identity.guardian_links link
          JOIN identity.users guardian
@@ -128,6 +129,8 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
            ON enrollment.org_id = link.org_id
           AND enrollment.student_user_id = link.student_user_id
           AND enrollment.status = 'active'
+         JOIN academic.sections section
+           ON section.org_id = enrollment.org_id AND section.id = enrollment.section_id
          JOIN identity.users student
            ON student.org_id = enrollment.org_id
           AND student.id = enrollment.student_user_id
@@ -220,6 +223,35 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
   const repeated = await apiRequest("POST", "/fees/invoices/generate", adminToken, generateBody);
   assert.equal(repeated.statusCode, 200, repeated.body);
   assert.equal(repeated.json().generatedCount, 0, "repeating a section period must not issue duplicate invoices");
+
+  const classWide = await apiRequest("POST", "/fees/invoices/generate", adminToken, {
+    classId: users.parent.class_id,
+    academicYear: users.parent.academic_year,
+    period,
+    description: "Gated fee integration fixture",
+    amountPaise: 12345,
+    dueDate: "2099-12-31",
+  });
+  assert.equal(classWide.statusCode, 200, classWide.body);
+  assert.ok(classWide.json().items.length >= generatedBody.items.length);
+  const sectionsInClass = await apiRequest(
+    "GET",
+    `/academic/sections?classId=${encodeURIComponent(users.parent.class_id)}`,
+    adminToken,
+  );
+  assert.equal(sectionsInClass.statusCode, 200, sectionsInClass.body);
+  const sectionIdsInClass = new Set(sectionsInClass.json().items.map((section) => section.id));
+  assert.ok(classWide.json().items.every((invoice) => sectionIdsInClass.has(invoice.sectionId)));
+  const repeatedClassWide = await apiRequest("POST", "/fees/invoices/generate", adminToken, {
+    classId: users.parent.class_id,
+    academicYear: users.parent.academic_year,
+    period,
+    description: "Gated fee integration fixture",
+    amountPaise: 12345,
+    dueDate: "2099-12-31",
+  });
+  assert.equal(repeatedClassWide.statusCode, 200, repeatedClassWide.body);
+  assert.equal(repeatedClassWide.json().generatedCount, 0);
 
   const forbiddenAdminPayment = await apiRequest("POST", `/fees/invoices/${generatedBody.items[0].id}/pay`, adminToken);
   assert.equal(forbiddenAdminPayment.statusCode, 403);

@@ -1466,8 +1466,9 @@ export interface FeeInvoicePage {
   total: number;
 }
 
-export interface FeeInvoiceGenerateInput {
-  sectionId: string;
+export type FeeInvoiceGenerateInput = (unknown & {
+  sectionId?: string;
+  classId?: string;
   /**
      * @minLength 4
      * @maxLength 24
@@ -1489,7 +1490,7 @@ export interface FeeInvoiceGenerateInput {
      */
   amountPaise: number;
   dueDate: string;
-}
+});
 
 export interface FeeInvoiceGenerateResult {
   generatedCount: number;

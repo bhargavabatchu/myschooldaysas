@@ -8024,7 +8024,7 @@ export const getGenerateFeeInvoicesUrl = () => {
 }
 
 /**
- * @summary Issue one invoice per active student in a section
+ * @summary Issue one invoice per active student in a section or all sections of a class
  */
 export const generateFeeInvoices = async (feeInvoiceGenerateInput: FeeInvoiceGenerateInput, options?: Parameters<typeof customFetch>[1]): Promise<FeeInvoiceGenerateResult> => {
 
@@ -8090,7 +8090,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type GenerateFeeInvoicesMutationVariables = {data: BodyType<FeeInvoiceGenerateInput>}
 
     /**
- * @summary Issue one invoice per active student in a section
+ * @summary Issue one invoice per active student in a section or all sections of a class
  */
 export const useGenerateFeeInvoices = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateFeeInvoices>>, TError,GenerateFeeInvoicesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

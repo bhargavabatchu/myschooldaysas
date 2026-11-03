@@ -1690,7 +1690,7 @@ paths:
     post:
       operationId: generateFeeInvoices
       tags: [fees]
-      summary: Issue one invoice per active student in a section
+      summary: Issue one invoice per active student in a section or all sections of a class
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -1705,7 +1705,7 @@ paths:
               schema: { $ref: "#/components/schemas/FeeInvoiceGenerateResult" }
         "400": { description: Invalid invoice details }
         "403": { description: Administrator role required }
-        "404": { description: Section not found }
+        "404": { description: Class or section not found }
         "409": { description: No active students or conflicting invoices for the period }
   /fees/my-invoices:
     get:
@@ -2952,14 +2952,20 @@ components:
         total: { type: integer }
     FeeInvoiceGenerateInput:
       type: object
-      required: [sectionId, academicYear, period, description, amountPaise, dueDate]
+      required: [academicYear, period, description, amountPaise, dueDate]
       properties:
         sectionId: { type: string, format: uuid }
+        classId: { type: string, format: uuid }
         academicYear: { type: string, minLength: 4, maxLength: 24 }
         period: { type: string, minLength: 1, maxLength: 40 }
         description: { type: string, minLength: 1, maxLength: 160 }
         amountPaise: { type: integer, minimum: 1, maximum: 1000000000 }
         dueDate: { type: string, format: date }
+      oneOf:
+        - required: [sectionId]
+          not: { required: [classId] }
+        - required: [classId]
+          not: { required: [sectionId] }
     FeeInvoiceGenerateResult:
       type: object
       required: [generatedCount, total, items]
