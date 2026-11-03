@@ -7,8 +7,10 @@ import {
   useCreateTimetableSlot,
   useDeleteTimetableSlot,
   useGetAcademicTeacherAssignments,
+  useGetSections,
   useGetTimetable,
 } from "@workspace/api-client-react";
+import { Link } from "wouter";
 import { CalendarPlus, Trash2 } from "lucide-react";
 
 const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -18,6 +20,7 @@ export function TimetablePage({ canManage }: { canManage: boolean }) {
   const queryClient = useQueryClient();
   const timetable = useGetTimetable();
   const assignments = useGetAcademicTeacherAssignments(undefined, { query: { enabled: canManage } });
+  const sections = useGetSections();
   const create = useCreateTimetableSlot({
     mutation: {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetTimetableQueryKey() }),
@@ -36,6 +39,10 @@ export function TimetablePage({ canManage }: { canManage: boolean }) {
   const assignment = useMemo(
     () => assignments.data?.items.find((item) => item.id === assignmentId),
     [assignments.data, assignmentId],
+  );
+  const sectionLabels = useMemo(
+    () => new Map((sections.data?.items ?? []).map(section => [section.id, `${section.className} · ${section.name}`])),
+    [sections.data],
   );
   const sorted = [...(timetable.data?.items ?? [])].sort(
     (a, b) => a.weekday - b.weekday || a.startTime.localeCompare(b.startTime),
@@ -66,6 +73,7 @@ export function TimetablePage({ canManage }: { canManage: boolean }) {
       </header>
 
       {canManage && (
+        <>
         <form onSubmit={submit} className="surface mb-5 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
           <label className="text-xs font-semibold lg:col-span-2">
             Teaching assignment
@@ -79,7 +87,7 @@ export function TimetablePage({ canManage }: { canManage: boolean }) {
               <option value="">Choose class, subject, and teacher</option>
               {assignments.data?.items.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.sectionName} · {item.subjectName} · {item.teacherName}
+                    {sectionLabels.get(item.sectionId) ?? item.sectionName} · {item.subjectName} · {item.teacherName}
                 </option>
               ))}
             </select>
@@ -111,6 +119,13 @@ export function TimetablePage({ canManage }: { canManage: boolean }) {
             </p>
           )}
         </form>
+        {assignments.data?.items.length === 0 && !assignments.isLoading && (
+          <div className="surface mb-5 flex flex-col gap-3 p-4 text-xs text-[hsl(var(--muted-foreground))] sm:flex-row sm:items-center sm:justify-between">
+            <p className="m-0">Assign a teacher to a section subject before scheduling its lessons.</p>
+            <Link className="btn btn-muted min-h-9" href="/learning">Set up subjects &amp; teachers</Link>
+          </div>
+        )}
+        </>
       )}
 
       {timetable.isLoading ? (
@@ -141,7 +156,7 @@ export function TimetablePage({ canManage }: { canManage: boolean }) {
                 {sorted.map((slot) => (
                   <tr key={slot.id} className="border-t border-[hsl(var(--border))]">
                     <td className="px-4 py-3 text-xs font-semibold">{weekdays[slot.weekday]} · {slot.startTime}–{slot.endTime}</td>
-                    <td className="px-4 py-3 text-xs">{slot.sectionName}</td>
+                    <td className="px-4 py-3 text-xs">{sectionLabels.get(slot.sectionId) ?? slot.sectionName}</td>
                     <td className="px-4 py-3 text-xs">{slot.subjectName}</td>
                     <td className="px-4 py-3 text-xs">{slot.teacherName}</td>
                     <td className="px-4 py-3 text-xs">{slot.room || "—"}</td>

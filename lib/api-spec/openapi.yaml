@@ -81,6 +81,49 @@ paths:
       responses:
         "204": { description: Subject deleted }
         "409": { description: Subject is in use }
+  /academic/sections/{sectionId}/subjects:
+    get:
+      operationId: getSectionSubjects
+      tags: [academic]
+      summary: List subject availability for a section
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: sectionId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Subjects available to assign to the section
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SectionSubjectPage" }
+        "403": { description: Administrator role required }
+        "404": { description: Section not found }
+    put:
+      operationId: updateSectionSubjects
+      tags: [academic]
+      summary: Replace the active subjects for a section
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: sectionId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SectionSubjectsUpdateInput" }
+      responses:
+        "200":
+          description: Section subjects updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SectionSubjectPage" }
+        "400": { description: Invalid subject selection }
+        "403": { description: Administrator role required }
+        "404": { description: Section not found }
   /academic/teachers:
     get:
       operationId: getAcademicTeachers
@@ -2971,6 +3014,32 @@ components:
         name: { type: string, minLength: 1, maxLength: 100 }
         code: { type: string, maxLength: 24, nullable: true }
         isActive: { type: boolean }
+    SectionSubject:
+      type: object
+      required: [subjectId, code, name, isActive, isOffered]
+      properties:
+        subjectId: { type: string, format: uuid }
+        code: { type: string, nullable: true }
+        name: { type: string }
+        isActive: { type: boolean }
+        isOffered: { type: boolean }
+    SectionSubjectPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/SectionSubject" }
+        total: { type: integer }
+    SectionSubjectsUpdateInput:
+      type: object
+      required: [subjectIds]
+      properties:
+        subjectIds:
+          type: array
+          maxItems: 200
+          uniqueItems: true
+          items: { type: string, format: uuid }
     AcademicTeacher:
       type: object
       required: [id, name, email]

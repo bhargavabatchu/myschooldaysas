@@ -553,8 +553,15 @@ const routes: FastifyPluginAsync = async (fastify) => {
     try {
       const exam = await withOrg(user.orgId, async (client) => {
         const subject = await client.query(
-          "SELECT id FROM academic.subjects WHERE org_id=$1 AND id=$2 AND is_active=true",
-          [user.orgId, parsed.data.subjectId],
+          `SELECT subject.id
+             FROM academic.subjects subject
+             JOIN academic.section_subjects offered
+               ON offered.org_id=subject.org_id
+              AND offered.subject_id=subject.id
+              AND offered.section_id=$3
+              AND offered.is_active=true
+            WHERE subject.org_id=$1 AND subject.id=$2 AND subject.is_active=true`,
+          [user.orgId, parsed.data.subjectId, parsed.data.sectionId],
         );
         if (!subject.rowCount || !(await canTeachSubject(client, user.id, user.orgId, parsed.data.sectionId, parsed.data.subjectId, role))) return null;
         const created = await client.query(

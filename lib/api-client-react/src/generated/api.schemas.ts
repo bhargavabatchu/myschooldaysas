@@ -1338,6 +1338,25 @@ export interface AcademicSubjectUpdate {
   isActive?: boolean;
 }
 
+export interface SectionSubject {
+  subjectId: string;
+  /** @nullable */
+  code: string | null;
+  name: string;
+  isActive: boolean;
+  isOffered: boolean;
+}
+
+export interface SectionSubjectPage {
+  items: SectionSubject[];
+  total: number;
+}
+
+export interface SectionSubjectsUpdateInput {
+  /** @maxItems 200 */
+  subjectIds: string[];
+}
+
 export interface AcademicTeacher {
   id: string;
   name: string;

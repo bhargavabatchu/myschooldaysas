@@ -80,9 +80,14 @@ export function TeachersPage() {
             Create teacher logins, then assign their sections and subjects.
           </p>
         </div>
-        <Link href="/learning" className="btn btn-muted min-h-10">
-          Subjects &amp; teachers <ArrowRight size={15} />
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/learning" className="btn btn-muted min-h-10">
+            Subjects &amp; teachers <ArrowRight size={15} />
+          </Link>
+          <Link href="/timetable" className="btn btn-primary min-h-10">
+            Create timetable <ArrowRight size={15} />
+          </Link>
+        </div>
       </header>
 
       <section className="surface p-5 md:p-6">

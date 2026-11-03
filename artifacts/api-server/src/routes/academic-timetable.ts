@@ -117,9 +117,19 @@ const routes: FastifyPluginAsync = async (fastify) => {
       const created = await withOrg(user.orgId, async (client) => {
         await client.query("SELECT pg_advisory_xact_lock(hashtext($1), $2)", [user.orgId, parsed.data.weekday]);
         const assignment = await client.query(
-          `SELECT 1 FROM academic.teacher_assignments
-            WHERE org_id = $1 AND section_id = $2
-              AND subject_id = $3 AND teacher_user_id = $4`,
+          `SELECT 1
+             FROM academic.teacher_assignments assignment
+             JOIN academic.section_subjects offered
+               ON offered.org_id = assignment.org_id
+              AND offered.section_id = assignment.section_id
+              AND offered.subject_id = assignment.subject_id
+              AND offered.is_active = true
+             JOIN academic.subjects subject
+               ON subject.org_id = assignment.org_id
+              AND subject.id = assignment.subject_id
+              AND subject.is_active = true
+            WHERE assignment.org_id = $1 AND assignment.section_id = $2
+              AND assignment.subject_id = $3 AND assignment.teacher_user_id = $4`,
           [user.orgId, parsed.data.sectionId, parsed.data.subjectId, parsed.data.teacherId],
         );
         if (!assignment.rowCount) return { kind: "invalid-assignment" as const };

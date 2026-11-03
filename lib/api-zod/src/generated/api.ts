@@ -82,6 +82,52 @@ export const DeleteAcademicSubjectResponse = zod.void()
 
 
 /**
+ * @summary List subject availability for a section
+ */
+export const GetSectionSubjectsParams = zod.object({
+  "sectionId": zod.uuid()
+})
+
+export const GetSectionSubjectsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "subjectId": zod.uuid(),
+  "code": zod.string().nullable(),
+  "name": zod.string(),
+  "isActive": zod.boolean(),
+  "isOffered": zod.boolean()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Replace the active subjects for a section
+ */
+export const UpdateSectionSubjectsParams = zod.object({
+  "sectionId": zod.uuid()
+})
+
+export const updateSectionSubjectsBodySubjectIdsMax = 200;
+
+
+
+export const UpdateSectionSubjectsBody = zod.object({
+  "subjectIds": zod.array(zod.uuid()).max(updateSectionSubjectsBodySubjectIdsMax)
+})
+
+export const UpdateSectionSubjectsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "subjectId": zod.uuid(),
+  "code": zod.string().nullable(),
+  "name": zod.string(),
+  "isActive": zod.boolean(),
+  "isOffered": zod.boolean()
+})),
+  "total": zod.int()
+})
+
+
+/**
  * @summary List teaching staff for assignment
  */
 export const GetAcademicTeachersResponse = zod.object({

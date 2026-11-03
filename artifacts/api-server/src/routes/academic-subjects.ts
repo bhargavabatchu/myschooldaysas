@@ -109,15 +109,21 @@ const routes: FastifyPluginAsync = async (fastify) => {
            UNION ALL
            SELECT 1 FROM academic.teacher_assignments WHERE org_id=$1 AND subject_id=$2
            UNION ALL
+           SELECT 1 FROM academic.timetable_slots WHERE org_id=$1 AND subject_id=$2
+           UNION ALL
            SELECT 1 FROM learning.report_card_remarks WHERE org_id=$1 AND subject_id=$2
            LIMIT 1`,
           [user.orgId, params.data.subjectId],
         );
         if (used.rowCount) return "used" as const;
+        await client.query(
+          "DELETE FROM academic.section_subjects WHERE org_id=$1 AND subject_id=$2",
+          [user.orgId, params.data.subjectId],
+        );
         const removed = await client.query("DELETE FROM academic.subjects WHERE org_id=$1 AND id=$2", [user.orgId, params.data.subjectId]);
         return removed.rowCount ? "deleted" as const : "missing" as const;
       });
-      if (result === "used") return void res.status(409).json(errorBody("CONFLICT", "Deactivate subjects that already have teaching or report records."));
+      if (result === "used") return void res.status(409).json(errorBody("CONFLICT", "Deactivate subjects that already have teaching, timetable, or report records."));
       if (result === "missing") return void res.status(404).json(errorBody("NOT_FOUND", "Subject not found."));
       res.status(204).send();
     } catch (error) { next(error); }
@@ -189,6 +195,9 @@ const routes: FastifyPluginAsync = async (fastify) => {
              FROM academic.sections s
              JOIN academic.classes c ON c.org_id=s.org_id AND c.id=s.class_id
              JOIN academic.subjects sub ON sub.org_id=s.org_id AND sub.id=$3 AND sub.is_active=true
+             JOIN academic.section_subjects offered
+               ON offered.org_id=s.org_id AND offered.section_id=s.id
+              AND offered.subject_id=sub.id AND offered.is_active=true
              JOIN identity.users teacher ON teacher.org_id=s.org_id AND teacher.id=$4 AND teacher.status='active'
              WHERE s.org_id=$1 AND s.id=$2
                AND s.is_active=true AND c.is_active=true

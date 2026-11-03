@@ -31,6 +31,7 @@ const userId = (context) => context.ids["identity.users"][context.side];
 const alternateUserId = (context) => context.auxiliaryIds.users[context.side];
 const sectionId = (context) => context.ids["academic.sections"][context.side];
 const subjectId = (context) => context.ids["academic.subjects"][context.side];
+const invoiceId = (context) => context.ids["fees.invoices"][context.side];
 const termId = (context) => context.ids["learning.exam_terms"][context.side];
 const sessionId = (context) => context.ids["live.sessions"][context.side];
 const alternateSessionId = (context) => context.auxiliaryIds.sessions[context.side];
@@ -43,6 +44,11 @@ export const extraTenantCases = [
   idCase("identity.user_roles", "user_id, role", (context) => [
     context.isFixture ? userId(context) : alternateUserId(context),
     context.isFixture ? "campus_admin" : "student",
+  ]),
+  idCase("identity.auth_sessions", "user_id, refresh_secret_hash, expires_at", (context) => [
+    userId(context),
+    `rls-refresh-hash-${context.id}`,
+    new Date(Date.now() + 24 * 60 * 60 * 1000),
   ]),
   idCase("identity.guardian_links", "guardian_user_id, student_user_id, relationship", (context) => [
     userId(context),
@@ -70,11 +76,32 @@ export const extraTenantCases = [
     null,
     `RLS fixture subject ${context.side} ${context.id.slice(0, 8)}`,
   ]),
+  keyedCase({
+    table: "academic.section_subjects",
+    columns: "org_id, section_id, subject_id",
+    values: (context) => [context.orgId, sectionId(context), subjectId(context)],
+    keySql: "org_id = $1 AND section_id = $2 AND subject_id = $3",
+    keyValues: (context) => [context.orgId, sectionId(context), subjectId(context)],
+    replaceFixtureBeforeInsert: true,
+  }),
   idCase("academic.teacher_assignments", "section_id, subject_id, teacher_user_id", (context) => [
     sectionId(context),
     subjectId(context),
     context.isFixture ? userId(context) : alternateUserId(context),
   ]),
+  idCase(
+    "fees.invoice_concession_audit",
+    "invoice_id, previous_concession_paise, new_concession_paise, previous_reason, new_reason, reason, actor_user_id",
+    (context) => [
+      invoiceId(context),
+      0,
+      100,
+      null,
+      "RLS test concession",
+      "RLS audit fixture",
+      userId(context),
+    ],
+  ),
   idCase("academic.guardian_consent_reviews", "guardian_user_id", (context) => [
     context.isFixture ? userId(context) : alternateUserId(context),
   ]),

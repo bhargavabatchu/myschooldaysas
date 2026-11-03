@@ -137,6 +137,8 @@ import type {
   SchoolAttendancePage,
   SectionCapacityUpdateInput,
   SectionCreateInput,
+  SectionSubjectPage,
+  SectionSubjectsUpdateInput,
   SectionSummary,
   SetAcademicEntityActivityInput,
   StudentEnrollmentHistoryPage,
@@ -528,6 +530,196 @@ export const useDeleteAcademicSubject = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getDeleteAcademicSubjectMutationOptions(options), queryClient);
+    }
+
+export const getGetSectionSubjectsUrl = (sectionId: string,) => {
+
+
+
+
+  return `/api/academic/sections/${sectionId}/subjects`
+}
+
+/**
+ * @summary List subject availability for a section
+ */
+export const getSectionSubjects = async (sectionId: string, options?: Parameters<typeof customFetch>[1]): Promise<SectionSubjectPage> => {
+
+  return customFetch<SectionSubjectPage>(getGetSectionSubjectsUrl(sectionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSectionSubjectsQueryKey = (sectionId: string,) => {
+    return [
+    `/api/academic/sections/${sectionId}/subjects`
+    ] as const;
+    }
+
+
+export const getGetSectionSubjectsQueryOptions = <TData = Awaited<ReturnType<typeof getSectionSubjects>>, TError = ErrorType<void>>(sectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSectionSubjects>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSectionSubjectsQueryKey(sectionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSectionSubjects>>> = ({ signal }) => getSectionSubjects(sectionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: sectionId !== null && sectionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSectionSubjects>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSectionSubjectsQueryResult = NonNullable<Awaited<ReturnType<typeof getSectionSubjects>>>
+export type GetSectionSubjectsQueryError = ErrorType<void>
+
+
+export function useGetSectionSubjects<TData = Awaited<ReturnType<typeof getSectionSubjects>>, TError = ErrorType<void>>(
+ sectionId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSectionSubjects>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSectionSubjects>>,
+          TError,
+          Awaited<ReturnType<typeof getSectionSubjects>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSectionSubjects<TData = Awaited<ReturnType<typeof getSectionSubjects>>, TError = ErrorType<void>>(
+ sectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSectionSubjects>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSectionSubjects>>,
+          TError,
+          Awaited<ReturnType<typeof getSectionSubjects>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSectionSubjects<TData = Awaited<ReturnType<typeof getSectionSubjects>>, TError = ErrorType<void>>(
+ sectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSectionSubjects>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List subject availability for a section
+ */
+
+export function useGetSectionSubjects<TData = Awaited<ReturnType<typeof getSectionSubjects>>, TError = ErrorType<void>>(
+ sectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSectionSubjects>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSectionSubjectsQueryOptions(sectionId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSectionSubjectsUrl = (sectionId: string,) => {
+
+
+
+
+  return `/api/academic/sections/${sectionId}/subjects`
+}
+
+/**
+ * @summary Replace the active subjects for a section
+ */
+export const updateSectionSubjects = async (sectionId: string,
+    sectionSubjectsUpdateInput: SectionSubjectsUpdateInput, options?: Parameters<typeof customFetch>[1]): Promise<SectionSubjectPage> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SectionSubjectPage>(getUpdateSectionSubjectsUrl(sectionId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(sectionSubjectsUpdateInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateSectionSubjectsMutationKey = () => ['updateSectionSubjects'] as const;
+
+export const getUpdateSectionSubjectsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSectionSubjects>>, TError,UpdateSectionSubjectsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSectionSubjects>>, TError,UpdateSectionSubjectsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSectionSubjectsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSectionSubjects>>, UpdateSectionSubjectsMutationVariables> = (props) => {
+          const {sectionId,data} = props ?? {};
+
+          return  updateSectionSubjects(sectionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSectionSubjectsMutationResult = NonNullable<Awaited<ReturnType<typeof updateSectionSubjects>>>
+    export type UpdateSectionSubjectsMutationBody = BodyType<SectionSubjectsUpdateInput>
+    export type UpdateSectionSubjectsMutationError = ErrorType<void>
+    export type UpdateSectionSubjectsMutationVariables = {sectionId: string;data: BodyType<SectionSubjectsUpdateInput>}
+
+    /**
+ * @summary Replace the active subjects for a section
+ */
+export const useUpdateSectionSubjects = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSectionSubjects>>, TError,UpdateSectionSubjectsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateSectionSubjects>>,
+        TError,
+        UpdateSectionSubjectsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSectionSubjectsMutationOptions(options), queryClient);
     }
 
 export const getGetAcademicTeachersUrl = () => {

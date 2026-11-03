@@ -7,6 +7,7 @@ This is a convenience summary derived from `MASTER_SPEC.md`; these routes now re
 - `GET /api/academic/classes` lists classes visible to the caller; administrators may pass `includeArchived=true` to manage archived classes.
 - `GET /api/academic/sections` lists sections visible to the caller, accepts optional `classId`, and lets administrators pass `includeArchived=true`.
 - Administrators can set a class or section active/inactive. Removing an unused entity permanently deletes it; if any foreign-key-linked records exist, removal archives it and preserves those records. Archived entities can be restored; new sections cannot be added to archived classes.
+- `GET /api/academic/sections/:sectionId/subjects` lists the school catalog and whether each active subject is offered in that section. Admin-only `PUT` replaces the offered set; removals deactivate only the section mapping, preserving marks and timetable history. New classes and sections start with English, Mathematics, Science, Social Studies, Hindi, Computer Science, Physical Education, and Arts.
 - `GET /api/academic/students` supports `q`, `classId`, `sectionId`, `limit` (1–100), and `offset`; returns `{ items, total, limit, offset }`. Administrators may omit both scope filters to search school-wide or filter by class/section. Other roles must provide a section and remain within their own student, linked-child, or assigned-teacher scope. Admin search includes student email/phone and guardian contact details; non-admin search is limited to student name and admission number.
 - `GET /api/academic/students/:studentId/profile` and `PUT /api/academic/students/:studentId/profile` are admin-only and organization-scoped. The response includes account status, current enrollment, and profile fields; updates can clear optional values. Guardian contact data does not create a guardian account or access link.
 - `GET /api/academic/students/:studentId/enrollments` is admin-only and returns the student's current and ended enrollment records.
@@ -17,7 +18,7 @@ This is a convenience summary derived from `MASTER_SPEC.md`; these routes now re
 
 ## Data and isolation
 
-The `academic` schema stores classes, sections, subjects, enrollments, teacher assignments, timetable slots, consent records, and consent-review status. `identity.guardian_links` stores guardian relationships and the `can_view_live` / `can_pay_fees` flags. Tenant tables use `org_id` and forced RLS; guardian links are joined under the same organization scope. Sections expose optional capacity; enrollment records expose academic year and transition end metadata. Active enrollments are unique per student/year and admission-number/year, while ended rows remain available as history with transfer, promotion, or graduation reasons. Timetable slots include an optional room.
+The `academic` schema stores classes, sections, subjects, per-section subject offerings, enrollments, teacher assignments, timetable slots, consent records, and consent-review status. `identity.guardian_links` stores guardian relationships and the `can_view_live` / `can_pay_fees` flags. Tenant tables use `org_id` and forced RLS; guardian links are joined under the same organization scope. Sections expose optional capacity; enrollment records expose academic year and transition end metadata. Active enrollments are unique per student/year and admission-number/year, while ended rows remain available as history with transfer, promotion, or graduation reasons. Timetable slots include an optional room.
 
 ## Implemented in this checkout
 
@@ -30,6 +31,8 @@ The `academic` schema stores classes, sections, subjects, enrollments, teacher a
 - Admins can graduate students from Grade 12. The current enrollment closes, the student account remains available, and the profile history records the graduation.
 - Student profile pages expose enrollment history, including whether a prior row ended through transfer, promotion, or graduation.
 - Timetable slots can be created and removed by admins, are visible according to the caller's section/teacher/guardian relationships, include room, and reject overlapping teacher or section slots.
+- Admins can manage offered subjects independently for each class section. The eight common subjects are enabled by default; teacher assignments, new assessments, and timetable slots require the subject to be offered in that section.
+- The admin teachers screen links directly to timetable creation; the timetable remains admin-only and requires an active teacher assignment for its selected section and subject.
 - Subject catalog, teacher assignments, student attendance, and term report cards are implemented in adjacent academic/learning screens.
 - Parent consent review status is persisted; the parent must explicitly review choices, and that action grants no permission.
 - Administrators can list guardian links and update live-view/payment flags. Parent live-session discovery and classroom access require session `parent_view`, a linked student, `can_view_live`, and an active `live_view` consent.
@@ -45,6 +48,8 @@ Admission audit history is not implemented. Guardian account creation/linking is
 - Admins can read and update a student profile; non-admin profile access is denied.
 - Guardian contact search is available only to administrators.
 - Teacher access to an unassigned section is denied.
+- New sections start with the eight default common subjects; admins can change offerings per section, and non-admin changes are denied.
+- A subject not offered in a section cannot receive a new teacher assignment, assessment, or timetable slot.
 - Student and parent roster results are restricted to their own record or linked child.
 - Transfer and promotion retain ended enrollment rows and enforce target-section capacity.
 - Only administrators can graduate students; Grade 1–11 graduation attempts are rejected, and a successful Grade 12 graduation remains visible in history.

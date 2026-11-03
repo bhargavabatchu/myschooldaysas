@@ -41,6 +41,7 @@ import { hashPassword, requireAuth, type CampusRole } from "../lib/auth";
 import { canManageAcademicSetup, sectionHasCapacity } from "../lib/academic-scheduling-policy";
 import { generateTemporaryPassword } from "../lib/identity-security";
 import { hasForeignKeyReferences } from "../lib/foreign-key-usage";
+import { addDefaultSectionSubjects } from "../lib/section-subjects";
 
 const routes: FastifyPluginAsync = async (fastify) => {
 const router = createRouteRegistrar(fastify);
@@ -659,6 +660,13 @@ router.post("/academic/classes", requireAuth, async (req, res, next) => {
          VALUES ($1, $2, $3)`,
         [user.orgId, classId, firstSectionName],
       );
+      const firstSection = await client.query<{ id: string }>(
+        "SELECT id FROM academic.sections WHERE org_id = $1 AND class_id = $2 AND name = $3",
+        [user.orgId, classId, firstSectionName],
+      );
+      const firstSectionId = firstSection.rows[0]?.id;
+      if (!firstSectionId) throw new Error("The class section was not created.");
+      await addDefaultSectionSubjects(client, user.orgId, firstSectionId);
       return {
         id: classId,
         name,
@@ -755,7 +763,7 @@ router.delete("/academic/classes/:classId", requireAuth, async (req, res, next) 
       );
       let hasRecords = false;
       for (const section of sectionResult.rows) {
-        if (await hasForeignKeyReferences(client, "academic", "sections", section)) {
+        if (await hasForeignKeyReferences(client, "academic", "sections", section, ["academic.section_subjects"])) {
           hasRecords = true;
           break;
         }
@@ -901,6 +909,7 @@ router.post("/academic/sections", requireAuth, async (req, res, next) => {
       );
       const id = inserted.rows[0]?.id;
       if (!id) throw new Error("Section was not created.");
+      await addDefaultSectionSubjects(client, user.orgId, id);
       return {
         id,
         classId: body.data.classId,
@@ -1001,7 +1010,13 @@ router.delete("/academic/sections/:sectionId", requireAuth, async (req, res, nex
       );
       const section = sectionResult.rows[0];
       if (!section) return null;
-      const hasRecords = await hasForeignKeyReferences(client, "academic", "sections", section);
+      const hasRecords = await hasForeignKeyReferences(
+        client,
+        "academic",
+        "sections",
+        section,
+        ["academic.section_subjects"],
+      );
       if (hasRecords) {
         await client.query(
           "UPDATE academic.sections SET is_active = false WHERE org_id = $1 AND id = $2",

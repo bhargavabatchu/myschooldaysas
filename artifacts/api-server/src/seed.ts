@@ -1,5 +1,6 @@
 import { createPool } from "@workspace/db";
 import { hashPassword } from "./lib/auth.ts";
+import { addDefaultSectionSubjects } from "./lib/section-subjects.ts";
 
 if (process.env.NODE_ENV !== "development") {
   throw new Error("Development seeds are disabled outside NODE_ENV=development.");
@@ -156,18 +157,27 @@ try {
       { code: "MATH", name: "Mathematics" },
       { code: "SCI", name: "Science" },
       { code: "SOC", name: "Social Studies" },
+      { code: null, name: "Hindi" },
+      { code: null, name: "Computer Science" },
+      { code: null, name: "Physical Education" },
+      { code: null, name: "Arts" },
     ];
     const subjectIds: string[] = [];
     for (const subject of demoSubjects) {
-      const result = await client.query<{ id: string }>(
+      const result = await client.query<{ id: string; is_active: boolean }>(
         `INSERT INTO academic.subjects (org_id, code, name)
          VALUES ($1,$2,$3)
-         ON CONFLICT (org_id, name) DO UPDATE SET code=EXCLUDED.code, is_active=true, updated_at=now()
-         RETURNING id`,
+         ON CONFLICT (org_id, name) DO UPDATE
+           SET code=COALESCE(EXCLUDED.code, academic.subjects.code), updated_at=now()
+         RETURNING id, is_active`,
         [orgId, subject.code, subject.name],
       );
       if (!result.rows[0]?.id) throw new Error(`Could not seed ${subject.name}.`);
-      subjectIds.push(result.rows[0].id);
+      if (result.rows[0].is_active) subjectIds.push(result.rows[0].id);
+    }
+    const allSectionIds = [...new Set([...sectionIds, ...gradeOneSectionIds.values()])];
+    for (const sectionId of allSectionIds) {
+      await addDefaultSectionSubjects(client, orgId, sectionId);
     }
 
     const studentUsers = users.filter((user) => user.kind === "student");
