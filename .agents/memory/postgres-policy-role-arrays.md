@@ -1,10 +1,10 @@
 ---
-name: PostgreSQL policy role arrays
-description: Node-postgres handling of the roles array returned by PostgreSQL pg_policies.
+name: PostgreSQL array result types
+description: Node-postgres array parsing for catalog fields and aggregated text values.
 ---
 
-When querying `pg_policies` through node-postgres, select `roles::text[]` if JavaScript needs an array. Without the cast, the `name[]` value may be returned as a brace-delimited string such as `"{public}"`.
+When querying PostgreSQL catalog arrays through node-postgres, cast values to the intended type or use `json_agg` when JavaScript needs a JSON array. Array-like results can arrive as brace-delimited strings rather than JavaScript arrays.
 
-**Why:** The default parser shape caused an RLS audit to incorrectly conclude that no policy applied to `campus_app`.
+**Why:** Both `pg_policies.roles` and a catalog `array_agg(text)` result caused JavaScript array operations to misread the returned value.
 
-**How to apply:** Cast policy role arrays in the SQL projection before checking whether a policy applies to the current application role.
+**How to apply:** Check the real driver result shape in tests; cast policy role arrays to `text[]` and prefer `json_agg` for SQL-generated lists consumed as JavaScript arrays.

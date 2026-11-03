@@ -19,8 +19,8 @@ export async function hasForeignKeyReferences(
   const constraints = await client.query<ForeignKeyReference>(
     `SELECT child_namespace.nspname AS child_schema,
             child_relation.relname AS child_table,
-            array_agg(child_attribute.attname ORDER BY child_key.ordinality) AS child_columns,
-            array_agg(parent_attribute.attname ORDER BY child_key.ordinality) AS parent_columns
+            json_agg(child_attribute.attname ORDER BY child_key.ordinality) AS child_columns,
+            json_agg(parent_attribute.attname ORDER BY child_key.ordinality) AS parent_columns
        FROM pg_constraint foreign_key
        JOIN pg_class parent_relation ON parent_relation.oid = foreign_key.confrelid
        JOIN pg_namespace parent_namespace ON parent_namespace.oid = parent_relation.relnamespace

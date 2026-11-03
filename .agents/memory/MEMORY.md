@@ -8,7 +8,7 @@
 - [Campus Live class setup](campus-live-class-setup.md) — create a first section; delete unused classes/sections and archive used ones to preserve history.
 - [Campus Live database isolation](campus-live-database-isolation.md) — development uses only its restricted database URL; never fall back to the production URL.
 - [Local container health checks](local-container-healthchecks.md) — an OCI health-check exec failure can mark reachable Postgres/Redis containers unhealthy; confirm with host probes before restarting.
-- [PostgreSQL policy role arrays](postgres-policy-role-arrays.md) — cast `pg_policies.roles` to `text[]`; node-postgres may otherwise return `"{public}"` as a plain string.
+- [PostgreSQL array result types](postgres-policy-role-arrays.md) — verify node-postgres array values; prefer JSON aggregation for JavaScript lists.
 - [RLS write fixtures](rls-write-fixtures.md) — use distinct support rows for natural-key tables so unique constraints do not mask RLS behavior.
 - [Enrollment transition migrations](enrollment-transition-migrations.md) — active-only unique indexes require matching seed upsert predicates and reliable migration-version recording.
 - [PostgreSQL parameter placeholders](postgres-parameter-placeholders.md) — composed SQL fragments need contiguous positional placeholders and explicit bindings.

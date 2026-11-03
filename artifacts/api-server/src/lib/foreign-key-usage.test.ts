@@ -31,6 +31,7 @@ test("foreign-key usage check binds parent values and safely quotes catalog iden
   } as unknown as Pick<PoolClient, "query">;
 
   assert.equal(await hasForeignKeyReferences(client, "academic", "sections", { id: "section-id" }), true);
+  assert.match(calls[0]?.sql ?? "", /json_agg/);
   assert.equal(calls[1]?.values?.[0], "section-id");
   assert.match(calls[1]?.sql ?? "", /"school""records"\."attendance""marks"/);
   assert.doesNotMatch(calls[1]?.sql ?? "", /school"records/);
