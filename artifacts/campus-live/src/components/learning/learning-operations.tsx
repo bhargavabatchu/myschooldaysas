@@ -7,7 +7,7 @@ import {
   useDeleteAcademicSubject, useDeleteAcademicTeacherAssignment, useGetAcademicSubjects,
   useGetAcademicTeachers, useGetAcademicTeacherAssignments, useGetLearningReportCards,
   useGetLearningReportCard, useGetLearningTerms, usePrepareLearningReportCards,
-  usePublishLearningReportCards, usePrintLearningReportCard, useUpdateAcademicSubject, useGetSections,
+   usePublishLearningReportCards, usePrintLearningReportCard, useUpdateAcademicSubject, useGetClasses, useGetSections,
 } from '@workspace/api-client-react';
 import type { AcademicSubject, LearningReportCard } from '@workspace/api-client-react';
 import { BookOpen, Check, CircleAlert, FileText, Printer, Plus, Save, ShieldCheck, UsersRound, X } from 'lucide-react';
@@ -27,11 +27,14 @@ export function LearningOperations({ roles }: Props) {
   const [sectionId, setSectionId] = useState('');
   const [termId, setTermId] = useState('');
   const [selected, setSelected] = useState('');
+  const [assignmentClassId, setAssignmentClassId] = useState('');
+  const [assignmentSectionId, setAssignmentSectionId] = useState('');
   const [printId, setPrintId] = useState('');
   const printWindow = useRef<Window | null>(null);
   const [notice, setNotice] = useState('');
   const client = useQueryClient();
   const sections = useGetSections(undefined, { query: { enabled: canStaff } });
+  const classes = useGetClasses({ query: { enabled: tab === 'catalog' && canAdmin } });
   const teacherSections = useGetAcademicTeacherAssignments(undefined, { query: { enabled: canStaff && !canAdmin } });
   const subjects = useGetAcademicSubjects({ query: { enabled: tab === 'catalog' && canAdmin } });
   const teachers = useGetAcademicTeachers({ query: { enabled: tab === 'catalog' && canAdmin } });
@@ -41,6 +44,14 @@ export function LearningOperations({ roles }: Props) {
   const detail = useGetLearningReportCard(selected, { query: { enabled: !!selected, queryKey: getGetLearningReportCardQueryKey(selected) } });
   const print = usePrintLearningReportCard(printId, { query: { enabled: !!printId } });
   const assignmentsForSection = useMemo(() => assignments.data?.items ?? [], [assignments.data]);
+  const assignmentSections = useMemo(
+    () => (sections.data?.items ?? []).filter(section => section.classId === assignmentClassId),
+    [sections.data, assignmentClassId],
+  );
+  const sectionLabels = useMemo(
+    () => new Map((sections.data?.items ?? []).map(section => [section.id, `${section.className} · ${section.name}`])),
+    [sections.data],
+  );
   const allowedSections = useMemo(() => {
     const items = sections.data?.items ?? [];
     if (canAdmin) return items;
@@ -90,22 +101,23 @@ export function LearningOperations({ roles }: Props) {
         {canAdmin && <button aria-pressed={tab === 'catalog'} onClick={() => { setTab('catalog'); setSelected(''); }} className={`rounded-lg px-4 py-2.5 text-xs font-bold transition ${tab === 'catalog' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'hover:bg-[hsl(var(--secondary))]'}`}>Subjects & teachers</button>}
         <button aria-pressed={tab === 'reports'} onClick={() => { setTab('reports'); setSelected(''); }} className={`rounded-lg px-4 py-2.5 text-xs font-bold transition ${tab === 'reports' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'hover:bg-[hsl(var(--secondary))]'}`}>{familyView ? 'Published report cards' : 'Report cards'}</button>
       </div>
-      {canStaff && <label className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]"><UsersRound size={15}/><span className="sr-only">Filter by section</span><select className="field min-h-9 py-1.5 text-xs sm:w-[210px]" value={sectionId} onChange={event => setSectionId(event.target.value)}><option value="">All assigned sections</option>{(canAdmin ? sections.data?.items ?? [] : allowedSections).map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label>}
+      {canStaff && <label className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]"><UsersRound size={15}/><span className="sr-only">Filter by section</span><select className="field min-h-9 py-1.5 text-xs sm:w-[210px]" value={sectionId} onChange={event => setSectionId(event.target.value)}><option value="">All sections</option>{(canAdmin ? sections.data?.items ?? [] : allowedSections).map(section => <option key={section.id} value={section.id}>{section.className} · {section.name}</option>)}</select></label>}
     </div>
     {notice && <div role="status" className="rounded-xl border border-[hsl(var(--status-good)/.3)] bg-[hsl(var(--status-good-bg))] px-4 py-3 text-sm text-[hsl(var(--brand-mint-ink))]">{notice}</div>}
     {mutationError && <div role="alert" className="rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.08)] px-4 py-3 text-sm text-[hsl(var(--destructive))]">{errorText(mutationError)}</div>}
     {tab === 'catalog' && canAdmin && <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
       <SubjectCatalog subjects={subjects.data?.items ?? []} loading={subjects.isLoading} error={subjects.error} retry={() => subjects.refetch()} create={(name, code) => createSubject.mutate({ data: { name, code: code || null } }, { onSuccess: () => setNotice('Subject added to the catalog.') })} update={(subject, data) => updateSubject.mutate({ subjectId: subject.id, data }, { onSuccess: () => setNotice('Subject details updated.') })} remove={subject => { if (window.confirm(`Remove ${subject.name} from the catalog?`)) deleteSubject.mutate({ subjectId: subject.id }, { onSuccess: () => setNotice('Subject removed.') }); }} busy={createSubject.isPending || updateSubject.isPending || deleteSubject.isPending}/>
       <section className="surface overflow-hidden">
-        <div className="border-b border-[hsl(var(--border))] p-5"><div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><UsersRound size={17}/></div><div><h2 className="display m-0 text-lg font-extrabold">Teacher assignments</h2><p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Pair each subject with its section and teacher.</p></div></div></div>
-        <form className="grid gap-2 border-b border-[hsl(var(--border))] p-4 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); assignTeacher.mutate({ data: { sectionId: String(data.get('sectionId')), subjectId: String(data.get('subjectId')), teacherId: String(data.get('teacherId')), isClassTeacher: data.get('classTeacher') === 'on' } }, { onSuccess: () => { setNotice('Teacher assignment saved.'); form.reset(); } }); }}>
-          <select required name="sectionId" className="field min-h-10 text-xs"><option value="">Choose section</option>{sections.data?.items.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select>
+         <div className="border-b border-[hsl(var(--border))] p-5"><div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><UsersRound size={17}/></div><div><h2 className="display m-0 text-lg font-extrabold">Teacher assignments</h2><p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Assign each subject to a teacher for a specific class and section.</p></div></div></div>
+         <form className="grid gap-2 border-b border-[hsl(var(--border))] p-4 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); if (!assignmentSectionId) return; const data = new FormData(event.currentTarget); assignTeacher.mutate({ data: { sectionId: assignmentSectionId, subjectId: String(data.get('subjectId')), teacherId: String(data.get('teacherId')), isClassTeacher: data.get('classTeacher') === 'on' } }, { onSuccess: () => { setNotice('Teacher assignment saved.'); setAssignmentClassId(''); setAssignmentSectionId(''); } }); }}>
+           <select required aria-label="Class" className="field min-h-10 text-xs" value={assignmentClassId} onChange={event => { setAssignmentClassId(event.target.value); setAssignmentSectionId(''); }}><option value="">Choose class</option>{classes.data?.items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+           <select required aria-label="Section" className="field min-h-10 text-xs" value={assignmentSectionId} onChange={event => setAssignmentSectionId(event.target.value)} disabled={!assignmentClassId}><option value="">Choose section</option>{assignmentSections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select>
           <select required name="subjectId" className="field min-h-10 text-xs"><option value="">Choose subject</option>{subjects.data?.items.filter(item => item.isActive).map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select>
           <select required name="teacherId" className="field min-h-10 text-xs"><option value="">Choose teacher</option>{teachers.data?.items.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select>
           <label className="flex items-center gap-2 px-2 text-xs font-semibold"><input type="checkbox" name="classTeacher" className="accent-[hsl(var(--primary))]"/> Class teacher</label>
           <button disabled={assignTeacher.isPending} className="btn btn-primary sm:col-span-2"><Plus size={15}/>{assignTeacher.isPending ? 'Assigning…' : 'Add assignment'}</button>
         </form>
-        <div className="max-h-[440px] divide-y divide-[hsl(var(--border))] overflow-y-auto">{assignments.isLoading ? <div className="space-y-3 p-4"><div className="skeleton h-12"/><div className="skeleton h-12"/></div> : assignments.isError ? <LoadError message={errorText(assignments.error)} retry={() => assignments.refetch()}/> : assignmentsForSection.length === 0 ? <Empty text="No teaching assignments yet."/> : assignmentsForSection.map(item => <div key={item.id} className="flex items-center gap-3 p-4"><div className="min-w-0 flex-1"><div className="text-sm font-bold">{item.subjectName}</div><div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">{item.sectionName} · {item.teacherName}{item.isClassTeacher ? ' · Class teacher' : ''}</div></div><button aria-label={`Remove ${item.teacherName} assignment`} disabled={unassignTeacher.isPending} className="btn btn-quiet btn-sm" onClick={() => { if (window.confirm(`Remove ${item.teacherName} from ${item.subjectName}?`)) unassignTeacher.mutate({ assignmentId: item.id }, { onSuccess: () => setNotice('Teacher assignment removed.') }); }}><X size={15}/></button></div>)}</div>
+         <div className="max-h-[440px] divide-y divide-[hsl(var(--border))] overflow-y-auto">{assignments.isLoading ? <div className="space-y-3 p-4"><div className="skeleton h-12"/><div className="skeleton h-12"/></div> : assignments.isError ? <LoadError message={errorText(assignments.error)} retry={() => assignments.refetch()}/> : assignmentsForSection.length === 0 ? <Empty text="No teaching assignments yet."/> : assignmentsForSection.map(item => <div key={item.id} className="flex items-center gap-3 p-4"><div className="min-w-0 flex-1"><div className="text-sm font-bold">{item.subjectName}</div><div className="mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">{sectionLabels.get(item.sectionId) ?? item.sectionName} · {item.teacherName}{item.isClassTeacher ? ' · Class teacher' : ''}</div></div><button aria-label={`Remove ${item.teacherName} assignment`} disabled={unassignTeacher.isPending} className="btn btn-quiet btn-sm" onClick={() => { if (window.confirm(`Remove ${item.teacherName} from ${item.subjectName}?`)) unassignTeacher.mutate({ assignmentId: item.id }, { onSuccess: () => setNotice('Teacher assignment removed.') }); }}><X size={15}/></button></div>)}</div>
       </section>
     </div>}
     {tab === 'reports' && (selected ? <ReportDetail id={selected} familyView={familyView} card={detail.data} loading={detail.isLoading} error={detail.error} retry={() => detail.refetch()} printBusy={print.isFetching} onBack={() => setSelected('')} onPrint={() => { printWindow.current = window.open('', '_blank'); if (printWindow.current) setPrintId(selected); }} onRemark={(subjectId, text) => remark.mutate({ reportCardId: selected, data: { subjectId, remark: text } }, { onSuccess: () => setNotice('Remark saved to the draft report card.') })} remarkBusy={remark.isPending}/>
