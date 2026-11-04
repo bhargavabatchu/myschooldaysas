@@ -25,6 +25,10 @@ export function canManageUser(actorRoles: CampusRole[], targetRoles: CampusRole[
   return Math.max(...actorRanks) >= targetRank;
 }
 
+export function canCreateSchoolAdmin(actorRoles: CampusRole[]): boolean {
+  return canManageUser(actorRoles, ["org_admin"]);
+}
+
 export function needsPasswordRehash(encoded: string): boolean {
   const [, algorithm, nText] = encoded.split("$");
   return algorithm !== "scrypt" || Number(nText) < 131072;

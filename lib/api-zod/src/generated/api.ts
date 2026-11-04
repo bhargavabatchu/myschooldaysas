@@ -593,6 +593,34 @@ export const CreateTeacherAccountResponse = zod.object({
 
 
 /**
+ * @summary Create a same-school administrator login with a one-time password
+ */
+export const createSchoolAdminAccountBodyNameMax = 120;
+
+export const createSchoolAdminAccountBodyEmailMax = 320;
+
+
+
+export const CreateSchoolAdminAccountBody = zod.object({
+  "name": zod.string().min(1).max(createSchoolAdminAccountBodyNameMax),
+  "email": zod.email().max(createSchoolAdminAccountBodyEmailMax)
+})
+
+export const createSchoolAdminAccountResponseTemporaryPasswordMin = 12;
+
+
+
+export const CreateSchoolAdminAccountResponse = zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "email": zod.email(),
+  "role": zod.enum(['org_admin']),
+  "temporaryPassword": zod.string().min(createSchoolAdminAccountResponseTemporaryPasswordMin),
+  "expiresAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Issue a one-time temporary password for a user
  */
 export const ResetPasswordParams = zod.object({

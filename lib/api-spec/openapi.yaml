@@ -472,6 +472,30 @@ paths:
         "401": { description: Authentication required }
         "403": { description: Administrator access required }
         "409": { description: An account already uses this email }
+  /identity/admins:
+    post:
+      operationId: createSchoolAdminAccount
+      tags: [identity]
+      summary: Create a same-school administrator login with a one-time password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSchoolAdminAccountInput"
+      responses:
+        "201":
+          description: School administrator account created; temporary password is returned once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedSchoolAdminAccount"
+        "400": { description: Invalid administrator details }
+        "401": { description: Authentication required }
+        "403": { description: School administrator access required }
+        "409": { description: An account already uses this email }
   /identity/users/{userId}/reset-password:
     post:
       operationId: resetPassword
@@ -2229,6 +2253,22 @@ components:
         name: { type: string }
         email: { type: string, format: email }
         role: { type: string, enum: [teacher] }
+        temporaryPassword: { type: string, minLength: 12 }
+        expiresAt: { type: string, format: date-time }
+    CreateSchoolAdminAccountInput:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        email: { type: string, format: email, maxLength: 320 }
+    CreatedSchoolAdminAccount:
+      type: object
+      required: [id, name, email, role, temporaryPassword, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [org_admin] }
         temporaryPassword: { type: string, minLength: 12 }
         expiresAt: { type: string, format: date-time }
     DashboardOverview:

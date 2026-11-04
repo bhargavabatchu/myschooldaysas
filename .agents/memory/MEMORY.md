@@ -5,6 +5,7 @@
 - [Campus Live visual direction](campus-live-visual-direction.md) — carry the approved forest-green, warm-paper, muted-gold school identity from sign-in through the dashboard.
 - [Campus Live PWA privacy](campus-live-pwa-privacy.md) — keep installs online-only; never cache private school records for offline access.
 - [Campus Live remembered sessions](campus-live-remembered-sessions.md) — keep access tokens in memory; persist only rotating, CSRF-protected refresh sessions in HttpOnly cookies.
+- [Campus Live school admin delegation](campus-live-school-admin-delegation.md) — org admins may create same-school org admins, but this flow must never grant platform super-admin access.
 - [Campus Live class setup](campus-live-class-setup.md) — create a first section; delete unused classes/sections and archive used ones to preserve history.
 - [Campus Live database isolation](campus-live-database-isolation.md) — development uses only its restricted database URL; never fall back to the production URL.
 - [Local container health checks](local-container-healthchecks.md) — an OCI health-check exec failure can mark reachable Postgres/Redis containers unhealthy; confirm with host probes before restarting.

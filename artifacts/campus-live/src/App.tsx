@@ -45,6 +45,7 @@ import { ClassPromotionWizard } from '@/components/academic/class-promotion-wiza
 import { AddSectionForm, ClassSetupPanel } from '@/components/academic/class-setup';
 import { GuardianAccessPage } from '@/components/academic/guardian-access-page';
 import { TeachersPage } from '@/components/academic/teachers-page';
+import { AdministratorsPage } from '@/components/academic/administrators-page';
 import { FeeReceiptPage, FeesPage } from '@/components/fees/fees-page';
 import { EnrollmentLifecycle } from '@/components/academic/enrollment-lifecycle';
 import { AdmissionsInbox, PublicAdmissionForm } from '@/components/admissions';
@@ -179,6 +180,7 @@ function ProtectedApp() {
         <Route path="/dashboard" component={() => <DashboardPage roles={user.roles} userName={user.name} />} />
         <Route path="/admin/classes" component={() => canViewAcademicDirectory(user.roles) ? <ClassesPage roles={user.roles} /> : <NotFound />} />
         <Route path="/admin/teachers" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <TeachersPage /> : <NotFound />} />
+        <Route path="/admin/administrators" component={() => user.roles.some(role => ['super_admin','org_admin'].includes(role)) ? <AdministratorsPage /> : <NotFound />} />
         <Route path="/admin/students" component={() => canViewStudentRoster(user.roles) ? <StudentsPage roles={user.roles} /> : <NotFound />} />
         <Route path="/admin/admissions" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <AdmissionsInbox/> : <NotFound/>} />
         <Route path="/admin/guardians" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <GuardianAccessPage/> : <NotFound/>} />
@@ -220,6 +222,9 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
   ];
   if (user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role))) {
     nav.push({ label: 'Teachers', href: '/admin/teachers', icon: Users });
+    if (user.roles.some(role => ['super_admin','org_admin'].includes(role))) {
+      nav.push({ label: 'Administrators', href: '/admin/administrators', icon: ShieldCheck });
+    }
     nav.push({ label: 'Admissions', href: '/admin/admissions', icon: ClipboardList });
     nav.push({ label: 'Family access', href: '/admin/guardians', icon: ShieldCheck });
     nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });

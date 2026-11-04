@@ -98,6 +98,33 @@ export interface CreatedTeacherAccount {
   expiresAt: string;
 }
 
+export interface CreateSchoolAdminAccountInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /** @maxLength 320 */
+  email: string;
+}
+
+export type CreatedSchoolAdminAccountRole = typeof CreatedSchoolAdminAccountRole[keyof typeof CreatedSchoolAdminAccountRole];
+
+
+export const CreatedSchoolAdminAccountRole = {
+  org_admin: 'org_admin',
+} as const;
+
+export interface CreatedSchoolAdminAccount {
+  id: string;
+  name: string;
+  email: string;
+  role: CreatedSchoolAdminAccountRole;
+  /** @minLength 12 */
+  temporaryPassword: string;
+  expiresAt: string;
+}
+
 export type DashboardMetricTone = typeof DashboardMetricTone[keyof typeof DashboardMetricTone];
 
 

@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import {
   ChangePasswordBody,
+  CreateSchoolAdminAccountBody,
   CreateTeacherAccountBody,
   LoginBody,
   ResetPasswordParams,
@@ -15,6 +16,7 @@ import {
   verifyPassword,
 } from "../lib/auth";
 import {
+  canCreateSchoolAdmin,
   canManageUser,
   generateTemporaryPassword,
   isValidNewPassword,
@@ -359,6 +361,68 @@ router.post(
       res.status(201).json({
         ...teacher,
         role: "teacher",
+        temporaryPassword,
+        expiresAt: expiresAt.toISOString(),
+      });
+    } catch (error: any) {
+      if (error?.code === "23505") {
+        return void res.status(409).json(invalid("An account with this email already exists in your school.", "CONFLICT"));
+      }
+      next(error);
+    }
+  },
+);
+
+router.post(
+  "/identity/admins",
+  requireAuth,
+  requireRoles("super_admin", "org_admin"),
+  async (req, res, next) => {
+    const actor = req.campusUser;
+    if (!actor) return void res.status(401).json(invalid("Sign in to continue.", "UNAUTHENTICATED"));
+    if (!canCreateSchoolAdmin(actor.roles)) {
+      return void res.status(403).json(invalid("Only a school or platform administrator can create a school administrator.", "FORBIDDEN"));
+    }
+
+    const parsed = CreateSchoolAdminAccountBody.safeParse(req.body);
+    if (!parsed.success) {
+      return void res.status(400).json(invalid("Enter a valid administrator name and email address."));
+    }
+    const name = parsed.data.name.trim();
+    const email = parsed.data.email.trim().toLowerCase();
+    if (!name || !email) {
+      return void res.status(400).json(invalid("Administrator name and email cannot be blank."));
+    }
+
+    try {
+      const temporaryPassword = generateTemporaryPassword();
+      const passwordHash = await hashPassword(temporaryPassword);
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const administrator = await withOrg(actor.orgId, async (client) => {
+        const created = await client.query<{ id: string; name: string; email: string }>(
+          `INSERT INTO identity.users
+             (org_id, email, name, password_hash, status, must_change_password, temporary_password_expires_at)
+           VALUES ($1, $2, $3, $4, 'active', true, $5)
+           RETURNING id, name, email`,
+          [actor.orgId, email, name, passwordHash, expiresAt],
+        );
+        const account = created.rows[0];
+        if (!account) throw new Error("School administrator account was not created.");
+        await client.query(
+          `INSERT INTO identity.user_roles (org_id, user_id, role)
+           VALUES ($1, $2, 'org_admin')`,
+          [actor.orgId, account.id],
+        );
+        return account;
+      });
+
+      req.log.info(
+        { actorUserId: actor.id, organizationId: actor.orgId, createdUserId: administrator.id, createdRole: "org_admin" },
+        "School administrator account created",
+      );
+      res.status(201).json({
+        ...administrator,
+        role: "org_admin",
         temporaryPassword,
         expiresAt: expiresAt.toISOString(),
       });

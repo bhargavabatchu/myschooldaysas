@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   canManageUser,
+  canCreateSchoolAdmin,
   generateTemporaryPassword,
   isValidNewPassword,
   needsPasswordRehash,
@@ -28,6 +29,14 @@ test("administrator reset rights cannot cross a higher role boundary", () => {
   assert.equal(canManageUser(["org_admin"], ["org_admin"]), true);
   assert.equal(canManageUser(["super_admin"], ["super_admin"]), true);
   assert.equal(canManageUser(["teacher"], ["student"]), false);
+});
+
+test("only a school or platform administrator can create a school administrator", () => {
+  assert.equal(canCreateSchoolAdmin(["org_admin"]), true);
+  assert.equal(canCreateSchoolAdmin(["super_admin"]), true);
+  assert.equal(canCreateSchoolAdmin(["campus_admin"]), false);
+  assert.equal(canCreateSchoolAdmin(["teacher"]), false);
+  assert.equal(canCreateSchoolAdmin(["student"]), false);
 });
 
 test("legacy password hashes are upgraded after successful verification", () => {
