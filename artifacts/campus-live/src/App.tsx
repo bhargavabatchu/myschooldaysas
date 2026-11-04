@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { Link, Route, Switch, useLocation, useParams } from 'wouter';
 import {
   useLogin, useGetMe, getGetMeQueryKey, useGetDashboardOverview, getGetDashboardOverviewQueryKey,
-  useGetClasses, useGetSections, useGetTimetable,
+  useGetClasses, useGetSections, useGetTimetable, useGetCalendar, getGetCalendarQueryKey,
   useGetStudents, getGetStudentsQueryKey, useGetSessions, getGetSessionsQueryKey,
   useCreateSession, useStartSession, useEndSession, useGetSessionToken,
   useGetBoardTemplates, getGetBoardTemplatesQueryKey, useCreateBoardTemplate, useUpdateBoardTemplate,
@@ -58,6 +58,41 @@ const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
 const roleName = (role?: string) => role?.replaceAll('_', ' ') ?? 'Member';
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+const academicEventDateFormatter = new Intl.DateTimeFormat('en-IN', {
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'Asia/Kolkata',
+});
+const academicEventKindLabels: Record<string, string> = {
+  event: 'School event',
+  holiday: 'Holiday',
+  exam: 'Exam',
+  ptm: 'PTM',
+  working_day: 'Working day',
+};
+function schoolDateKey(date: Date) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Asia/Kolkata',
+  }).formatToParts(date).map(({ type, value }) => [type, value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+function addCalendarDays(dateKey: string, days: number) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+function formatAcademicEventDate(startDate: string, endDate: string, today: string) {
+  if (startDate < today) {
+    return `Through ${academicEventDateFormatter.format(new Date(`${endDate}T00:00:00+05:30`))}`;
+  }
+  const start = academicEventDateFormatter.format(new Date(`${startDate}T00:00:00+05:30`));
+  if (startDate === endDate) return start;
+  const end = academicEventDateFormatter.format(new Date(`${endDate}T00:00:00+05:30`));
+  return `${start} – ${end}`;
+}
 const initialBoardConfig: BoardConfig = {
   background: { type: 'ruled', color: '#fffdf8', lineColor: '#dce5e2', spacing: 32 },
   canvas: { mode: 'fixed', aspect: '16:9', maxPages: 20 },
@@ -428,11 +463,28 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
   const collectionPercent = adminInsights?.fees.collectionPercentThisYear ?? null;
   const academicYear = adminInsights?.fees.academicYear ?? '';
   const timetable = useGetTimetable(undefined, { query: { enabled: Boolean(adminInsights) } });
+  const schoolToday = new Date();
+  const todayDateKey = schoolDateKey(schoolToday);
+  const calendarParams = useMemo(
+    () => ({ from: todayDateKey, to: addCalendarDays(todayDateKey, 60) }),
+    [todayDateKey],
+  );
+  const academicCalendar = useGetCalendar(calendarParams, {
+    query: {
+      enabled: Boolean(adminInsights),
+      queryKey: getGetCalendarQueryKey(calendarParams),
+    },
+  });
+  const upcomingAcademicEvents = (academicCalendar.data?.items ?? []).slice(0, 2).map(event => ({
+    ...event,
+    dateLabel: formatAcademicEventDate(event.startDate, event.endDate, todayDateKey),
+    kindLabel: academicEventKindLabels[event.kind] ?? 'School date',
+  }));
   const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const todayWeekdayName = new Intl.DateTimeFormat('en-US', {
     weekday: 'long',
     timeZone: 'Asia/Kolkata',
-  }).format(new Date());
+  }).format(schoolToday);
   const todayWeekday = weekdays.indexOf(todayWeekdayName);
   const todaySchedule = (timetable.data?.items ?? [])
     .filter(slot => slot.weekday === todayWeekday)
@@ -532,6 +584,36 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
                 {todaySchedule.length > visibleTodaySchedule.length && <Link href="/timetable" className="dashboard-day-more">{todaySchedule.length - visibleTodaySchedule.length} more scheduled today</Link>}
               </div>
               : <div className="dashboard-schedule-empty">No timetable slots are scheduled for today.</div>}
+            <div className="dashboard-calendar-preview" data-testid="dashboard-academic-calendar">
+              <div className="dashboard-calendar-preview-heading">
+                <div>
+                  <div className="dashboard-calendar-preview-kicker">UPCOMING SCHOOL DATES</div>
+                  <h3 id="dashboard-calendar-preview-title">Academic calendar</h3>
+                </div>
+                <Link href="/calendar" className="dashboard-text-link">Full calendar <ArrowRight size={14}/></Link>
+              </div>
+              {academicCalendar.isLoading
+                ? <div className="dashboard-calendar-loading" aria-label="Loading academic calendar"><span/><span/></div>
+                : academicCalendar.error
+                  ? <div className="dashboard-calendar-empty" role="status">
+                    <span>School dates couldn’t be loaded.</span>
+                    <button type="button" onClick={() => void academicCalendar.refetch()}>Try again</button>
+                  </div>
+                  : upcomingAcademicEvents.length
+                    ? <div className="dashboard-calendar-events">
+                      {upcomingAcademicEvents.map(event => <article key={event.id} className="dashboard-calendar-event">
+                        <strong className="dashboard-calendar-event-date">{event.dateLabel}</strong>
+                        <div className="dashboard-calendar-event-copy">
+                          <div>
+                            <strong>{event.title}</strong>
+                            <span className="dashboard-calendar-kind" data-kind={event.kind}>{event.kindLabel}</span>
+                          </div>
+                          <span>{event.scopeName}</span>
+                        </div>
+                      </article>)}
+                    </div>
+                    : <div className="dashboard-calendar-empty">No school dates are scheduled in the next two months.</div>}
+            </div>
           </section> : liveClassesEnabled ? <section className="dashboard-panel dashboard-sessions" aria-labelledby="dashboard-sessions-title">
             <div className="dashboard-panel-heading">
               <div>
