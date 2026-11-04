@@ -72,6 +72,14 @@ async function expectAdminInsights(page: Page) {
   await expect(insights.getByText("Outstanding", { exact: true })).toBeVisible();
   await expect(insights.getByText("Overdue invoices", { exact: true })).toBeVisible();
   await expect(insights.getByTestId("dashboard-collection-progress").getByRole("progressbar")).toBeVisible();
+  const attendance = insights.getByTestId("dashboard-attendance-insight");
+  const attendanceProgress = attendance.getByRole("progressbar");
+  if (await attendanceProgress.count()) {
+    await expect(attendanceProgress).toHaveAttribute("aria-label", /among marked students/);
+    await expect(attendance.getByText("Rate among marked students")).toBeVisible();
+  } else {
+    await expect(attendance.getByText("The rate uses marked students as its denominator.")).toBeVisible();
+  }
   const collectionTrend = insights.getByTestId("dashboard-fee-trend");
   if (await collectionTrend.count()) {
     await expect(collectionTrend.getByRole("img", { name: "Monthly fee collections" })).toBeVisible();
@@ -105,6 +113,16 @@ test("administrator dashboard data, navigation, and theme controls fit desktop a
   await expectAdminInsights(page);
   await expectNoHorizontalOverflow(page);
   await expect(page.getByTestId("link-nav-admissions")).toBeVisible();
+  const quickActions = page.getByTestId("dashboard-admin-actions");
+  await expect(quickActions).toBeVisible();
+  await expect(page.getByTestId("dashboard-action-admissions")).toHaveAttribute("href", "/admin/admissions");
+  await expect(page.getByTestId("dashboard-action-attendance")).toHaveAttribute("href", "/attendance");
+  await expect(page.getByTestId("dashboard-action-announcements")).toHaveAttribute("href", "/announcements");
+  await expect(page.getByTestId("dashboard-action-fees")).toHaveAttribute("href", "/fees");
+  await page.getByTestId("dashboard-action-admissions").click();
+  await expect(page).toHaveURL(/\/admin\/admissions$/);
+  await page.getByTestId("link-nav-overview").click();
+  await expect(page).toHaveURL(/\/dashboard$/);
   const feesLink = page.getByTestId("link-nav-fees");
   await feesLink.scrollIntoViewIfNeeded();
   await expect(feesLink).toBeInViewport();
@@ -152,6 +170,10 @@ test("administrator dashboard data, navigation, and theme controls fit desktop a
     getComputedStyle(element).gridTemplateColumns.split(" ").length,
   );
   expect(mobileMetricsColumns).toBe(2);
+  const mobileQuickActionColumns = await page.locator(".admin-quick-actions").evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns.split(" ").length,
+  );
+  expect(mobileQuickActionColumns).toBe(2);
 
   await page.getByTestId("button-open-navigation").click();
   await expect(page.getByTestId("link-nav-admissions")).toBeVisible();
@@ -173,6 +195,7 @@ test("teacher navigation stays role-aware and theme control remains reachable on
   await page.setViewportSize(desktop);
   await expectDashboardData(page);
   await expect(page.getByTestId("dashboard-admin-insights")).toHaveCount(0);
+  await expect(page.getByTestId("dashboard-admin-actions")).toHaveCount(0);
   await expect(page.getByTestId("link-nav-students")).toBeVisible();
   await expect(page.getByTestId("link-nav-admissions")).toHaveCount(0);
   await expect(page.getByTestId("link-nav-fees")).toHaveCount(0);
@@ -189,6 +212,7 @@ test("teacher navigation stays role-aware and theme control remains reachable on
 test("student accounts cannot open the student directory", async ({ page }) => {
   await signIn(page, "student1@demo.edu");
   await expect(page.getByTestId("link-nav-students")).toHaveCount(0);
+  await expect(page.getByTestId("dashboard-admin-actions")).toHaveCount(0);
 
   // Keep the in-memory auth token while exercising a client-side deep link.
   await page.evaluate(() => {

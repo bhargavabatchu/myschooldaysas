@@ -487,6 +487,15 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
             <span className="dashboard-followup-action">Review fees <ArrowRight size={13}/></span>
           </Link>}
         </section>}
+        {adminInsights && <section className="dashboard-admin-actions" aria-label="Quick actions" data-testid="dashboard-admin-actions">
+          <div className="dashboard-admin-actions-heading"><h2>Quick actions</h2><span>Common school tasks</span></div>
+          <nav className="admin-quick-actions" aria-label="Administrative shortcuts">
+            <Link href="/admin/admissions" className="admin-quick-link" data-testid="dashboard-action-admissions"><span className="admin-quick-icon"><Users size={16}/></span><span className="admin-quick-copy"><strong>New admission</strong><small>Enroll a student</small></span><ArrowRight size={14} className="admin-quick-arrow"/></Link>
+            <Link href="/attendance" className="admin-quick-link" data-testid="dashboard-action-attendance"><span className="admin-quick-icon"><CalendarCheck size={16}/></span><span className="admin-quick-copy"><strong>Take attendance</strong><small>Open today’s register</small></span><ArrowRight size={14} className="admin-quick-arrow"/></Link>
+            <Link href="/announcements" className="admin-quick-link" data-testid="dashboard-action-announcements"><span className="admin-quick-icon"><Radio size={16}/></span><span className="admin-quick-copy"><strong>Post announcement</strong><small>Share a school update</small></span><ArrowRight size={14} className="admin-quick-arrow"/></Link>
+            <Link href="/fees" className="admin-quick-link" data-testid="dashboard-action-fees"><span className="admin-quick-icon"><CreditCard size={16}/></span><span className="admin-quick-copy"><strong>Review fees</strong><small>Check this year’s fees</small></span><ArrowRight size={14} className="admin-quick-arrow"/></Link>
+          </nav>
+        </section>}
         <div className="dashboard-panels">
           {adminInsights ? <section className="dashboard-panel dashboard-sessions" aria-labelledby="dashboard-sessions-title" data-testid="dashboard-timetable-today">
             <div className="dashboard-panel-heading">
@@ -541,11 +550,11 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
               <div><span className="dashboard-panel-kicker">ATTENDANCE · {adminInsights.attendanceToday.attendanceDate}</span><h2>Today’s register</h2></div>
             </div>
             {adminInsights.attendanceToday.attendancePercent === null
-              ? <div className="dashboard-attendance-unmarked"><strong>Not recorded yet</strong><span>No attendance marks have been recorded for today.</span></div>
+              ? <div className="dashboard-attendance-unmarked"><strong>Not recorded yet</strong><span>No attendance marks have been recorded for today.</span><span className="dashboard-attendance-denominator">The rate uses marked students as its denominator.</span></div>
               : <div className="dashboard-attendance-readout">
                 <strong>{adminInsights.attendanceToday.attendancePercent}<small>%</small></strong>
-                <div className="dashboard-attendance-detail"><span>{adminInsights.attendanceToday.presentStudents} present</span><span>{adminInsights.attendanceToday.markedStudents} students marked</span></div>
-                <div className="dashboard-progress-track" aria-label={`${adminInsights.attendanceToday.attendancePercent}% attendance`}><span style={{ width: `${Math.max(0, Math.min(100, adminInsights.attendanceToday.attendancePercent))}%` }}/></div>
+                <div className="dashboard-attendance-detail"><span>{adminInsights.attendanceToday.presentStudents} present of {adminInsights.attendanceToday.markedStudents} marked</span><span>Rate among marked students</span></div>
+                <div className="dashboard-progress-track" role="progressbar" aria-label={`${adminInsights.attendanceToday.attendancePercent}% attendance among marked students`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.max(0, Math.min(100, adminInsights.attendanceToday.attendancePercent))}><span style={{ width: `${Math.max(0, Math.min(100, adminInsights.attendanceToday.attendancePercent))}%` }}/></div>
               </div>}
             <Link href="/attendance" className="dashboard-insight-link">Open attendance <ArrowRight size={13}/></Link>
           </div>
