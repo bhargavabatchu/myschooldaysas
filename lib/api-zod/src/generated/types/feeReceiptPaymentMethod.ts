@@ -13,4 +13,9 @@ export const FeeReceiptPaymentMethod = {
   mock: 'mock',
   razorpay: 'razorpay',
   manual: 'manual',
+  cash: 'cash',
+  upi: 'upi',
+  bank_transfer: 'bank_transfer',
+  cheque: 'cheque',
+  other: 'other',
 } as const;

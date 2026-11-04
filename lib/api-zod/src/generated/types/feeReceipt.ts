@@ -17,5 +17,8 @@ export interface FeeReceipt {
   /** @minimum 1 */
   amountPaise: number;
   paidAt: Date;
+  paymentDate: Date;
   paymentMethod: FeeReceiptPaymentMethod;
+  /** @nullable */
+  paymentReference: string | null;
 }

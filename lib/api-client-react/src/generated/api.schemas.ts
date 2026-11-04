@@ -1582,6 +1582,30 @@ export const FeeInvoiceStatus = {
   void: 'void',
 } as const;
 
+export type FeeInvoicePaymentPaymentMethod = typeof FeeInvoicePaymentPaymentMethod[keyof typeof FeeInvoicePaymentPaymentMethod];
+
+
+export const FeeInvoicePaymentPaymentMethod = {
+  mock: 'mock',
+  razorpay: 'razorpay',
+  manual: 'manual',
+  cash: 'cash',
+  upi: 'upi',
+  bank_transfer: 'bank_transfer',
+  cheque: 'cheque',
+  other: 'other',
+} as const;
+
+export interface FeeInvoicePayment {
+  receiptNumber: string;
+  /** @minimum 1 */
+  amountPaise: number;
+  paymentDate: string;
+  paymentMethod: FeeInvoicePaymentPaymentMethod;
+  /** @nullable */
+  paymentReference: string | null;
+}
+
 export interface FeeInvoice {
   id: string;
   studentId: string;
@@ -1608,6 +1632,7 @@ export interface FeeInvoice {
   /** @nullable */
   paidAt: string | null;
   canPay: boolean;
+  payments: FeeInvoicePayment[];
 }
 
 export interface FeeInvoiceConcessionInput {
@@ -1692,6 +1717,54 @@ export interface FeePaymentResult {
   paidAt: string;
 }
 
+export type ManualFeePaymentInputPaymentMethod = typeof ManualFeePaymentInputPaymentMethod[keyof typeof ManualFeePaymentInputPaymentMethod];
+
+
+export const ManualFeePaymentInputPaymentMethod = {
+  cash: 'cash',
+  upi: 'upi',
+  bank_transfer: 'bank_transfer',
+  cheque: 'cheque',
+  other: 'other',
+} as const;
+
+export interface ManualFeePaymentInput {
+  /**
+     * @minimum 1
+     * @maximum 1000000000
+     */
+  amountPaise: number;
+  paymentMethod: ManualFeePaymentInputPaymentMethod;
+  receivedOn: string;
+  /** @maxLength 120 */
+  reference?: string;
+}
+
+export type ManualFeePaymentResultPaymentMethod = typeof ManualFeePaymentResultPaymentMethod[keyof typeof ManualFeePaymentResultPaymentMethod];
+
+
+export const ManualFeePaymentResultPaymentMethod = {
+  cash: 'cash',
+  upi: 'upi',
+  bank_transfer: 'bank_transfer',
+  cheque: 'cheque',
+  other: 'other',
+} as const;
+
+export interface ManualFeePaymentResult {
+  invoiceId: string;
+  invoiceNumber: string;
+  /** @minimum 1 */
+  amountPaise: number;
+  status: FeeInvoiceStatus;
+  /** @minimum 0 */
+  balancePaise: number;
+  receiptNumber: string;
+  paidAt: string;
+  paymentDate: string;
+  paymentMethod: ManualFeePaymentResultPaymentMethod;
+}
+
 export type FeeReceiptPaymentMethod = typeof FeeReceiptPaymentMethod[keyof typeof FeeReceiptPaymentMethod];
 
 
@@ -1699,6 +1772,11 @@ export const FeeReceiptPaymentMethod = {
   mock: 'mock',
   razorpay: 'razorpay',
   manual: 'manual',
+  cash: 'cash',
+  upi: 'upi',
+  bank_transfer: 'bank_transfer',
+  cheque: 'cheque',
+  other: 'other',
 } as const;
 
 export interface FeeReceipt {
@@ -1711,7 +1789,10 @@ export interface FeeReceipt {
   /** @minimum 1 */
   amountPaise: number;
   paidAt: string;
+  paymentDate: string;
   paymentMethod: FeeReceiptPaymentMethod;
+  /** @nullable */
+  paymentReference: string | null;
 }
 
 export type AdmissionEnquiryStatus = typeof AdmissionEnquiryStatus[keyof typeof AdmissionEnquiryStatus];

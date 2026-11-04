@@ -18,12 +18,25 @@ import {
 import { SCHOOL_NAME } from "@/lib/branding";
 import { onlinePaymentsEnabled } from "@/lib/features";
 import { FeeConcessionEditor } from "./fee-concession-editor";
+import { FeePaymentRecorder } from "./fee-payment-recorder";
 import './school-work-pages.css';
 
 const adminRoles = ["super_admin", "org_admin", "campus_admin"];
 const money = (paise: number) => `₹${(paise / 100).toFixed(2)}`;
-const dateText = (value?: string | null) => value ? value.slice(0, 10) : "—";
+const dateText = (value?: string | Date | null) => value
+  ? value instanceof Date ? value.toISOString().slice(0, 10) : value.slice(0, 10)
+  : "—";
 const fieldClass = "field w-full";
+const paymentMethodText = (method: string) => ({
+  mock: "Online test",
+  razorpay: "Razorpay",
+  manual: "Manual",
+  cash: "Cash",
+  upi: "UPI",
+  bank_transfer: "Bank transfer",
+  cheque: "Cheque",
+  other: "Other",
+}[method] ?? method);
 
 function invoiceGenerationError(error: unknown) {
   const candidate = error as {
@@ -76,6 +89,7 @@ export function FeesPage({ roles }: FeesPageProps) {
   const [dueDate, setDueDate] = useState("");
   const [notice, setNotice] = useState("");
   const [editingInvoice, setEditingInvoice] = useState<FeeInvoice | null>(null);
+  const [recordingInvoice, setRecordingInvoice] = useState<FeeInvoice | null>(null);
   const selectedClassSections = sectionItems.filter((section) => section.classId === classId);
   const selectedSection = sectionItems.find((section) => section.id === sectionId);
   const targetSectionCount = targetMode === "class"
@@ -257,7 +271,7 @@ export function FeesPage({ roles }: FeesPageProps) {
             : <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] text-left text-sm">
                 <thead className="bg-[hsl(var(--muted))] text-xs uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-                  <tr><th className="p-3">Student</th><th className="p-3">Invoice</th><th className="p-3">Period</th><th className="p-3">Fee</th><th className="p-3">Concession</th><th className="p-3">Balance</th><th className="p-3">Due</th><th className="p-3">Status</th><th className="p-3">Receipt</th><th className="p-3">Action</th></tr>
+                  <tr><th className="p-3">Student</th><th className="p-3">Invoice</th><th className="p-3">Period</th><th className="p-3">Fee</th><th className="p-3">Concession</th><th className="p-3">Balance</th><th className="p-3">Due</th><th className="p-3">Status</th><th className="p-3">Payments & receipts</th><th className="p-3">Action</th></tr>
                 </thead>
                 <tbody>
                   {invoiceItems.map((invoice) => (
@@ -270,12 +284,35 @@ export function FeesPage({ roles }: FeesPageProps) {
                       <td className="p-3 font-semibold">{money(invoice.balancePaise)}</td>
                       <td className="p-3">{dateText(invoice.dueDate)}</td>
                       <td className="p-3 capitalize">{invoice.status}</td>
-                      <td className="p-3">{invoice.receiptNumber
-                        ? <Link className="font-semibold text-[hsl(var(--primary))] underline" href={`/fees/receipts/${encodeURIComponent(invoice.receiptNumber)}`}>{invoice.receiptNumber}</Link>
-                        : "—"}</td>
-                      <td className="p-3">{invoice.status === "unpaid" || invoice.status === "waived"
-                        ? <button className="btn btn-muted min-h-9 px-3" type="button" onClick={() => setEditingInvoice(invoice)}>{invoice.concessionPaise ? "Edit concession" : "Add concession"}</button>
-                        : "—"}</td>
+                      <td className="p-3">
+                        {invoice.payments.length
+                          ? <div className="space-y-2">
+                            {invoice.payments.map((payment) => (
+                              <div key={payment.receiptNumber}>
+                                <Link className="font-semibold text-[hsl(var(--primary))] underline" href={`/fees/receipts/${encodeURIComponent(payment.receiptNumber)}`}>{payment.receiptNumber}</Link>
+                                <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                                  {money(payment.amountPaise)} · {paymentMethodText(payment.paymentMethod)} · {dateText(payment.paymentDate)}
+                                  {payment.paymentReference ? ` · ${payment.paymentReference}` : ""}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                          : "—"}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex flex-wrap gap-2">
+                          {invoice.status === "unpaid" && invoice.balancePaise > 0 && (
+                            <button className="btn btn-primary min-h-9 px-3" type="button" onClick={() => setRecordingInvoice(invoice)}>
+                              Record payment
+                            </button>
+                          )}
+                          {(invoice.status === "unpaid" || invoice.status === "waived") && (
+                            <button className="btn btn-muted min-h-9 px-3" type="button" onClick={() => setEditingInvoice(invoice)}>
+                              {invoice.concessionPaise ? "Edit concession" : "Add concession"}
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -289,6 +326,16 @@ export function FeesPage({ roles }: FeesPageProps) {
             onSaved={(updatedInvoice) => {
               setEditingInvoice(null);
               setNotice(`Concession updated for ${updatedInvoice.studentName}. Only this invoice changed.`);
+            }}
+          />
+        )}
+        {recordingInvoice && (
+          <FeePaymentRecorder
+            invoice={recordingInvoice}
+            onClose={() => setRecordingInvoice(null)}
+            onSaved={(payment) => {
+              setRecordingInvoice(null);
+              setNotice(`${money(payment.amountPaise)} received from ${recordingInvoice.studentName}. Remaining balance: ${money(payment.balancePaise)}. Receipt ${payment.receiptNumber} is ready.`);
             }}
           />
         )}
@@ -351,11 +398,22 @@ export function FeesPage({ roles }: FeesPageProps) {
                               : "Online payments are unavailable. Contact the school."}
                         </span>
                       )}
-                      {invoice.receiptNumber && (
-                        <Link className="btn btn-muted" href={`/fees/receipts/${encodeURIComponent(invoice.receiptNumber)}`}>View receipt</Link>
-                      )}
                     </div>
                   </div>
+                  {invoice.payments.length > 0 && (
+                    <div className="mt-4 border-t border-[hsl(var(--border))] pt-4">
+                      <h3 className="text-sm font-semibold">Payment receipts</h3>
+                      <ul className="mt-2 flex flex-wrap gap-2">
+                        {invoice.payments.map((payment) => (
+                          <li key={payment.receiptNumber}>
+                            <Link className="btn btn-muted min-h-9 px-3 text-xs" href={`/fees/receipts/${encodeURIComponent(payment.receiptNumber)}`}>
+                              {money(payment.amountPaise)} · {paymentMethodText(payment.paymentMethod)} · receipt
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </article>
               ))}
             </div>}
@@ -387,10 +445,11 @@ export function FeeReceiptPage() {
           <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Receipt number</dt><dd className="mt-1 font-semibold">{item.receiptNumber}</dd></div>
           <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Invoice number</dt><dd className="mt-1 font-semibold">{item.invoiceNumber}</dd></div>
           <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Student</dt><dd className="mt-1 font-semibold">{item.studentName}</dd></div>
-          <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Payment date</dt><dd className="mt-1 font-semibold">{dateText(item.paidAt)}</dd></div>
+          <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Payment date</dt><dd className="mt-1 font-semibold">{dateText(item.paymentDate)}</dd></div>
           <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Description</dt><dd className="mt-1 font-semibold">{item.description}</dd></div>
           <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Billing period</dt><dd className="mt-1 font-semibold">{item.period} · {item.academicYear}</dd></div>
-          <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Payment method</dt><dd className="mt-1 font-semibold capitalize">{item.paymentMethod}</dd></div>
+          <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Payment method</dt><dd className="mt-1 font-semibold">{paymentMethodText(item.paymentMethod)}</dd></div>
+          {item.paymentReference && <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Reference</dt><dd className="mt-1 font-semibold">{item.paymentReference}</dd></div>}
           <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Amount paid</dt><dd className="mt-1 text-xl font-extrabold">{money(item.amountPaise)}</dd></div>
         </dl>
         <div className="mt-6 flex flex-wrap gap-3 print:hidden">

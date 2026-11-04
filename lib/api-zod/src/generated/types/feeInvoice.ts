@@ -5,6 +5,7 @@
  * Campus Live API contract
  * OpenAPI spec version: 0.1.0
  */
+import type { FeeInvoicePayment } from './feeInvoicePayment';
 import type { FeeInvoiceStatus } from './feeInvoiceStatus';
 
 export interface FeeInvoice {
@@ -33,4 +34,5 @@ export interface FeeInvoice {
   /** @nullable */
   paidAt: Date | null;
   canPay: boolean;
+  payments: FeeInvoicePayment[];
 }

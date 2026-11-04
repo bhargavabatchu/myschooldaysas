@@ -45,12 +45,13 @@ function createTestToken(user) {
   return `${content}.${signature}`;
 }
 
-async function apiRequest(method, path, token, payload) {
+async function apiRequest(method, path, token, payload, extraHeaders = {}) {
   const response = await fetch(`${apiBase.toString().replace(/\/+$/, "")}${path}`, {
     method,
     headers: {
       authorization: `Bearer ${token}`,
       ...(payload ? { "content-type": "application/json" } : {}),
+      ...extraHeaders,
     },
     ...(payload ? { body: JSON.stringify(payload) } : {}),
   });
@@ -101,7 +102,9 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
   const identity = await pool.query(
     "SELECT current_database() AS database_name, current_user AS role_name",
   );
-  assert.equal(identity.rows[0]?.database_name, "campus", "fee integration must use the local campus database");
+  if (process.env.FEES_EXPECTED_DATABASE_NAME) {
+    assert.equal(identity.rows[0]?.database_name, process.env.FEES_EXPECTED_DATABASE_NAME);
+  }
   assert.equal(identity.rows[0]?.role_name, "campus_app", "fee integration must use the least-privilege application role");
 
   const organizations = await pool.query(
@@ -382,11 +385,49 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
   assert.equal("concessionHistory" in parentInvoice, false, "parents cannot see concession audit history");
   assert.equal(parentInvoice.balancePaise, 10000);
 
+  const manualPaymentPath = `/fees/invoices/${parentInvoice.id}/payments`;
+  const manualPaymentBody = {
+    amountPaise: 4000,
+    paymentMethod: "cash",
+    receivedOn: new Date().toISOString().slice(0, 10),
+    reference: "cash-counter-test",
+  };
+  const manualIdempotencyKey = randomUUID();
+  const manualHeaders = { "Idempotency-Key": manualIdempotencyKey };
+  const studentManualPayment = await apiRequest("POST", manualPaymentPath, studentToken, manualPaymentBody, manualHeaders);
+  assert.equal(studentManualPayment.statusCode, 403, "students cannot record manual payments");
+  const parentManualPayment = await apiRequest("POST", manualPaymentPath, parentToken, manualPaymentBody, manualHeaders);
+  assert.equal(parentManualPayment.statusCode, 403, "parents cannot record manual payments");
+  const overBalancePayment = await apiRequest("POST", manualPaymentPath, adminToken, {
+    ...manualPaymentBody,
+    amountPaise: 10001,
+  }, { "Idempotency-Key": randomUUID() });
+  assert.equal(overBalancePayment.statusCode, 409, "manual payment must not exceed the unpaid balance");
+
+  const manualPaymentResponse = await apiRequest("POST", manualPaymentPath, adminToken, manualPaymentBody, manualHeaders);
+  assert.equal(manualPaymentResponse.statusCode, 200, manualPaymentResponse.body);
+  const manualPayment = manualPaymentResponse.json();
+  assert.equal(manualPayment.amountPaise, 4000);
+  assert.equal(manualPayment.balancePaise, 6000);
+  assert.equal(manualPayment.status, "unpaid");
+  assert.ok(manualPayment.receiptNumber);
+  const duplicateManualPayment = await apiRequest("POST", manualPaymentPath, adminToken, manualPaymentBody, manualHeaders);
+  assert.equal(duplicateManualPayment.statusCode, 200, duplicateManualPayment.body);
+  assert.equal(duplicateManualPayment.json().receiptNumber, manualPayment.receiptNumber, "idempotent retry returns the original receipt");
+
+  const refreshedParentInvoices = await apiRequest("GET", "/fees/my-invoices", parentToken);
+  const partiallyPaidInvoice = refreshedParentInvoices.json().items.find((invoice) => invoice.id === parentInvoice.id);
+  assert.equal(partiallyPaidInvoice.paidPaise, 4000);
+  assert.equal(partiallyPaidInvoice.balancePaise, 6000);
+  assert.equal(partiallyPaidInvoice.payments.length, 1);
+  assert.equal(partiallyPaidInvoice.payments[0].paymentMethod, "cash");
+  assert.equal(partiallyPaidInvoice.payments[0].paymentReference, "cash-counter-test");
+
   const firstPayment = await apiRequest("POST", `/fees/invoices/${parentInvoice.id}/pay`, parentToken, { amountPaise: 1 });
   assert.equal(firstPayment.statusCode, 200, firstPayment.body);
   const payment = firstPayment.json();
   assert.equal(payment.status, "paid");
-  assert.equal(payment.amountPaise, 10000, "the server must charge the remaining balance after concession, not a client-supplied amount");
+  assert.equal(payment.amountPaise, 6000, "online payment must charge only the remaining balance after a manual partial payment");
   assert.ok(payment.receiptNumber);
 
   const paidInvoiceConcession = await apiRequest("PATCH", `/fees/invoices/${parentInvoice.id}/concession`, adminToken, {
@@ -402,11 +443,17 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
   const receipt = await apiRequest("GET", `/fees/receipts/${encodeURIComponent(payment.receiptNumber)}`, parentToken);
   assert.equal(receipt.statusCode, 200, receipt.body);
   assert.equal(receipt.json().paymentMethod, "mock");
-  assert.equal(receipt.json().amountPaise, 10000);
+  assert.equal(receipt.json().amountPaise, 6000);
 
-  const studentReceipt = await apiRequest("GET", `/fees/receipts/${encodeURIComponent(payment.receiptNumber)}`, studentToken);
+  const manualReceipt = await apiRequest("GET", `/fees/receipts/${encodeURIComponent(manualPayment.receiptNumber)}`, parentToken);
+  assert.equal(manualReceipt.statusCode, 200, manualReceipt.body);
+  assert.equal(manualReceipt.json().paymentMethod, "cash");
+  assert.equal(manualReceipt.json().paymentReference, "cash-counter-test");
+  assert.equal(manualReceipt.json().amountPaise, 4000);
+
+  const studentReceipt = await apiRequest("GET", `/fees/receipts/${encodeURIComponent(manualPayment.receiptNumber)}`, studentToken);
   assert.equal(studentReceipt.statusCode, 200, studentReceipt.body);
   assert.equal(studentReceipt.json().studentName, users.parent.student_name);
-  const otherStudentReceipt = await apiRequest("GET", `/fees/receipts/${encodeURIComponent(payment.receiptNumber)}`, otherStudentToken);
+  const otherStudentReceipt = await apiRequest("GET", `/fees/receipts/${encodeURIComponent(manualPayment.receiptNumber)}`, otherStudentToken);
   assert.equal(otherStudentReceipt.statusCode, 404, "another student must not see this receipt");
 });

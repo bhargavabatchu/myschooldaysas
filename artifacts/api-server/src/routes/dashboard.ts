@@ -221,8 +221,8 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
                       FROM fees.payments payment
                      WHERE payment.org_id = $1
                        AND payment.status = 'captured'
-                       AND payment.captured_at >= date_trunc('month', now())
-                       AND payment.captured_at < date_trunc('month', now()) + interval '1 month'
+                       AND payment.received_on >= date_trunc('month', now())::date
+                       AND payment.received_on < (date_trunc('month', now()) + interval '1 month')::date
                   ), 0)::text AS collected_this_month_paise,
                   COALESCE(SUM(GREATEST(balance.net_fee_paise - balance.paid_paise, 0)), 0)::text
                     AS outstanding_paise,
@@ -246,8 +246,8 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
              LEFT JOIN fees.payments payment
                ON payment.org_id = $1
               AND payment.status = 'captured'
-              AND payment.captured_at >= months.month_start
-              AND payment.captured_at < months.month_start + interval '1 month'
+              AND payment.received_on >= months.month_start::date
+              AND payment.received_on < (months.month_start + interval '1 month')::date
             GROUP BY months.month_start
             ORDER BY months.month_start`,
           [user.orgId],

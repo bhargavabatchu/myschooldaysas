@@ -2030,6 +2030,37 @@ paths:
         "404": { description: Invoice not found }
         "409": { description: Invoice is void }
         "503": { description: Online payment is not configured in production }
+  /fees/invoices/{invoiceId}/payments:
+    post:
+      operationId: recordManualFeePayment
+      tags: [fees]
+      summary: Record a manual payment collected by the school
+      description: Administrator-only, supports partial payments, and returns the receipt for this payment.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: invoiceId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ManualFeePaymentInput" }
+      responses:
+        "200":
+          description: Payment recorded and a receipt issued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ManualFeePaymentResult" }
+        "400": { description: Invalid payment details or missing idempotency key }
+        "403": { description: Administrator role required }
+        "404": { description: Invoice not found }
+        "409": { description: "Invoice is not payable, payment exceeds balance, or key was reused" }
   /fees/receipts/{receiptNumber}:
     get:
       operationId: getFeeReceipt
@@ -3330,9 +3361,20 @@ components:
     FeeInvoiceStatus:
       type: string
       enum: [unpaid, paid, waived, void]
+    FeeInvoicePayment:
+      type: object
+      required: [receiptNumber, amountPaise, paymentDate, paymentMethod, paymentReference]
+      properties:
+        receiptNumber: { type: string }
+        amountPaise: { type: integer, minimum: 1 }
+        paymentDate: { type: string, format: date }
+        paymentMethod:
+          type: string
+          enum: [mock, razorpay, manual, cash, upi, bank_transfer, cheque, other]
+        paymentReference: { type: string, nullable: true }
     FeeInvoice:
       type: object
-      required: [id, studentId, studentName, sectionId, invoiceNumber, academicYear, period, description, amountPaise, concessionPaise, paidPaise, balancePaise, dueDate, status, receiptNumber, paidAt, canPay]
+      required: [id, studentId, studentName, sectionId, invoiceNumber, academicYear, period, description, amountPaise, concessionPaise, paidPaise, balancePaise, dueDate, status, receiptNumber, paidAt, canPay, payments]
       properties:
         id: { type: string, format: uuid }
         studentId: { type: string, format: uuid }
@@ -3352,6 +3394,9 @@ components:
         receiptNumber: { type: string, nullable: true }
         paidAt: { type: string, format: date-time, nullable: true }
         canPay: { type: boolean }
+        payments:
+          type: array
+          items: { $ref: "#/components/schemas/FeeInvoicePayment" }
     FeeInvoiceConcessionInput:
       type: object
       required: [concessionPaise, reason]
@@ -3417,9 +3462,34 @@ components:
         status: { type: string, enum: [paid] }
         receiptNumber: { type: string }
         paidAt: { type: string, format: date-time }
+    ManualFeePaymentInput:
+      type: object
+      required: [amountPaise, paymentMethod, receivedOn]
+      properties:
+        amountPaise: { type: integer, minimum: 1, maximum: 1000000000 }
+        paymentMethod:
+          type: string
+          enum: [cash, upi, bank_transfer, cheque, other]
+        receivedOn: { type: string, format: date }
+        reference: { type: string, maxLength: 120 }
+    ManualFeePaymentResult:
+      type: object
+      required: [invoiceId, invoiceNumber, amountPaise, status, balancePaise, receiptNumber, paidAt, paymentDate, paymentMethod]
+      properties:
+        invoiceId: { type: string, format: uuid }
+        invoiceNumber: { type: string }
+        amountPaise: { type: integer, minimum: 1 }
+        status: { $ref: "#/components/schemas/FeeInvoiceStatus" }
+        balancePaise: { type: integer, minimum: 0 }
+        receiptNumber: { type: string }
+        paidAt: { type: string, format: date-time }
+        paymentDate: { type: string, format: date }
+        paymentMethod:
+          type: string
+          enum: [cash, upi, bank_transfer, cheque, other]
     FeeReceipt:
       type: object
-      required: [receiptNumber, invoiceNumber, studentName, description, academicYear, period, amountPaise, paidAt, paymentMethod]
+      required: [receiptNumber, invoiceNumber, studentName, description, academicYear, period, amountPaise, paidAt, paymentDate, paymentMethod, paymentReference]
       properties:
         receiptNumber: { type: string }
         invoiceNumber: { type: string }
@@ -3429,7 +3499,11 @@ components:
         period: { type: string }
         amountPaise: { type: integer, minimum: 1 }
         paidAt: { type: string, format: date-time }
-        paymentMethod: { type: string, enum: [mock, razorpay, manual] }
+        paymentDate: { type: string, format: date }
+        paymentMethod:
+          type: string
+          enum: [mock, razorpay, manual, cash, upi, bank_transfer, cheque, other]
+        paymentReference: { type: string, nullable: true }
     AdmissionEnquiryStatus:
       type: string
       enum: [new, contacted, visit_scheduled, application_issued, closed, lost]

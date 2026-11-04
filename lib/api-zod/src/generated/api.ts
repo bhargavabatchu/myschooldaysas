@@ -3057,6 +3057,7 @@ export const getFeeInvoicesResponseItemsItemBalancePaiseMin = 0;
 
 
 
+
 export const GetFeeInvoicesResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.uuid(),
@@ -3076,7 +3077,14 @@ export const GetFeeInvoicesResponse = zod.object({
   "status": zod.enum(['unpaid', 'paid', 'waived', 'void']),
   "receiptNumber": zod.string().nullable(),
   "paidAt": zod.coerce.date().nullable(),
-  "canPay": zod.boolean()
+  "canPay": zod.boolean(),
+  "payments": zod.array(zod.object({
+  "receiptNumber": zod.string(),
+  "amountPaise": zod.int().min(1),
+  "paymentDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['mock', 'razorpay', 'manual', 'cash', 'upi', 'bank_transfer', 'cheque', 'other']),
+  "paymentReference": zod.string().nullable()
+}))
 })),
   "total": zod.int()
 })
@@ -3149,6 +3157,7 @@ export const generateFeeInvoicesResponseItemsItemBalancePaiseMin = 0;
 
 
 
+
 export const GenerateFeeInvoicesResponse = zod.object({
   "generatedCount": zod.int(),
   "total": zod.int(),
@@ -3170,7 +3179,14 @@ export const GenerateFeeInvoicesResponse = zod.object({
   "status": zod.enum(['unpaid', 'paid', 'waived', 'void']),
   "receiptNumber": zod.string().nullable(),
   "paidAt": zod.coerce.date().nullable(),
-  "canPay": zod.boolean()
+  "canPay": zod.boolean(),
+  "payments": zod.array(zod.object({
+  "receiptNumber": zod.string(),
+  "amountPaise": zod.int().min(1),
+  "paymentDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['mock', 'razorpay', 'manual', 'cash', 'upi', 'bank_transfer', 'cheque', 'other']),
+  "paymentReference": zod.string().nullable()
+}))
 }))
 })
 
@@ -3204,6 +3220,7 @@ export const updateFeeInvoiceConcessionResponseBalancePaiseMin = 0;
 
 
 
+
 export const UpdateFeeInvoiceConcessionResponse = zod.object({
   "id": zod.uuid(),
   "studentId": zod.uuid(),
@@ -3222,7 +3239,14 @@ export const UpdateFeeInvoiceConcessionResponse = zod.object({
   "status": zod.enum(['unpaid', 'paid', 'waived', 'void']),
   "receiptNumber": zod.string().nullable(),
   "paidAt": zod.coerce.date().nullable(),
-  "canPay": zod.boolean()
+  "canPay": zod.boolean(),
+  "payments": zod.array(zod.object({
+  "receiptNumber": zod.string(),
+  "amountPaise": zod.int().min(1),
+  "paymentDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['mock', 'razorpay', 'manual', 'cash', 'upi', 'bank_transfer', 'cheque', 'other']),
+  "paymentReference": zod.string().nullable()
+}))
 })
 
 
@@ -3263,6 +3287,7 @@ export const getMyFeeInvoicesResponseItemsItemBalancePaiseMin = 0;
 
 
 
+
 export const GetMyFeeInvoicesResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.uuid(),
@@ -3282,7 +3307,14 @@ export const GetMyFeeInvoicesResponse = zod.object({
   "status": zod.enum(['unpaid', 'paid', 'waived', 'void']),
   "receiptNumber": zod.string().nullable(),
   "paidAt": zod.coerce.date().nullable(),
-  "canPay": zod.boolean()
+  "canPay": zod.boolean(),
+  "payments": zod.array(zod.object({
+  "receiptNumber": zod.string(),
+  "amountPaise": zod.int().min(1),
+  "paymentDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['mock', 'razorpay', 'manual', 'cash', 'upi', 'bank_transfer', 'cheque', 'other']),
+  "paymentReference": zod.string().nullable()
+}))
 })),
   "total": zod.int()
 })
@@ -3310,6 +3342,49 @@ export const PayFeeInvoiceResponse = zod.object({
 
 
 /**
+ * Administrator-only, supports partial payments, and returns the receipt for this payment.
+ * @summary Record a manual payment collected by the school
+ */
+export const RecordManualFeePaymentParams = zod.object({
+  "invoiceId": zod.uuid()
+})
+
+export const RecordManualFeePaymentHeader = zod.object({
+  "Idempotency-Key": zod.uuid()
+})
+
+export const recordManualFeePaymentBodyAmountPaiseMax = 1000000000;
+
+export const recordManualFeePaymentBodyReferenceMax = 120;
+
+
+
+export const RecordManualFeePaymentBody = zod.object({
+  "amountPaise": zod.int().min(1).max(recordManualFeePaymentBodyAmountPaiseMax),
+  "paymentMethod": zod.enum(['cash', 'upi', 'bank_transfer', 'cheque', 'other']),
+  "receivedOn": zod.coerce.date(),
+  "reference": zod.string().max(recordManualFeePaymentBodyReferenceMax).optional()
+})
+
+
+export const recordManualFeePaymentResponseBalancePaiseMin = 0;
+
+
+
+export const RecordManualFeePaymentResponse = zod.object({
+  "invoiceId": zod.uuid(),
+  "invoiceNumber": zod.string(),
+  "amountPaise": zod.int().min(1),
+  "status": zod.enum(['unpaid', 'paid', 'waived', 'void']),
+  "balancePaise": zod.int().min(recordManualFeePaymentResponseBalancePaiseMin),
+  "receiptNumber": zod.string(),
+  "paidAt": zod.coerce.date(),
+  "paymentDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['cash', 'upi', 'bank_transfer', 'cheque', 'other'])
+})
+
+
+/**
  * @summary Read a payment receipt
  */
 export const getFeeReceiptPathReceiptNumberMin = 8;
@@ -3333,7 +3408,9 @@ export const GetFeeReceiptResponse = zod.object({
   "period": zod.string(),
   "amountPaise": zod.int().min(1),
   "paidAt": zod.coerce.date(),
-  "paymentMethod": zod.enum(['mock', 'razorpay', 'manual'])
+  "paymentDate": zod.coerce.date(),
+  "paymentMethod": zod.enum(['mock', 'razorpay', 'manual', 'cash', 'upi', 'bank_transfer', 'cheque', 'other']),
+  "paymentReference": zod.string().nullable()
 })
 
 
