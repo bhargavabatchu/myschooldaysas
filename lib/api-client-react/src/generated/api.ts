@@ -96,6 +96,7 @@ import type {
   GetLearningAssignmentsParams,
   GetLearningExamsParams,
   GetLearningReportCardsParams,
+  GetSchoolAdminAccountsParams,
   GetSchoolAttendanceParams,
   GetSections200,
   GetSectionsParams,
@@ -145,6 +146,8 @@ import type {
   RestoreStudentEnrollmentInput,
   RestoreStudentEnrollmentResult,
   RevokeConsent200,
+  SchoolAdminAccount,
+  SchoolAdminAccountPage,
   SchoolAttendanceInput,
   SchoolAttendancePage,
   SectionCapacityUpdateInput,
@@ -162,6 +165,7 @@ import type {
   TimetableSlot,
   TimetableSlotPage,
   TransferEnrollmentInput,
+  UpdateSchoolAdminAccountInput,
   User,
   WithdrawStudentEnrollmentInput,
   WithdrawStudentEnrollmentResult
@@ -2655,6 +2659,114 @@ export const useCreateTeacherAccount = <TError = ErrorType<void>,
       return useMutation(getCreateTeacherAccountMutationOptions(options), queryClient);
     }
 
+export const getGetSchoolAdminAccountsUrl = (params?: GetSchoolAdminAccountsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/identity/admins?${stringifiedParams}` : `/api/identity/admins`
+}
+
+/**
+ * @summary List school administrator accounts
+ */
+export const getSchoolAdminAccounts = async (params?: GetSchoolAdminAccountsParams, options?: Parameters<typeof customFetch>[1]): Promise<SchoolAdminAccountPage> => {
+
+  return customFetch<SchoolAdminAccountPage>(getGetSchoolAdminAccountsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolAdminAccountsQueryKey = (params?: GetSchoolAdminAccountsParams,) => {
+    return [
+    `/api/identity/admins`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchoolAdminAccountsQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolAdminAccounts>>, TError = ErrorType<void>>(params?: GetSchoolAdminAccountsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolAdminAccounts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolAdminAccountsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolAdminAccounts>>> = ({ signal }) => getSchoolAdminAccounts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolAdminAccounts>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSchoolAdminAccountsQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolAdminAccounts>>>
+export type GetSchoolAdminAccountsQueryError = ErrorType<void>
+
+
+export function useGetSchoolAdminAccounts<TData = Awaited<ReturnType<typeof getSchoolAdminAccounts>>, TError = ErrorType<void>>(
+ params: undefined |  GetSchoolAdminAccountsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolAdminAccounts>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSchoolAdminAccounts>>,
+          TError,
+          Awaited<ReturnType<typeof getSchoolAdminAccounts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSchoolAdminAccounts<TData = Awaited<ReturnType<typeof getSchoolAdminAccounts>>, TError = ErrorType<void>>(
+ params?: GetSchoolAdminAccountsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolAdminAccounts>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSchoolAdminAccounts>>,
+          TError,
+          Awaited<ReturnType<typeof getSchoolAdminAccounts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSchoolAdminAccounts<TData = Awaited<ReturnType<typeof getSchoolAdminAccounts>>, TError = ErrorType<void>>(
+ params?: GetSchoolAdminAccountsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolAdminAccounts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List school administrator accounts
+ */
+
+export function useGetSchoolAdminAccounts<TData = Awaited<ReturnType<typeof getSchoolAdminAccounts>>, TError = ErrorType<void>>(
+ params?: GetSchoolAdminAccountsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolAdminAccounts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSchoolAdminAccountsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getCreateSchoolAdminAccountUrl = () => {
 
 
@@ -2741,6 +2853,95 @@ export const useCreateSchoolAdminAccount = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCreateSchoolAdminAccountMutationOptions(options), queryClient);
+    }
+
+export const getUpdateSchoolAdminAccountUrl = (userId: string,) => {
+
+
+
+
+  return `/api/identity/admins/${userId}`
+}
+
+/**
+ * @summary Activate or deactivate a same-school administrator account
+ */
+export const updateSchoolAdminAccount = async (userId: string,
+    updateSchoolAdminAccountInput: UpdateSchoolAdminAccountInput, options?: Parameters<typeof customFetch>[1]): Promise<SchoolAdminAccount> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolAdminAccount>(getUpdateSchoolAdminAccountUrl(userId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateSchoolAdminAccountInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateSchoolAdminAccountMutationKey = () => ['updateSchoolAdminAccount'] as const;
+
+export const getUpdateSchoolAdminAccountMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolAdminAccount>>, TError,UpdateSchoolAdminAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSchoolAdminAccount>>, TError,UpdateSchoolAdminAccountMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSchoolAdminAccountMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSchoolAdminAccount>>, UpdateSchoolAdminAccountMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  updateSchoolAdminAccount(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSchoolAdminAccountMutationResult = NonNullable<Awaited<ReturnType<typeof updateSchoolAdminAccount>>>
+    export type UpdateSchoolAdminAccountMutationBody = BodyType<UpdateSchoolAdminAccountInput>
+    export type UpdateSchoolAdminAccountMutationError = ErrorType<void>
+    export type UpdateSchoolAdminAccountMutationVariables = {userId: string;data: BodyType<UpdateSchoolAdminAccountInput>}
+
+    /**
+ * @summary Activate or deactivate a same-school administrator account
+ */
+export const useUpdateSchoolAdminAccount = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSchoolAdminAccount>>, TError,UpdateSchoolAdminAccountMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateSchoolAdminAccount>>,
+        TError,
+        UpdateSchoolAdminAccountMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSchoolAdminAccountMutationOptions(options), queryClient);
     }
 
 export const getResetPasswordUrl = (userId: string,) => {

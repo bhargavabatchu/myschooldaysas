@@ -3,8 +3,11 @@ import {
   ChangePasswordBody,
   CreateSchoolAdminAccountBody,
   CreateTeacherAccountBody,
+  GetSchoolAdminAccountsQueryParams,
   LoginBody,
   ResetPasswordParams,
+  UpdateSchoolAdminAccountBody,
+  UpdateSchoolAdminAccountParams,
 } from "@workspace/api-zod";
 import { pool, withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
@@ -16,6 +19,7 @@ import {
   verifyPassword,
 } from "../lib/auth";
 import {
+  canDeactivateSchoolAdmin,
   canCreateSchoolAdmin,
   canManageUser,
   generateTemporaryPassword,
@@ -430,6 +434,176 @@ router.post(
       if (error?.code === "23505") {
         return void res.status(409).json(invalid("An account with this email already exists in your school.", "CONFLICT"));
       }
+      next(error);
+    }
+  },
+);
+
+router.get(
+  "/identity/admins",
+  requireAuth,
+  requireRoles("super_admin", "org_admin"),
+  async (req, res, next) => {
+    const actor = req.campusUser;
+    if (!actor) return void res.status(401).json(invalid("Sign in to continue.", "UNAUTHENTICATED"));
+    if (!canCreateSchoolAdmin(actor.roles)) {
+      return void res.status(403).json(invalid("Only a school or platform administrator can view school administrator accounts.", "FORBIDDEN"));
+    }
+    const rawQuery = req.query as Record<string, unknown>;
+    const rawIncludeDisabled = rawQuery.includeDisabled;
+    if (
+      rawIncludeDisabled !== undefined &&
+      rawIncludeDisabled !== true &&
+      rawIncludeDisabled !== false &&
+      rawIncludeDisabled !== "true" &&
+      rawIncludeDisabled !== "false"
+    ) {
+      return void res.status(400).json(invalid("includeDisabled must be true or false."));
+    }
+    const parsed = GetSchoolAdminAccountsQueryParams.safeParse({
+      ...rawQuery,
+      includeDisabled: rawIncludeDisabled === true || rawIncludeDisabled === "true",
+    });
+    if (!parsed.success) return void res.status(400).json(invalid("Provide valid account list filters."));
+
+    try {
+      const { includeDisabled, limit, offset } = parsed.data;
+      const page = await withOrg(actor.orgId, async (client) => {
+        const [countResult, accountResult] = await Promise.all([
+          client.query<{ total: number }>(
+            `SELECT count(*)::int AS total
+               FROM identity.users u
+               JOIN identity.user_roles role
+                 ON role.org_id = u.org_id AND role.user_id = u.id AND role.role = 'org_admin'
+              WHERE u.org_id = $1 AND ($2::boolean OR u.status = 'active')`,
+            [actor.orgId, includeDisabled],
+          ),
+          client.query(
+            `SELECT u.id, u.name, u.email, u.status, u.created_at AS "createdAt"
+               FROM identity.users u
+               JOIN identity.user_roles role
+                 ON role.org_id = u.org_id AND role.user_id = u.id AND role.role = 'org_admin'
+              WHERE u.org_id = $1 AND ($2::boolean OR u.status = 'active')
+              ORDER BY lower(u.name), lower(u.email), u.id
+              LIMIT $3 OFFSET $4`,
+            [actor.orgId, includeDisabled, limit, offset],
+          ),
+        ]);
+        return {
+          items: accountResult.rows,
+          total: countResult.rows[0]?.total ?? 0,
+          limit,
+          offset,
+        };
+      });
+      res.json(page);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.patch(
+  "/identity/admins/:userId",
+  requireAuth,
+  requireRoles("super_admin", "org_admin"),
+  async (req, res, next) => {
+    const actor = req.campusUser;
+    if (!actor) return void res.status(401).json(invalid("Sign in to continue.", "UNAUTHENTICATED"));
+    if (!canCreateSchoolAdmin(actor.roles)) {
+      return void res.status(403).json(invalid("Only a school or platform administrator can manage school administrator accounts.", "FORBIDDEN"));
+    }
+
+    const params = UpdateSchoolAdminAccountParams.safeParse(req.params);
+    const body = UpdateSchoolAdminAccountBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      return void res.status(400).json(invalid("Provide a valid administrator ID and account status."));
+    }
+    if (params.data.userId === actor.id && body.data.status === "disabled") {
+      return void res.status(409).json(invalid("You cannot deactivate your own administrator account.", "SELF_DEACTIVATION"));
+    }
+
+    try {
+      const result = await withOrg(actor.orgId, async (client) => {
+        // Lock this school's admin rows in a stable order so concurrent deactivations
+        // cannot both pass the final-active-admin check.
+        const lockedAdmins = await client.query<{ id: string }>(
+          `SELECT u.id
+             FROM identity.users u
+             JOIN identity.user_roles role
+               ON role.org_id = u.org_id AND role.user_id = u.id AND role.role = 'org_admin'
+            WHERE u.org_id = $1
+            ORDER BY u.id
+            FOR UPDATE OF u`,
+          [actor.orgId],
+        );
+        if (!lockedAdmins.rows.some((account) => account.id === params.data.userId)) {
+          return { kind: "not_found" as const };
+        }
+
+        const currentResult = await client.query<{
+          id: string; name: string; email: string; status: "active" | "disabled"; createdAt: Date;
+        }>(
+          `SELECT u.id, u.name, u.email, u.status, u.created_at AS "createdAt"
+             FROM identity.users u
+             JOIN identity.user_roles role
+               ON role.org_id = u.org_id AND role.user_id = u.id AND role.role = 'org_admin'
+            WHERE u.org_id = $1 AND u.id = $2`,
+          [actor.orgId, params.data.userId],
+        );
+        const current = currentResult.rows[0];
+        if (!current) return { kind: "not_found" as const };
+        if (current.status === body.data.status) return { kind: "updated" as const, account: current };
+
+        if (body.data.status === "disabled") {
+          const activeCount = await client.query<{ total: number }>(
+            `SELECT count(*)::int AS total
+               FROM identity.users u
+               JOIN identity.user_roles role
+                 ON role.org_id = u.org_id AND role.user_id = u.id AND role.role = 'org_admin'
+              WHERE u.org_id = $1 AND u.status = 'active'`,
+            [actor.orgId],
+          );
+          if (!canDeactivateSchoolAdmin(actor.id, params.data.userId, activeCount.rows[0]?.total ?? 0)) {
+            return { kind: "last_active_admin" as const };
+          }
+        }
+
+        const updated = await client.query<{
+          id: string; name: string; email: string; status: "active" | "disabled"; createdAt: Date;
+        }>(
+          `UPDATE identity.users
+              SET status = $3, updated_at = now()
+            WHERE org_id = $1 AND id = $2
+            RETURNING id, name, email, status, created_at AS "createdAt"`,
+          [actor.orgId, params.data.userId, body.data.status],
+        );
+        const account = updated.rows[0];
+        if (!account) return { kind: "not_found" as const };
+
+        if (body.data.status === "disabled") {
+          await client.query(
+            `UPDATE identity.auth_sessions
+                SET revoked_at = now()
+              WHERE org_id = $1 AND user_id = $2 AND revoked_at IS NULL`,
+            [actor.orgId, params.data.userId],
+          );
+        }
+        return { kind: "updated" as const, account };
+      });
+
+      if (result.kind === "not_found") {
+        return void res.status(404).json(invalid("School administrator not found.", "NOT_FOUND"));
+      }
+      if (result.kind === "last_active_admin") {
+        return void res.status(409).json(invalid("The school must keep at least one active administrator.", "LAST_ACTIVE_ADMIN"));
+      }
+      req.log.info(
+        { actorUserId: actor.id, organizationId: actor.orgId, targetUserId: result.account.id, status: result.account.status },
+        "School administrator account status updated",
+      );
+      res.json(result.account);
+    } catch (error) {
       next(error);
     }
   },

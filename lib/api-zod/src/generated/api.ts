@@ -593,6 +593,38 @@ export const CreateTeacherAccountResponse = zod.object({
 
 
 /**
+ * @summary List school administrator accounts
+ */
+export const getSchoolAdminAccountsQueryIncludeDisabledDefault = false;
+export const getSchoolAdminAccountsQueryLimitDefault = 50;
+export const getSchoolAdminAccountsQueryLimitMax = 100;
+
+export const getSchoolAdminAccountsQueryOffsetDefault = 0;
+export const getSchoolAdminAccountsQueryOffsetMin = 0;
+
+
+
+export const GetSchoolAdminAccountsQueryParams = zod.object({
+  "includeDisabled": zod.coerce.boolean().default(getSchoolAdminAccountsQueryIncludeDisabledDefault),
+  "limit": zod.coerce.number().int().min(1).max(getSchoolAdminAccountsQueryLimitMax).default(getSchoolAdminAccountsQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(getSchoolAdminAccountsQueryOffsetMin).default(getSchoolAdminAccountsQueryOffsetDefault)
+})
+
+export const GetSchoolAdminAccountsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "email": zod.email(),
+  "status": zod.enum(['active', 'disabled']),
+  "createdAt": zod.coerce.date()
+})),
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int()
+})
+
+
+/**
  * @summary Create a same-school administrator login with a one-time password
  */
 export const createSchoolAdminAccountBodyNameMax = 120;
@@ -617,6 +649,26 @@ export const CreateSchoolAdminAccountResponse = zod.object({
   "role": zod.enum(['org_admin']),
   "temporaryPassword": zod.string().min(createSchoolAdminAccountResponseTemporaryPasswordMin),
   "expiresAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Activate or deactivate a same-school administrator account
+ */
+export const UpdateSchoolAdminAccountParams = zod.object({
+  "userId": zod.uuid()
+})
+
+export const UpdateSchoolAdminAccountBody = zod.object({
+  "status": zod.enum(['active', 'disabled'])
+})
+
+export const UpdateSchoolAdminAccountResponse = zod.object({
+  "id": zod.uuid(),
+  "name": zod.string(),
+  "email": zod.email(),
+  "status": zod.enum(['active', 'disabled']),
+  "createdAt": zod.coerce.date()
 })
 
 

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   canManageUser,
   canCreateSchoolAdmin,
+  canDeactivateSchoolAdmin,
   generateTemporaryPassword,
   isValidNewPassword,
   needsPasswordRehash,
@@ -37,6 +38,12 @@ test("only a school or platform administrator can create a school administrator"
   assert.equal(canCreateSchoolAdmin(["campus_admin"]), false);
   assert.equal(canCreateSchoolAdmin(["teacher"]), false);
   assert.equal(canCreateSchoolAdmin(["student"]), false);
+});
+
+test("school admin deactivation cannot target the current admin or leave none active", () => {
+  assert.equal(canDeactivateSchoolAdmin("admin-a", "admin-b", 2), true);
+  assert.equal(canDeactivateSchoolAdmin("admin-a", "admin-a", 3), false);
+  assert.equal(canDeactivateSchoolAdmin("admin-a", "admin-b", 1), false);
 });
 
 test("legacy password hashes are upgraded after successful verification", () => {

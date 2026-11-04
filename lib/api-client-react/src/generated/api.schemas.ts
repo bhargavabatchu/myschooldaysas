@@ -125,6 +125,41 @@ export interface CreatedSchoolAdminAccount {
   expiresAt: string;
 }
 
+export type SchoolAdminAccountStatus = typeof SchoolAdminAccountStatus[keyof typeof SchoolAdminAccountStatus];
+
+
+export const SchoolAdminAccountStatus = {
+  active: 'active',
+  disabled: 'disabled',
+} as const;
+
+export interface SchoolAdminAccount {
+  id: string;
+  name: string;
+  email: string;
+  status: SchoolAdminAccountStatus;
+  createdAt: string;
+}
+
+export interface SchoolAdminAccountPage {
+  items: SchoolAdminAccount[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export type UpdateSchoolAdminAccountInputStatus = typeof UpdateSchoolAdminAccountInputStatus[keyof typeof UpdateSchoolAdminAccountInputStatus];
+
+
+export const UpdateSchoolAdminAccountInputStatus = {
+  active: 'active',
+  disabled: 'disabled',
+} as const;
+
+export interface UpdateSchoolAdminAccountInput {
+  status: UpdateSchoolAdminAccountInputStatus;
+}
+
 export type DashboardMetricTone = typeof DashboardMetricTone[keyof typeof DashboardMetricTone];
 
 
@@ -2115,6 +2150,19 @@ date: string;
 
 export type GetAnnouncementsParams = {
 unread?: boolean;
+};
+
+export type GetSchoolAdminAccountsParams = {
+includeDisabled?: boolean;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
 };
 
 export type GetClassesParams = {

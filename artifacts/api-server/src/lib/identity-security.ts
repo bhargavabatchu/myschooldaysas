@@ -29,6 +29,14 @@ export function canCreateSchoolAdmin(actorRoles: CampusRole[]): boolean {
   return canManageUser(actorRoles, ["org_admin"]);
 }
 
+export function canDeactivateSchoolAdmin(
+  actorUserId: string,
+  targetUserId: string,
+  activeAdminCount: number,
+): boolean {
+  return actorUserId !== targetUserId && activeAdminCount > 1;
+}
+
 export function needsPasswordRehash(encoded: string): boolean {
   const [, algorithm, nText] = encoded.split("$");
   return algorithm !== "scrypt" || Number(nText) < 131072;

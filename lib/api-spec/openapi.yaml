@@ -473,6 +473,30 @@ paths:
         "403": { description: Administrator access required }
         "409": { description: An account already uses this email }
   /identity/admins:
+    get:
+      operationId: getSchoolAdminAccounts
+      tags: [identity]
+      summary: List school administrator accounts
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: includeDisabled
+          schema: { type: boolean, default: false }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Paginated school administrator accounts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolAdminAccountPage" }
+        "401": { description: Authentication required }
+        "403": { description: School administrator access required }
     post:
       operationId: createSchoolAdminAccount
       tags: [identity]
@@ -496,6 +520,34 @@ paths:
         "401": { description: Authentication required }
         "403": { description: School administrator access required }
         "409": { description: An account already uses this email }
+  /identity/admins/{userId}:
+    patch:
+      operationId: updateSchoolAdminAccount
+      tags: [identity]
+      summary: Activate or deactivate a same-school administrator account
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateSchoolAdminAccountInput" }
+      responses:
+        "200":
+          description: Updated administrator account status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolAdminAccount" }
+        "400": { description: Invalid account status }
+        "401": { description: Authentication required }
+        "403": { description: Caller cannot manage this administrator }
+        "404": { description: School administrator not found }
+        "409": { description: Cannot disable your own or the final active administrator account }
   /identity/users/{userId}/reset-password:
     post:
       operationId: resetPassword
@@ -2320,6 +2372,31 @@ components:
         role: { type: string, enum: [org_admin] }
         temporaryPassword: { type: string, minLength: 12 }
         expiresAt: { type: string, format: date-time }
+    SchoolAdminAccount:
+      type: object
+      required: [id, name, email, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [active, disabled] }
+        createdAt: { type: string, format: date-time }
+    SchoolAdminAccountPage:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/SchoolAdminAccount" }
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+    UpdateSchoolAdminAccountInput:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: { type: string, enum: [active, disabled] }
     DashboardOverview:
       type: object
       required: [userName, role, metrics, upcomingSessions, recentActivity]
