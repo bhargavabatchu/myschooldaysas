@@ -72,6 +72,96 @@ async function attendanceRoster(client: any, orgId: string, sectionId: string, d
 const routes: FastifyPluginAsync = async (fastify) => {
   const router = createRouteRegistrar(fastify);
 
+  router.get("/school/my-attendance", requireAuth, async (req, res, next) => {
+    const user = req.campusUser;
+    if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+    if (!user.roles.includes("student")) {
+      return void res.status(403).json(errorBody("FORBIDDEN", "This view is only available to student accounts."));
+    }
+
+    const dailyMarks = `WITH student_marks AS (
+      SELECT DISTINCT ON (attendance.attendance_date)
+             attendance.attendance_date::text AS date,
+             mark.status,
+             classes.name AS class_name,
+             sections.name AS section_name
+        FROM school.attendance_marks mark
+        JOIN school.attendance_sessions attendance
+          ON attendance.org_id = mark.org_id AND attendance.id = mark.session_id
+        JOIN academic.sections sections
+          ON sections.org_id = attendance.org_id AND sections.id = attendance.section_id
+        JOIN academic.classes classes
+          ON classes.org_id = sections.org_id AND classes.id = sections.class_id
+       WHERE mark.org_id = $1 AND mark.student_user_id = $2
+         AND attendance.period IS NULL
+       ORDER BY attendance.attendance_date DESC, attendance.updated_at DESC, attendance.id DESC
+    )`;
+
+    try {
+      const result = await withOrg(user.orgId, async (client) => {
+        const summary = await client.query<{
+          total: number;
+          present_days: number;
+          absent_days: number;
+          late_days: number;
+          leave_days: number;
+          counted_days: number;
+          attendance_percent: string | null;
+        }>(
+          `${dailyMarks}
+           SELECT COUNT(*)::int AS total,
+                  COUNT(*) FILTER (WHERE status = 'present')::int AS present_days,
+                  COUNT(*) FILTER (WHERE status = 'absent')::int AS absent_days,
+                  COUNT(*) FILTER (WHERE status = 'late')::int AS late_days,
+                  COUNT(*) FILTER (WHERE status = 'leave')::int AS leave_days,
+                  COUNT(*) FILTER (WHERE status IN ('present', 'late', 'absent'))::int AS counted_days,
+                  CASE
+                    WHEN COUNT(*) FILTER (WHERE status IN ('present', 'late', 'absent')) = 0 THEN NULL
+                    ELSE ROUND(
+                      100.0 * COUNT(*) FILTER (WHERE status IN ('present', 'late'))
+                      / COUNT(*) FILTER (WHERE status IN ('present', 'late', 'absent')),
+                      1
+                    )::text
+                  END AS attendance_percent
+             FROM student_marks`,
+          [user.orgId, user.id],
+        );
+        const items = await client.query<{
+          date: string;
+          status: "present" | "absent" | "late" | "leave";
+          class_name: string;
+          section_name: string;
+        }>(
+          `${dailyMarks}
+           SELECT date, status, class_name, section_name
+             FROM student_marks
+            ORDER BY date DESC
+            LIMIT 50`,
+          [user.orgId, user.id],
+        );
+        const row = summary.rows[0]!;
+        return {
+          items: items.rows.map((item) => ({
+            date: item.date,
+            status: item.status,
+            className: item.class_name,
+            sectionName: item.section_name,
+          })),
+          total: row.total,
+          summary: {
+            presentDays: row.present_days,
+            absentDays: row.absent_days,
+            lateDays: row.late_days,
+            leaveDays: row.leave_days,
+            countedDays: row.counted_days,
+            attendancePercent: row.attendance_percent === null ? null : Number(row.attendance_percent),
+          },
+        };
+      });
+      res.json(result);
+    } catch (error) { next(error); }
+  });
+
   router.get("/school/attendance", requireAuth, async (req, res, next) => {
     const user = req.campusUser;
     if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));

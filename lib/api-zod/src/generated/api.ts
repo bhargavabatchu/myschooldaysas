@@ -254,6 +254,28 @@ export const MarkSchoolAttendanceResponse = zod.object({
 
 
 /**
+ * @summary Get the signed-in student's own attendance history
+ */
+export const GetMySchoolAttendanceResponse = zod.object({
+  "items": zod.array(zod.object({
+  "date": zod.coerce.date(),
+  "status": zod.enum(['present', 'absent', 'late', 'leave']),
+  "className": zod.string(),
+  "sectionName": zod.string()
+})),
+  "total": zod.int(),
+  "summary": zod.object({
+  "presentDays": zod.int(),
+  "absentDays": zod.int(),
+  "lateDays": zod.int(),
+  "leaveDays": zod.int(),
+  "countedDays": zod.int(),
+  "attendancePercent": zod.union([zod.number(),zod.null()])
+})
+})
+
+
+/**
  * @summary List school calendar events visible to the signed-in user
  */
 export const GetCalendarQueryParams = zod.object({

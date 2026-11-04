@@ -210,6 +210,18 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SchoolAttendancePage" }
+  /school/my-attendance:
+    get:
+      operationId: getMySchoolAttendance
+      tags: [school]
+      summary: Get the signed-in student's own attendance history
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Attendance history and summary for the signed-in student
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MySchoolAttendancePage" }
   /calendar:
     get:
       operationId: getCalendar
@@ -3527,6 +3539,36 @@ components:
               studentId: { type: string, format: uuid }
               status: { $ref: "#/components/schemas/SchoolAttendanceStatus" }
               remark: { type: string, maxLength: 500 }
+    MySchoolAttendanceItem:
+      type: object
+      required: [date, status, className, sectionName]
+      properties:
+        date: { type: string, format: date }
+        status: { $ref: "#/components/schemas/SchoolAttendanceStatus" }
+        className: { type: string }
+        sectionName: { type: string }
+    MySchoolAttendanceSummary:
+      type: object
+      required: [presentDays, absentDays, lateDays, leaveDays, countedDays, attendancePercent]
+      properties:
+        presentDays: { type: integer }
+        absentDays: { type: integer }
+        lateDays: { type: integer }
+        leaveDays: { type: integer }
+        countedDays: { type: integer }
+        attendancePercent:
+          anyOf:
+            - { type: number }
+            - { type: "null" }
+    MySchoolAttendancePage:
+      type: object
+      required: [items, total, summary]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/MySchoolAttendanceItem" }
+        total: { type: integer }
+        summary: { $ref: "#/components/schemas/MySchoolAttendanceSummary" }
     CalendarEventKind:
       type: string
       enum: [holiday, exam, event, ptm, working_day]

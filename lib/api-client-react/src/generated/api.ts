@@ -142,6 +142,7 @@ import type {
   LoginInput,
   ManualFeePaymentInput,
   ManualFeePaymentResult,
+  MySchoolAttendancePage,
   PromoteStudentsInput,
   PromotionResult,
   PublicAdmissionEnquiryInput,
@@ -1309,6 +1310,107 @@ export const useMarkSchoolAttendance = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getMarkSchoolAttendanceMutationOptions(options), queryClient);
     }
+
+export const getGetMySchoolAttendanceUrl = () => {
+
+
+
+
+  return `/api/school/my-attendance`
+}
+
+/**
+ * @summary Get the signed-in student's own attendance history
+ */
+export const getMySchoolAttendance = async ( options?: Parameters<typeof customFetch>[1]): Promise<MySchoolAttendancePage> => {
+
+  return customFetch<MySchoolAttendancePage>(getGetMySchoolAttendanceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMySchoolAttendanceQueryKey = () => {
+    return [
+    `/api/school/my-attendance`
+    ] as const;
+    }
+
+
+export const getGetMySchoolAttendanceQueryOptions = <TData = Awaited<ReturnType<typeof getMySchoolAttendance>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMySchoolAttendance>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMySchoolAttendanceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMySchoolAttendance>>> = ({ signal }) => getMySchoolAttendance({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMySchoolAttendance>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMySchoolAttendanceQueryResult = NonNullable<Awaited<ReturnType<typeof getMySchoolAttendance>>>
+export type GetMySchoolAttendanceQueryError = ErrorType<unknown>
+
+
+export function useGetMySchoolAttendance<TData = Awaited<ReturnType<typeof getMySchoolAttendance>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMySchoolAttendance>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMySchoolAttendance>>,
+          TError,
+          Awaited<ReturnType<typeof getMySchoolAttendance>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMySchoolAttendance<TData = Awaited<ReturnType<typeof getMySchoolAttendance>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMySchoolAttendance>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMySchoolAttendance>>,
+          TError,
+          Awaited<ReturnType<typeof getMySchoolAttendance>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMySchoolAttendance<TData = Awaited<ReturnType<typeof getMySchoolAttendance>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMySchoolAttendance>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get the signed-in student's own attendance history
+ */
+
+export function useGetMySchoolAttendance<TData = Awaited<ReturnType<typeof getMySchoolAttendance>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMySchoolAttendance>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMySchoolAttendanceQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetCalendarUrl = (params: GetCalendarParams,) => {
   const normalizedParams = new URLSearchParams();

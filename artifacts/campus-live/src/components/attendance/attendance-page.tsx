@@ -4,6 +4,7 @@ import { getGetSchoolAttendanceQueryKey, useGetAcademicTeacherAssignments, useGe
 import type { SchoolAttendanceInput, SchoolAttendancePage, SchoolAttendanceStudent } from '@workspace/api-client-react';
 import { CalendarDays, Check, CircleAlert, ClipboardCheck, RotateCcw, Save, UsersRound } from 'lucide-react';
 import '../fees/school-work-pages.css';
+import { StudentAttendanceView } from './student-attendance-view';
 
 type Props = { roles: string[] };
 type Mark = { status: 'present' | 'absent' | 'late' | 'leave' | null; remark: string };
@@ -47,6 +48,7 @@ export function AttendancePage({ roles }: Props) {
   const counts = students.reduce<Record<string, number>>((acc, item) => { const status = rowMark(item).status; if (status) acc[status] = (acc[status] ?? 0) + 1; return acc; }, {});
   const markAll = (status: Mark['status']) => setEdits(Object.fromEntries(students.map(item => [item.studentId, { status, remark: rowMark(item).remark }])));
 
+  if (!authorized && roles.includes('student')) return <StudentAttendanceView />;
   if (!authorized) return <section className="surface school-access-denied p-8 text-center"><CircleAlert className="mx-auto mb-3 text-[hsl(var(--accent))]"/><h1 className="display text-xl font-extrabold">Attendance is staff-only</h1><p className="mb-0 text-sm text-[hsl(var(--muted-foreground))]">Your account can view learning information, but cannot record attendance.</p></section>;
   const saveMarks = () => {
     if (!page || !complete) return;

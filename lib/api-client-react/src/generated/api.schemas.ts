@@ -1599,6 +1599,28 @@ export interface SchoolAttendanceInput {
   marks: SchoolAttendanceInputMarksItem[];
 }
 
+export interface MySchoolAttendanceItem {
+  date: string;
+  status: SchoolAttendanceStatus;
+  className: string;
+  sectionName: string;
+}
+
+export interface MySchoolAttendanceSummary {
+  presentDays: number;
+  absentDays: number;
+  lateDays: number;
+  leaveDays: number;
+  countedDays: number;
+  attendancePercent: number | null;
+}
+
+export interface MySchoolAttendancePage {
+  items: MySchoolAttendanceItem[];
+  total: number;
+  summary: MySchoolAttendanceSummary;
+}
+
 export type CalendarEventKind = typeof CalendarEventKind[keyof typeof CalendarEventKind];
 
 
