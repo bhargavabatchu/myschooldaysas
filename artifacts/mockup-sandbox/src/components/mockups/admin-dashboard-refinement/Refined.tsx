@@ -145,10 +145,28 @@ export function Refined() {
                       : card;
                   })}
                 </section>
-                {(dashboardData.attendanceToday.attendancePercent === null || dashboardData.fees.overdueInvoiceCount > 0) && <section className="dashboard-followups" aria-label="Administrator follow-ups">
-                  {dashboardData.attendanceToday.attendancePercent === null && <InertLink href="/attendance" className="dashboard-followup dashboard-followup-attendance"><span className="dashboard-followup-icon"><CalendarCheck size={16} /></span><span className="dashboard-followup-copy"><strong>Attendance has not been recorded</strong><span>Today’s register is ready for an update.</span></span><span className="dashboard-followup-action">Open attendance <ArrowRight size={13} /></span></InertLink>}
-                  {dashboardData.fees.overdueInvoiceCount > 0 && <InertLink href="/fees" className="dashboard-followup dashboard-followup-fees"><span className="dashboard-followup-icon"><CreditCard size={16} /></span><span className="dashboard-followup-copy"><strong>{dashboardData.fees.overdueInvoiceCount} overdue invoices</strong><span>Review outstanding school fees.</span></span><span className="dashboard-followup-action">Review fees <ArrowRight size={13} /></span></InertLink>}
-                </section>}
+                <section className="dashboard-admin-insights" aria-label="Attendance and fee overview">
+                  <div className="dashboard-insight-attendance">
+                    <div className="dashboard-insight-heading"><div className="dashboard-insight-symbol"><CalendarCheck size={16} /></div><div><span className="dashboard-panel-kicker">ATTENDANCE · {dashboardData.attendanceToday.attendanceDate}</span><h2>Today’s register</h2></div></div>
+                    {dashboardData.attendanceToday.attendancePercent === null
+                      ? <div className="dashboard-attendance-unmarked"><strong>Not recorded yet</strong><span>No marks have been entered for today.</span></div>
+                      : <div className="dashboard-attendance-readout"><strong>{dashboardData.attendanceToday.attendancePercent}<small>%</small></strong><div className="dashboard-attendance-detail"><span>{dashboardData.attendanceToday.presentStudents} present of {dashboardData.attendanceToday.markedStudents} marked</span></div><div className="dashboard-progress-track" role="progressbar" aria-label={`${dashboardData.attendanceToday.attendancePercent}% attendance among marked students`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={dashboardData.attendanceToday.attendancePercent}><span style={{ width: `${dashboardData.attendanceToday.attendancePercent}%` }} /></div></div>}
+                    <InertLink href="/attendance" className="dashboard-insight-link">Open register <ArrowRight size={13} /></InertLink>
+                  </div>
+                  <div className="dashboard-insight-fees">
+                    <div className="dashboard-insight-heading"><div className="dashboard-insight-symbol gold"><CreditCard size={16} /></div><div><span className="dashboard-panel-kicker">ACADEMIC YEAR {dashboardData.fees.academicYear}</span><h2>Fee collection</h2></div></div>
+                    <div className="dashboard-fee-totals">
+                      <div><span>Total issued</span><strong>{formatRupees(dashboardData.fees.totalFeesThisYearPaise)}</strong><small>Net of concessions</small></div>
+                      <div><span>Collected</span><strong>{formatRupees(dashboardData.fees.collectedThisYearPaise)}</strong><small>This year</small></div>
+                      <div><span>Outstanding</span><strong>{formatRupees(dashboardData.fees.outstandingThisYearPaise)}</strong><small>Due</small></div>
+                    </div>
+                    <div className="dashboard-collection-progress">
+                      <div className="dashboard-collection-progress-copy"><span>Collection rate</span><strong>{dashboardData.fees.collectionPercentThisYear === null ? "—" : `${dashboardData.fees.collectionPercentThisYear}%`}</strong></div>
+                      <div className="dashboard-collection-progress-track" role="progressbar" aria-label={dashboardData.fees.collectionPercentThisYear === null ? "No fee collection percentage available" : `${dashboardData.fees.collectionPercentThisYear}% of net fees collected for ${dashboardData.fees.academicYear}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={dashboardData.fees.collectionPercentThisYear ?? 0}><span style={{ width: `${dashboardData.fees.collectionPercentThisYear ?? 0}%` }} /></div>
+                    </div>
+                    <div className="dashboard-overdue-summary"><span>Overdue invoices</span><strong>{dashboardData.fees.overdueInvoiceCount}</strong><InertLink href="/fees" className="dashboard-insight-link">Review fees <ArrowRight size={13} /></InertLink></div>
+                  </div>
+                </section>
                 <section className="dashboard-admin-actions" aria-label="Quick actions">
                   <div className="dashboard-admin-actions-heading"><h2>Quick actions</h2><span>Common school tasks</span></div>
                   <nav className="admin-quick-actions" aria-label="Administrative shortcuts">
@@ -172,31 +190,6 @@ export function Refined() {
                     <div className="dashboard-activity-list">{dashboardData.recentActivity.map((item, index) => <article key={item.id} className="dashboard-activity-item"><span className={`dashboard-activity-node node-${index + 1}`} aria-hidden="true" /><div><div className="dashboard-activity-label">{item.label}</div><div className="dashboard-activity-description">{item.description}</div><div className="dashboard-activity-time">{formatDate(item.occurredAt)}</div></div></article>)}</div>
                   </section>
                 </div>
-                <section className="dashboard-admin-insights" aria-label="Administrator insights">
-                  <div className="dashboard-insight-attendance">
-                    <div className="dashboard-insight-heading"><div className="dashboard-insight-symbol"><CalendarCheck size={17} /></div><div><span className="dashboard-panel-kicker">ATTENDANCE · {dashboardData.attendanceToday.attendanceDate}</span><h2>Today’s register</h2></div></div>
-                    {dashboardData.attendanceToday.attendancePercent === null
-                      ? <div className="dashboard-attendance-unmarked"><strong>Not recorded yet</strong><span>No attendance marks have been recorded for today.</span><span className="refined-denominator">Once recorded, the rate compares present or late students with everyone marked today.</span></div>
-                      : <div className="dashboard-attendance-readout"><strong>{dashboardData.attendanceToday.attendancePercent}<small>%</small></strong><div className="dashboard-attendance-detail"><span>{dashboardData.attendanceToday.presentStudents} present of {dashboardData.attendanceToday.markedStudents} marked</span><span>Rate among marked students</span></div><div className="dashboard-progress-track" role="progressbar" aria-label={`${dashboardData.attendanceToday.attendancePercent}% of marked students present`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={dashboardData.attendanceToday.attendancePercent}><span style={{ width: `${dashboardData.attendanceToday.attendancePercent}%` }} /></div></div>}
-                    <InertLink href="/attendance" className="dashboard-insight-link">Open attendance <ArrowRight size={13} /></InertLink>
-                  </div>
-                  <div className="dashboard-insight-fees">
-                    <div className="dashboard-insight-heading"><div className="dashboard-insight-symbol gold"><CreditCard size={17} /></div><div><span className="dashboard-panel-kicker">FEES · ACADEMIC YEAR {dashboardData.fees.academicYear}</span><h2>Collection overview</h2></div></div>
-                    <div className="dashboard-fee-totals">
-                      <div><span>Total fees issued</span><strong>{formatRupees(dashboardData.fees.totalFeesThisYearPaise)}</strong><small>After concessions</small></div>
-                      <div><span>Collected</span><strong>{formatRupees(dashboardData.fees.collectedThisYearPaise)}</strong><small>This academic year</small></div>
-                      <div><span>Outstanding</span><strong>{formatRupees(dashboardData.fees.outstandingThisYearPaise)}</strong><small>This academic year</small></div>
-                    </div>
-                    <p className="refined-fee-note"><ShieldCheck size={13} />{`Academic year ${dashboardData.fees.academicYear}; total fees shown net of concessions.`}</p>
-                    <div className="dashboard-collection-progress">
-                      <div className="dashboard-collection-progress-copy"><div><span>Collected this academic year</span><strong>{dashboardData.fees.collectionPercentThisYear === null ? "—" : `${dashboardData.fees.collectionPercentThisYear}%`}</strong></div><small>{dashboardData.fees.collectionPercentThisYear === null ? `No fees issued for ${dashboardData.fees.academicYear} yet.` : `Overall collection rate for ${dashboardData.fees.academicYear}.`}</small></div>
-                      <div className="dashboard-collection-progress-track" role="progressbar" aria-label="No fee collection percentage available" aria-valuemin={0} aria-valuemax={100} aria-valuenow={dashboardData.fees.collectionPercentThisYear ?? 0}><span style={{ width: `${dashboardData.fees.collectionPercentThisYear ?? 0}%` }} /></div>
-                    </div>
-                    <div className="dashboard-overdue-summary"><span>Overdue invoices</span><strong>{dashboardData.fees.overdueInvoiceCount}</strong></div>
-                    <p className="dashboard-trend-empty">Monthly collection history will appear here.</p>
-                    <InertLink href="/fees" className="dashboard-insight-link">Review fees <ArrowRight size={13} /></InertLink>
-                  </div>
-                </section>
                 <section className="dashboard-toolband" aria-label="Learning tools"><div className="dashboard-toolband-mark"><BookOpen size={21} /></div><div className="dashboard-toolband-copy"><span>THE CLASSROOM, READY WHEN YOU ARE</span><strong>Bring the lesson to life.</strong><p>Open a shared board and pick up where the school day is.</p></div><InertLink href="/boards/templates" className="dashboard-community-link">Browse smartboards <ArrowRight size={15} /></InertLink></section>
                 <footer className="dashboard-footer"><BookOpen size={14} /><span>Learning, belonging, becoming.</span><span className="dashboard-footer-rule" /><span>{SCHOOL_NAME.toUpperCase()}</span></footer>
               </div>

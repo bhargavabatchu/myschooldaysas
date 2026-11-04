@@ -66,8 +66,8 @@ async function expectAdminInsights(page: Page) {
   const insights = page.getByTestId("dashboard-admin-insights");
   await expect(insights).toBeVisible();
   await expect(insights.getByRole("heading", { name: "Today’s register" })).toBeVisible();
-  await expect(insights.getByRole("heading", { name: "Collection overview" })).toBeVisible();
-  await expect(insights.getByText("Total fees issued", { exact: true })).toBeVisible();
+  await expect(insights.getByRole("heading", { name: "Fee collection" })).toBeVisible();
+  await expect(insights.getByText("Total issued", { exact: true })).toBeVisible();
   await expect(insights.getByText("Collected", { exact: true })).toBeVisible();
   await expect(insights.getByText("Outstanding", { exact: true })).toBeVisible();
   await expect(insights.getByText("Overdue invoices", { exact: true })).toBeVisible();
@@ -76,16 +76,11 @@ async function expectAdminInsights(page: Page) {
   const attendanceProgress = attendance.getByRole("progressbar");
   if (await attendanceProgress.count()) {
     await expect(attendanceProgress).toHaveAttribute("aria-label", /among marked students/);
-    await expect(attendance.getByText("Rate among marked students")).toBeVisible();
+    await expect(attendance.getByText(/present of .* marked/)).toBeVisible();
   } else {
-    await expect(attendance.getByText("The rate uses marked students as its denominator.")).toBeVisible();
+    await expect(attendance.getByText("Not recorded yet")).toBeVisible();
   }
-  const collectionTrend = insights.getByTestId("dashboard-fee-trend");
-  if (await collectionTrend.count()) {
-    await expect(collectionTrend.getByRole("img", { name: "Monthly fee collections" })).toBeVisible();
-  } else {
-    await expect(insights.getByTestId("dashboard-trend-empty")).toContainText(/No fee collections have been recorded|Monthly collection history will appear here/);
-  }
+  await expect(insights.getByTestId("dashboard-fee-trend")).toHaveCount(0);
   await expect(insights.getByRole("link", { name: /Review fees/ })).toHaveAttribute("href", "/fees");
 }
 
@@ -112,6 +107,20 @@ test("administrator dashboard data, navigation, and theme controls fit desktop a
   await expectDashboardData(page, true);
   await expectAdminInsights(page);
   await expectNoHorizontalOverflow(page);
+  const overviewOrder = await page.locator(".dashboard-content").evaluate((content) => {
+    const relevant = ["dashboard-metrics", "dashboard-admin-insights", "dashboard-admin-actions", "dashboard-panels"];
+    return Array.from(content.children)
+      .map((child) => relevant.find((className) => child.classList.contains(className)))
+      .filter((className): className is string => Boolean(className));
+  });
+  expect(overviewOrder.slice(0, 4)).toEqual([
+    "dashboard-metrics",
+    "dashboard-admin-insights",
+    "dashboard-admin-actions",
+    "dashboard-panels",
+  ]);
+  const desktopInsightsHeight = await page.getByTestId("dashboard-admin-insights").evaluate((element) => element.getBoundingClientRect().height);
+  expect(desktopInsightsHeight).toBeLessThan(220);
   await expect(page.getByTestId("link-nav-admissions")).toBeVisible();
   const quickActions = page.getByTestId("dashboard-admin-actions");
   await expect(quickActions).toBeVisible();
@@ -170,6 +179,12 @@ test("administrator dashboard data, navigation, and theme controls fit desktop a
     getComputedStyle(element).gridTemplateColumns.split(" ").length,
   );
   expect(mobileMetricsColumns).toBe(2);
+  const mobileInsightsColumns = await page.getByTestId("dashboard-admin-insights").evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns.split(" ").length,
+  );
+  expect(mobileInsightsColumns).toBe(1);
+  const mobileInsightsHeight = await page.getByTestId("dashboard-admin-insights").evaluate((element) => element.getBoundingClientRect().height);
+  expect(mobileInsightsHeight).toBeLessThan(360);
   const mobileQuickActionColumns = await page.locator(".admin-quick-actions").evaluate((element) =>
     getComputedStyle(element).gridTemplateColumns.split(" ").length,
   );
