@@ -164,9 +164,14 @@ function buildErrorMessage(response: Response, data: unknown): string {
 
   const title = getStringField(data, "title");
   const detail = getStringField(data, "detail");
+  const nestedError =
+    data && typeof data === "object"
+      ? (data as Record<string, unknown>).error
+      : undefined;
   const message =
     getStringField(data, "message") ??
     getStringField(data, "error_description") ??
+    getStringField(nestedError, "message") ??
     getStringField(data, "error");
 
   if (title && detail) return `${prefix}: ${title} — ${detail}`;

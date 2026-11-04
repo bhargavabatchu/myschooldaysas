@@ -66,3 +66,34 @@ test("customFetch does not refresh an unauthenticated login request", async () =
     setAuthTokenRefreshHandler(null);
   }
 });
+
+test("customFetch includes nested API error messages in HTTP errors", async () => {
+  const originalFetch = globalThis.fetch;
+  setAuthTokenGetter(null);
+  setAuthTokenRefreshHandler(null);
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        error: {
+          code: "CONFLICT",
+          message: "An account with this email already exists in your school.",
+        },
+      }),
+      {
+        status: 409,
+        statusText: "Conflict",
+        headers: { "content-type": "application/json" },
+      },
+    );
+
+  try {
+    await assert.rejects(
+      customFetch("/api/identity/admins", { method: "POST", body: "{}" }),
+      /HTTP 409 Conflict: An account with this email already exists in your school\./,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    setAuthTokenGetter(null);
+    setAuthTokenRefreshHandler(null);
+  }
+});
