@@ -813,6 +813,10 @@ paths:
             type: string
             format: uuid
         - in: query
+          name: includeArchived
+          description: Administrators may include students whose latest enrollment has ended.
+          schema: { type: boolean, default: false }
+        - in: query
           name: q
           schema:
             type: string
@@ -963,6 +967,50 @@ paths:
         "403": { description: Administrator role required }
         "404": { description: Active enrollment not found }
         "409": { description: Student is not in the final grade }
+  /academic/enrollments/withdraw:
+    post:
+      operationId: withdrawStudentEnrollment
+      tags: [academic]
+      summary: Withdraw a student while preserving their account and school records
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WithdrawStudentEnrollmentInput" }
+      responses:
+        "200":
+          description: All active enrollments for the student were ended as withdrawn
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WithdrawStudentEnrollmentResult" }
+        "400": { description: Invalid student ID }
+        "403": { description: Administrator role required }
+        "404": { description: Student account not found }
+        "409": { description: No active enrollment to withdraw }
+  /academic/enrollments/restore:
+    post:
+      operationId: restoreStudentEnrollment
+      tags: [academic]
+      summary: Restore a withdrawn student to their previous section
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RestoreStudentEnrollmentInput" }
+      responses:
+        "200":
+          description: The latest withdrawn enrollment was restored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RestoreStudentEnrollmentResult" }
+        "400": { description: Invalid student ID }
+        "403": { description: Administrator role required }
+        "404": { description: Student account not found }
+        "409": { description: "Student has no withdrawn enrollment, the section is unavailable, or the section is full" }
   /academic/enrollments/promote:
     post:
       operationId: promoteStudents
@@ -2398,6 +2446,7 @@ components:
         classId: { type: string, format: uuid }
         className: { type: string }
         status: { type: string, enum: [active, disabled] }
+        endedReason: { type: string, enum: [transferred, promoted, graduated, withdrawn] }
         academicYear: { type: string, minLength: 4, maxLength: 24 }
     StudentProfileFields:
       type: object
@@ -2435,7 +2484,7 @@ components:
         status: { type: string, enum: [active, disabled] }
         createdAt: { type: string, format: date-time }
         endedAt: { type: [string, "null"], format: date-time }
-        endedReason: { type: [string, "null"], enum: [transferred, promoted, graduated, null] }
+        endedReason: { type: [string, "null"], enum: [transferred, promoted, graduated, withdrawn, null] }
     StudentEnrollmentHistoryPage:
       type: object
       required: [items, total]
@@ -2468,6 +2517,34 @@ components:
         gradeLevel: { type: integer, enum: [12] }
         endedAt: { type: string, format: date-time }
         endedReason: { type: string, enum: [graduated] }
+    WithdrawStudentEnrollmentInput:
+      type: object
+      additionalProperties: false
+      required: [studentId]
+      properties:
+        studentId: { type: string, format: uuid }
+    WithdrawStudentEnrollmentResult:
+      type: object
+      required: [studentId, endedEnrollments, endedReason]
+      properties:
+        studentId: { type: string, format: uuid }
+        endedEnrollments: { type: integer, minimum: 1 }
+        endedReason: { type: string, enum: [withdrawn] }
+    RestoreStudentEnrollmentInput:
+      type: object
+      additionalProperties: false
+      required: [studentId]
+      properties:
+        studentId: { type: string, format: uuid }
+    RestoreStudentEnrollmentResult:
+      type: object
+      required: [studentId, enrollmentId, className, sectionName, academicYear]
+      properties:
+        studentId: { type: string, format: uuid }
+        enrollmentId: { type: string, format: uuid }
+        className: { type: string }
+        sectionName: { type: string }
+        academicYear: { type: string }
     PromoteStudentsInput:
       type: object
       additionalProperties: false

@@ -5,6 +5,7 @@
  * Campus Live API contract
  * OpenAPI spec version: 0.1.0
  */
+import type { StudentSummaryEndedReason } from './studentSummaryEndedReason';
 import type { StudentSummaryStatus } from './studentSummaryStatus';
 
 export interface StudentSummary {
@@ -17,6 +18,7 @@ export interface StudentSummary {
   classId?: string;
   className?: string;
   status: StudentSummaryStatus;
+  endedReason?: StudentSummaryEndedReason;
   /**
      * @minLength 4
      * @maxLength 24

@@ -11,6 +11,7 @@ import {
   GetStudentProfileParams,
   GetStudentsQueryParams,
   GraduateStudentEnrollmentBody,
+  RestoreStudentEnrollmentBody,
   GrantConsentBody,
   RevokeConsentParams,
   UpdateGuardianLinkFlagsBody,
@@ -21,6 +22,7 @@ import {
   UpdateSectionParams,
   UpdateStudentProfileBody,
   UpdateStudentProfileParams,
+  WithdrawStudentEnrollmentBody,
   PreviewStudentAdmissionsBody,
   PromoteStudentsBody,
   TransferStudentEnrollmentBody,
@@ -1456,6 +1458,196 @@ router.post("/academic/enrollments/graduate", requireAuth, async (req, res, next
   }
 });
 
+router.post("/academic/enrollments/withdraw", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can withdraw students."));
+  }
+  const body = WithdrawStudentEnrollmentBody.safeParse(req.body);
+  if (!body.success) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid student ID."));
+  }
+
+  try {
+    const result = await withOrg(user.orgId, async (client) => {
+      const student = await client.query(
+        `SELECT u.id
+           FROM identity.users u
+          WHERE u.org_id = $1 AND u.id = $2
+            AND EXISTS (
+              SELECT 1 FROM identity.user_roles role
+               WHERE role.org_id = u.org_id AND role.user_id = u.id AND role.role = 'student'
+            )`,
+        [user.orgId, body.data.studentId],
+      );
+      if (!student.rowCount) return { kind: "student_not_found" as const };
+
+      const active = await client.query<{ id: string }>(
+        `SELECT id
+           FROM academic.enrollments
+          WHERE org_id = $1 AND student_user_id = $2 AND status = 'active'
+          ORDER BY academic_year DESC, created_at DESC, id DESC
+          FOR UPDATE`,
+        [user.orgId, body.data.studentId],
+      );
+      if (!active.rowCount) return { kind: "no_active_enrollment" as const };
+
+      const ended = await client.query<{ id: string }>(
+        `UPDATE academic.enrollments
+            SET status = 'disabled', ended_at = now(), ended_reason = 'withdrawn'
+          WHERE org_id = $1 AND student_user_id = $2 AND status = 'active'
+          RETURNING id`,
+        [user.orgId, body.data.studentId],
+      );
+      if (!ended.rowCount) return { kind: "no_active_enrollment" as const };
+      return { kind: "withdrawn" as const, endedEnrollments: ended.rowCount };
+    });
+
+    if (result.kind === "student_not_found") {
+      return void res.status(404).json(errorBody("NOT_FOUND", "Student account not found."));
+    }
+    if (result.kind === "no_active_enrollment") {
+      return void res.status(409).json(errorBody("CONFLICT", "This student has no active enrollment to withdraw."));
+    }
+    res.json({
+      studentId: body.data.studentId,
+      endedEnrollments: result.endedEnrollments,
+      endedReason: "withdrawn",
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/academic/enrollments/restore", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can restore students."));
+  }
+  const body = RestoreStudentEnrollmentBody.safeParse(req.body);
+  if (!body.success) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid student ID."));
+  }
+
+  try {
+    const result = await withOrg(user.orgId, async (client) => {
+      const student = await client.query(
+        `SELECT u.id
+           FROM identity.users u
+          WHERE u.org_id = $1 AND u.id = $2
+            AND EXISTS (
+              SELECT 1 FROM identity.user_roles role
+               WHERE role.org_id = u.org_id AND role.user_id = u.id AND role.role = 'student'
+            )`,
+        [user.orgId, body.data.studentId],
+      );
+      if (!student.rowCount) return { kind: "student_not_found" as const };
+
+      const active = await client.query(
+        `SELECT 1 FROM academic.enrollments
+          WHERE org_id = $1 AND student_user_id = $2 AND status = 'active'
+          LIMIT 1`,
+        [user.orgId, body.data.studentId],
+      );
+      if (active.rowCount) return { kind: "already_active" as const };
+
+      const withdrawn = await client.query<{
+        id: string;
+        section_id: string;
+        admission_no: string;
+        academic_year: string;
+        class_name: string;
+        section_name: string;
+      }>(
+        `SELECT e.id, e.section_id, e.admission_no, e.academic_year,
+                c.name AS class_name, s.name AS section_name
+           FROM academic.enrollments e
+           JOIN academic.sections s ON s.org_id = e.org_id AND s.id = e.section_id
+           JOIN academic.classes c ON c.org_id = s.org_id AND c.id = s.class_id
+          WHERE e.org_id = $1 AND e.student_user_id = $2
+            AND e.status = 'disabled' AND e.ended_reason = 'withdrawn'
+          ORDER BY e.academic_year DESC, e.created_at DESC, e.id DESC
+          LIMIT 1
+          FOR UPDATE OF e`,
+        [user.orgId, body.data.studentId],
+      );
+      const enrollment = withdrawn.rows[0];
+      if (!enrollment) return { kind: "not_withdrawn" as const };
+
+      const sectionResult = await client.query<{
+        capacity: number | null;
+        section_active: boolean;
+        class_active: boolean;
+      }>(
+        `SELECT s.capacity, s.is_active AS section_active, c.is_active AS class_active
+           FROM academic.sections s
+           JOIN academic.classes c ON c.org_id = s.org_id AND c.id = s.class_id
+          WHERE s.org_id = $1 AND s.id = $2
+          FOR UPDATE OF s, c`,
+        [user.orgId, enrollment.section_id],
+      );
+      const section = sectionResult.rows[0];
+      if (!section?.section_active || !section.class_active) {
+        return { kind: "section_unavailable" as const };
+      }
+
+      const occupancy = await client.query<{ count: number }>(
+        `SELECT COUNT(*)::int AS count
+           FROM academic.enrollments
+          WHERE org_id = $1 AND section_id = $2 AND status = 'active'`,
+        [user.orgId, enrollment.section_id],
+      );
+      const activeCount = occupancy.rows[0]?.count ?? 0;
+      if (!sectionHasCapacity(section.capacity, activeCount)) {
+        return { kind: "section_full" as const, capacity: section.capacity };
+      }
+
+      const restored = await client.query(
+        `UPDATE academic.enrollments
+            SET status = 'active', ended_at = NULL, ended_reason = NULL
+          WHERE org_id = $1 AND id = $2
+            AND status = 'disabled' AND ended_reason = 'withdrawn'`,
+        [user.orgId, enrollment.id],
+      );
+      if (restored.rowCount !== 1) return { kind: "not_withdrawn" as const };
+      return {
+        kind: "restored" as const,
+        enrollmentId: enrollment.id,
+        className: enrollment.class_name,
+        sectionName: enrollment.section_name,
+        academicYear: enrollment.academic_year,
+      };
+    });
+
+    if (result.kind === "student_not_found") {
+      return void res.status(404).json(errorBody("NOT_FOUND", "Student account not found."));
+    }
+    if (result.kind === "already_active") {
+      return void res.status(409).json(errorBody("CONFLICT", "This student already has an active enrollment."));
+    }
+    if (result.kind === "not_withdrawn") {
+      return void res.status(409).json(errorBody("CONFLICT", "There is no withdrawn enrollment to restore."));
+    }
+    if (result.kind === "section_unavailable") {
+      return void res.status(409).json(errorBody("CONFLICT", "The student's previous class or section is archived."));
+    }
+    if (result.kind === "section_full") {
+      return void res.status(409).json(errorBody("CONFLICT", `The previous section is full at its capacity of ${result.capacity}.`));
+    }
+    res.json({
+      studentId: body.data.studentId,
+      enrollmentId: result.enrollmentId,
+      className: result.className,
+      sectionName: result.sectionName,
+      academicYear: result.academicYear,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post("/academic/enrollments/promote", requireAuth, async (req, res, next) => {
   const user = req.campusUser;
   if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
@@ -1744,10 +1936,22 @@ router.get("/academic/students", requireAuth, async (req, res, next) => {
     return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide valid registry filters and pagination."));
   }
   const { sectionId, classId, q, limit = 50, offset = 0 } = parsed.data;
+  const rawIncludeArchived = (req.query as { includeArchived?: unknown }).includeArchived;
+  if (rawIncludeArchived !== undefined
+    && rawIncludeArchived !== true
+    && rawIncludeArchived !== false
+    && rawIncludeArchived !== "true"
+    && rawIncludeArchived !== "false") {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "includeArchived must be true or false."));
+  }
+  const includeArchived = rawIncludeArchived === true || rawIncludeArchived === "true";
   const flags = roleFlags(user.roles);
   const maySeeRoster = flags.isAdmin || flags.isTeacher || flags.isStudent || flags.isParent;
 
   if (!maySeeRoster) return void res.status(403).json(errorBody("FORBIDDEN", "You cannot view this roster."));
+  if (includeArchived && !flags.isAdmin) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Only administrators can view withdrawn and inactive students."));
+  }
   if (!flags.isAdmin && !sectionId) {
     return void res.status(400).json(errorBody("INVALID_REQUEST", "A sectionId is required for this roster."));
   }
@@ -1760,8 +1964,11 @@ router.get("/academic/students", requireAuth, async (req, res, next) => {
       const currentEnrollments = `WITH current_enrollments AS (
         SELECT DISTINCT ON (e.org_id, e.student_user_id) e.*
           FROM academic.enrollments e
-         WHERE e.org_id = $1 AND e.status = 'active'
-         ORDER BY e.org_id, e.student_user_id, e.academic_year DESC, e.created_at DESC, e.id DESC
+         WHERE e.org_id = $1
+           AND (e.status = 'active' OR ($10::boolean AND e.status = 'disabled'))
+         ORDER BY e.org_id, e.student_user_id,
+                  CASE WHEN e.status = 'active' THEN 0 ELSE 1 END,
+                  e.academic_year DESC, e.created_at DESC, e.id DESC
       )`;
       const where = `e.org_id = $1
         AND ($2::uuid IS NULL OR e.section_id = $2)
@@ -1815,6 +2022,7 @@ router.get("/academic/students", requireAuth, async (req, res, next) => {
         user.id,
         flags.isParent,
         q ?? null,
+        includeArchived,
       ];
       const count = await client.query<{ total: string }>(
         `${currentEnrollments}
@@ -1830,14 +2038,14 @@ router.get("/academic/students", requireAuth, async (req, res, next) => {
         `${currentEnrollments}
          SELECT u.id, e.id AS enrollment_id, u.name, e.admission_no, s.id AS section_id,
                 s.name AS section_name, c.id AS class_id, c.name AS class_name,
-                e.status, e.academic_year
+                 e.status, e.academic_year, e.ended_reason
            FROM current_enrollments e
            JOIN academic.sections s ON s.id = e.section_id AND s.org_id = e.org_id
            JOIN academic.classes c ON c.id = s.class_id AND c.org_id = s.org_id
            JOIN identity.users u ON u.id = e.student_user_id AND u.org_id = e.org_id
           WHERE ${where}
            ORDER BY u.name, u.id
-           LIMIT $10 OFFSET $11`,
+           LIMIT $11 OFFSET $12`,
         [...queryParams, limit, offset],
       );
       return { rows: rows.rows, total: Number(count.rows[0]?.total ?? 0) };
@@ -1855,6 +2063,7 @@ router.get("/academic/students", requireAuth, async (req, res, next) => {
         className: row.class_name,
         status: row.status,
         academicYear: row.academic_year,
+        ...(row.ended_reason ? { endedReason: row.ended_reason } : {}),
       })),
       total: result.total,
       limit,

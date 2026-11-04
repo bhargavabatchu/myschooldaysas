@@ -10,6 +10,10 @@ export type GetStudentsParams = {
 sectionId?: string;
 classId?: string;
 /**
+ * Administrators may include students whose latest enrollment has ended.
+ */
+includeArchived?: boolean;
+/**
  * @maxLength 100
  */
 q?: string;

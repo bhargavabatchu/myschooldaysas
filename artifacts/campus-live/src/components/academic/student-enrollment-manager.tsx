@@ -10,9 +10,11 @@ import {
   useGraduateStudentEnrollment,
   useGetSections,
   useGetStudentEnrollmentHistory,
+  useRestoreStudentEnrollment,
   useTransferStudentEnrollment,
+  useWithdrawStudentEnrollment,
 } from "@workspace/api-client-react";
-import { ArrowRightLeft, GraduationCap } from "lucide-react";
+import { ArrowRightLeft, GraduationCap, RotateCcw, UserRoundMinus } from "lucide-react";
 
 type CurrentEnrollment = {
   enrollmentId: string;
@@ -38,7 +40,15 @@ export function StudentEnrollmentManager({
   const [targetSectionId, setTargetSectionId] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [graduationConfirmed, setGraduationConfirmed] = useState(false);
+  const [withdrawConfirmed, setWithdrawConfirmed] = useState(false);
+  const [restoreConfirmed, setRestoreConfirmed] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const invalidateStudentRecords = () => {
+    queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey(studentId) });
+    queryClient.invalidateQueries({ queryKey: getGetStudentEnrollmentHistoryQueryKey(studentId) });
+    queryClient.invalidateQueries({ queryKey: getGetStudentsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetSectionsQueryKey() });
+  };
 
   useEffect(() => {
     const destinations = (sections.data?.items ?? []).filter((section) => section.id !== currentEnrollment?.sectionId);
@@ -52,10 +62,7 @@ export function StudentEnrollmentManager({
       onSuccess: (result) => {
         setConfirmed(false);
         setSuccessMessage(`Moved to ${result.sectionName}. The previous enrollment remains in history.`);
-        queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey(studentId) });
-        queryClient.invalidateQueries({ queryKey: getGetStudentEnrollmentHistoryQueryKey(studentId) });
-        queryClient.invalidateQueries({ queryKey: getGetStudentsQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetSectionsQueryKey() });
+        invalidateStudentRecords();
       },
     },
   });
@@ -66,10 +73,25 @@ export function StudentEnrollmentManager({
         setGraduationConfirmed(false);
         setConfirmed(false);
         setSuccessMessage(`${result.className} student graduated for ${result.academicYear}. Enrollment history is preserved.`);
-        queryClient.invalidateQueries({ queryKey: getGetStudentProfileQueryKey(studentId) });
-        queryClient.invalidateQueries({ queryKey: getGetStudentEnrollmentHistoryQueryKey(studentId) });
-        queryClient.invalidateQueries({ queryKey: getGetStudentsQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetSectionsQueryKey() });
+        invalidateStudentRecords();
+      },
+    },
+  });
+  const withdraw = useWithdrawStudentEnrollment({
+    mutation: {
+      onSuccess: (result) => {
+        setWithdrawConfirmed(false);
+        setSuccessMessage(`Student withdrawn. ${result.endedEnrollments} active enrollment(s) closed; the account and school records were kept.`);
+        invalidateStudentRecords();
+      },
+    },
+  });
+  const restore = useRestoreStudentEnrollment({
+    mutation: {
+      onSuccess: (result) => {
+        setRestoreConfirmed(false);
+        setSuccessMessage(`Student restored to ${result.className} · ${result.sectionName} for ${result.academicYear}.`);
+        invalidateStudentRecords();
       },
     },
   });
@@ -91,6 +113,20 @@ export function StudentEnrollmentManager({
     graduate.mutate({ data: { enrollmentId: currentEnrollment.enrollmentId } });
   }
 
+  function submitWithdrawal() {
+    if (!currentEnrollment || !withdrawConfirmed || transfer.isPending || graduate.isPending) return;
+    setSuccessMessage("");
+    withdraw.mutate({ data: { studentId } });
+  }
+
+  function submitRestore() {
+    if (!restoreConfirmed || transfer.isPending || graduate.isPending || withdraw.isPending) return;
+    setSuccessMessage("");
+    restore.mutate({ data: { studentId } });
+  }
+
+  const latestHistory = history.data?.items[0];
+  const canRestore = !currentEnrollment && latestHistory?.status === "disabled" && latestHistory.endedReason === "withdrawn";
   const selectedTarget = sections.data?.items.find((section) => section.id === targetSectionId);
 
   return (
@@ -102,7 +138,7 @@ export function StudentEnrollmentManager({
         <div className="min-w-0 flex-1">
           <h3 id="student-enrollment-history-heading" className="m-0 text-sm font-bold">Enrollment history</h3>
           <p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-            Previous class and section records stay available after transfers, promotions, and graduation.
+            Previous class and section records stay available after transfers, promotions, graduation, and withdrawal.
           </p>
         </div>
       </div>
@@ -186,9 +222,89 @@ export function StudentEnrollmentManager({
         </div>
       )}
 
+      {currentEnrollment && (
+        <div className="mt-3 rounded-lg border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.04)] p-3">
+          <div className="flex items-start gap-2">
+            <UserRoundMinus size={17} className="mt-0.5 shrink-0 text-[hsl(var(--destructive))]" aria-hidden="true" />
+            <div>
+              <p className="m-0 text-xs font-bold">Withdraw student</p>
+              <p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                Ends all active enrollments and removes the student from active rosters. Profile, fees, attendance, results, and sign-in access are kept.
+              </p>
+            </div>
+          </div>
+          {!withdrawConfirmed ? (
+            <button
+              type="button"
+              className="btn btn-muted mt-3 min-h-9 border border-[hsl(var(--destructive)/.35)] px-3 text-xs text-[hsl(var(--destructive))]"
+              onClick={() => setWithdrawConfirmed(true)}
+              disabled={transfer.isPending || graduate.isPending || withdraw.isPending}
+            >
+              Withdraw student
+            </button>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="m-0 text-xs font-semibold">Confirm withdrawal? No school records will be deleted.</p>
+              <div className="flex gap-2">
+                <button type="button" className="btn btn-muted min-h-9 px-3 text-xs" onClick={() => setWithdrawConfirmed(false)}>Cancel</button>
+                <button
+                  type="button"
+                  className="btn min-h-9 bg-[hsl(var(--destructive))] px-3 text-xs text-white"
+                  onClick={submitWithdrawal}
+                  disabled={withdraw.isPending || transfer.isPending || graduate.isPending}
+                >
+                  {withdraw.isPending ? "Withdrawing…" : "Confirm withdrawal"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {canRestore && (
+        <div className="mt-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-3">
+          <div className="flex items-start gap-2">
+            <RotateCcw size={17} className="mt-0.5 shrink-0 text-[hsl(var(--primary))]" aria-hidden="true" />
+            <div>
+              <p className="m-0 text-xs font-bold">Restore withdrawn student</p>
+              <p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                Reopens the most recent withdrawn enrollment in its previous section, if the section has capacity.
+              </p>
+            </div>
+          </div>
+          {!restoreConfirmed ? (
+            <button
+              type="button"
+              className="btn btn-muted mt-3 min-h-9 px-3 text-xs"
+              onClick={() => setRestoreConfirmed(true)}
+              disabled={restore.isPending}
+            >
+              Restore enrollment
+            </button>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="m-0 text-xs font-semibold">Restore this student to the previous class and section?</p>
+              <div className="flex gap-2">
+                <button type="button" className="btn btn-muted min-h-9 px-3 text-xs" onClick={() => setRestoreConfirmed(false)}>Cancel</button>
+                <button
+                  type="button"
+                  className="btn btn-primary min-h-9 px-3 text-xs"
+                  onClick={submitRestore}
+                  disabled={restore.isPending}
+                >
+                  {restore.isPending ? "Restoring…" : "Confirm restore"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {sections.isError && <p role="alert" className="mt-2 text-xs text-[hsl(var(--destructive))]">{readableError(sections.error)}</p>}
       {transfer.isError && <p role="alert" className="mt-2 text-xs text-[hsl(var(--destructive))]">{readableError(transfer.error)}</p>}
       {graduate.isError && <p role="alert" className="mt-2 text-xs text-[hsl(var(--destructive))]">{readableError(graduate.error)}</p>}
+      {withdraw.isError && <p role="alert" className="mt-2 text-xs text-[hsl(var(--destructive))]">{readableError(withdraw.error)}</p>}
+      {restore.isError && <p role="alert" className="mt-2 text-xs text-[hsl(var(--destructive))]">{readableError(restore.error)}</p>}
       {history.isError && <p role="alert" className="mt-2 text-xs text-[hsl(var(--destructive))]">{readableError(history.error)}</p>}
       {successMessage && <p role="status" className="mt-2 text-xs text-[hsl(var(--primary))]">{successMessage}</p>}
       {!currentEnrollment && <p className="mt-3 text-xs text-[hsl(var(--muted-foreground))]">This student has no active enrollment.</p>}
@@ -217,6 +333,8 @@ export function StudentEnrollmentManager({
                          ? "Promoted"
                          : item.endedReason === "graduated"
                            ? "Graduated"
+                           : item.endedReason === "withdrawn"
+                             ? "Withdrawn"
                            : item.status === "active" ? "Current" : "Inactive"}
                   </td>
                 </tr>

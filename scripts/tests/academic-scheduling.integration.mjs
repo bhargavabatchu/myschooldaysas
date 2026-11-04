@@ -502,6 +502,73 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.equal(singleCreated.status, 201, JSON.stringify(singleCreated.body));
     assert.equal(singleCreated.body.total, 1);
 
+    const singleStudent = singleCreated.body.items[0];
+    assert.ok(singleStudent?.id, "The integration student must be created.");
+    const deniedStudentWithdrawal = await api(
+      "/academic/enrollments/withdraw",
+      teacher,
+      "POST",
+      { studentId: singleStudent.id },
+    );
+    assert.equal(deniedStudentWithdrawal.status, 403, "teachers cannot withdraw students");
+    const deniedArchivedRegistry = await api(
+      `/academic/students?includeArchived=true&q=${encodeURIComponent(singleAdmission.rows[0].name)}`,
+      teacher,
+    );
+    assert.equal(deniedArchivedRegistry.status, 403, "teachers cannot list withdrawn students");
+
+    const withdrawnStudent = await api(
+      "/academic/enrollments/withdraw",
+      admin,
+      "POST",
+      { studentId: singleStudent.id },
+    );
+    assert.equal(withdrawnStudent.status, 200, JSON.stringify(withdrawnStudent.body));
+    assert.ok(withdrawnStudent.body.endedEnrollments >= 1);
+    assert.equal(withdrawnStudent.body.endedReason, "withdrawn");
+    const withdrawnHistory = await api(`/academic/students/${singleStudent.id}/enrollments`, admin);
+    assert.equal(withdrawnHistory.status, 200, JSON.stringify(withdrawnHistory.body));
+    assert.equal(withdrawnHistory.body.items[0].endedReason, "withdrawn");
+    assert.ok(withdrawnHistory.body.items[0].endedAt, "Withdrawal date is kept in the enrollment history.");
+    const archivedStudentSearch = await api(
+      `/academic/students?includeArchived=true&q=${encodeURIComponent(singleAdmission.rows[0].name)}`,
+      admin,
+    );
+    assert.ok(archivedStudentSearch.body.items.some((item) =>
+      item.id === singleStudent.id && item.endedReason === "withdrawn",
+    ));
+    const activeStudentSearch = await api(
+      `/academic/students?includeArchived=false&q=${encodeURIComponent(singleAdmission.rows[0].name)}`,
+      admin,
+    );
+    assert.ok(!activeStudentSearch.body.items.some((item) => item.id === singleStudent.id));
+    const duplicateWithdrawal = await api(
+      "/academic/enrollments/withdraw",
+      admin,
+      "POST",
+      { studentId: singleStudent.id },
+    );
+    assert.equal(duplicateWithdrawal.status, 409);
+
+    const deniedStudentRestore = await api(
+      "/academic/enrollments/restore",
+      teacher,
+      "POST",
+      { studentId: singleStudent.id },
+    );
+    assert.equal(deniedStudentRestore.status, 403, "teachers cannot restore students");
+    const restoredStudent = await api(
+      "/academic/enrollments/restore",
+      admin,
+      "POST",
+      { studentId: singleStudent.id },
+    );
+    assert.equal(restoredStudent.status, 200, JSON.stringify(restoredStudent.body));
+    assert.equal(restoredStudent.body.studentId, singleStudent.id);
+    const restoredHistory = await api(`/academic/students/${singleStudent.id}/enrollments`, admin);
+    assert.equal(restoredHistory.status, 200, JSON.stringify(restoredHistory.body));
+    assert.equal(restoredHistory.body.items[0].status, "active");
+
     const batchPreview = await api("/academic/admissions/preview", admin, "POST", admissionBatch);
     assert.equal(batchPreview.status, 200, JSON.stringify(batchPreview.body));
     assert.equal(batchPreview.body.valid, true, JSON.stringify(batchPreview.body.errors));

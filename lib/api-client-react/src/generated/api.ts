@@ -142,6 +142,8 @@ import type {
   PromotionResult,
   PublicAdmissionEnquiryInput,
   PublicAdmissionEnquiryResult,
+  RestoreStudentEnrollmentInput,
+  RestoreStudentEnrollmentResult,
   RevokeConsent200,
   SchoolAttendanceInput,
   SchoolAttendancePage,
@@ -160,7 +162,9 @@ import type {
   TimetableSlot,
   TimetableSlotPage,
   TransferEnrollmentInput,
-  User
+  User,
+  WithdrawStudentEnrollmentInput,
+  WithdrawStudentEnrollmentResult
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -4592,6 +4596,182 @@ export const useGraduateStudentEnrollment = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getGraduateStudentEnrollmentMutationOptions(options), queryClient);
+    }
+
+export const getWithdrawStudentEnrollmentUrl = () => {
+
+
+
+
+  return `/api/academic/enrollments/withdraw`
+}
+
+/**
+ * @summary Withdraw a student while preserving their account and school records
+ */
+export const withdrawStudentEnrollment = async (withdrawStudentEnrollmentInput: WithdrawStudentEnrollmentInput, options?: Parameters<typeof customFetch>[1]): Promise<WithdrawStudentEnrollmentResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<WithdrawStudentEnrollmentResult>(getWithdrawStudentEnrollmentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(withdrawStudentEnrollmentInput)
+  }
+);}
+
+
+
+
+
+export const getWithdrawStudentEnrollmentMutationKey = () => ['withdrawStudentEnrollment'] as const;
+
+export const getWithdrawStudentEnrollmentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof withdrawStudentEnrollment>>, TError,WithdrawStudentEnrollmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof withdrawStudentEnrollment>>, TError,WithdrawStudentEnrollmentMutationVariables, TContext> => {
+
+const mutationKey = getWithdrawStudentEnrollmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof withdrawStudentEnrollment>>, WithdrawStudentEnrollmentMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  withdrawStudentEnrollment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type WithdrawStudentEnrollmentMutationResult = NonNullable<Awaited<ReturnType<typeof withdrawStudentEnrollment>>>
+    export type WithdrawStudentEnrollmentMutationBody = BodyType<WithdrawStudentEnrollmentInput>
+    export type WithdrawStudentEnrollmentMutationError = ErrorType<void>
+    export type WithdrawStudentEnrollmentMutationVariables = {data: BodyType<WithdrawStudentEnrollmentInput>}
+
+    /**
+ * @summary Withdraw a student while preserving their account and school records
+ */
+export const useWithdrawStudentEnrollment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof withdrawStudentEnrollment>>, TError,WithdrawStudentEnrollmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof withdrawStudentEnrollment>>,
+        TError,
+        WithdrawStudentEnrollmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getWithdrawStudentEnrollmentMutationOptions(options), queryClient);
+    }
+
+export const getRestoreStudentEnrollmentUrl = () => {
+
+
+
+
+  return `/api/academic/enrollments/restore`
+}
+
+/**
+ * @summary Restore a withdrawn student to their previous section
+ */
+export const restoreStudentEnrollment = async (restoreStudentEnrollmentInput: RestoreStudentEnrollmentInput, options?: Parameters<typeof customFetch>[1]): Promise<RestoreStudentEnrollmentResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RestoreStudentEnrollmentResult>(getRestoreStudentEnrollmentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restoreStudentEnrollmentInput)
+  }
+);}
+
+
+
+
+
+export const getRestoreStudentEnrollmentMutationKey = () => ['restoreStudentEnrollment'] as const;
+
+export const getRestoreStudentEnrollmentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreStudentEnrollment>>, TError,RestoreStudentEnrollmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreStudentEnrollment>>, TError,RestoreStudentEnrollmentMutationVariables, TContext> => {
+
+const mutationKey = getRestoreStudentEnrollmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreStudentEnrollment>>, RestoreStudentEnrollmentMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  restoreStudentEnrollment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreStudentEnrollmentMutationResult = NonNullable<Awaited<ReturnType<typeof restoreStudentEnrollment>>>
+    export type RestoreStudentEnrollmentMutationBody = BodyType<RestoreStudentEnrollmentInput>
+    export type RestoreStudentEnrollmentMutationError = ErrorType<void>
+    export type RestoreStudentEnrollmentMutationVariables = {data: BodyType<RestoreStudentEnrollmentInput>}
+
+    /**
+ * @summary Restore a withdrawn student to their previous section
+ */
+export const useRestoreStudentEnrollment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreStudentEnrollment>>, TError,RestoreStudentEnrollmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof restoreStudentEnrollment>>,
+        TError,
+        RestoreStudentEnrollmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRestoreStudentEnrollmentMutationOptions(options), queryClient);
     }
 
 export const getPromoteStudentsUrl = () => {

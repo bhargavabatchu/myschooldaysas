@@ -44,6 +44,7 @@ academic:006|services/academic/migrations/006_enrollment_transitions.sql
 academic:007|services/academic/migrations/007_graduation_reason.sql
 academic:008|services/academic/migrations/008_class_section_archive.sql
 academic:009|services/academic/migrations/009_section_subjects.sql
+academic:010|services/academic/migrations/010_withdrawn_reason.sql
 school:001|services/school/migrations/001_attendance.sql
 school:002|services/school/migrations/002_announcements.sql
 school:003|services/school/migrations/003_calendar_events.sql

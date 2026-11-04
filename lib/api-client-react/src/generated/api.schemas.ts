@@ -285,6 +285,16 @@ export const StudentSummaryStatus = {
   disabled: 'disabled',
 } as const;
 
+export type StudentSummaryEndedReason = typeof StudentSummaryEndedReason[keyof typeof StudentSummaryEndedReason];
+
+
+export const StudentSummaryEndedReason = {
+  transferred: 'transferred',
+  promoted: 'promoted',
+  graduated: 'graduated',
+  withdrawn: 'withdrawn',
+} as const;
+
 export interface StudentSummary {
   id: string;
   enrollmentId: string;
@@ -295,6 +305,7 @@ export interface StudentSummary {
   classId?: string;
   className?: string;
   status: StudentSummaryStatus;
+  endedReason?: StudentSummaryEndedReason;
   /**
      * @minLength 4
      * @maxLength 24
@@ -382,6 +393,7 @@ export const StudentEnrollmentHistoryItemEndedReason = {
   transferred: 'transferred',
   promoted: 'promoted',
   graduated: 'graduated',
+  withdrawn: 'withdrawn',
 } as const;
 
 export interface StudentEnrollmentHistoryItem {
@@ -434,6 +446,36 @@ export interface GraduationResult {
   gradeLevel: GraduationResultGradeLevel;
   endedAt: string;
   endedReason: GraduationResultEndedReason;
+}
+
+export interface WithdrawStudentEnrollmentInput {
+  studentId: string;
+}
+
+export type WithdrawStudentEnrollmentResultEndedReason = typeof WithdrawStudentEnrollmentResultEndedReason[keyof typeof WithdrawStudentEnrollmentResultEndedReason];
+
+
+export const WithdrawStudentEnrollmentResultEndedReason = {
+  withdrawn: 'withdrawn',
+} as const;
+
+export interface WithdrawStudentEnrollmentResult {
+  studentId: string;
+  /** @minimum 1 */
+  endedEnrollments: number;
+  endedReason: WithdrawStudentEnrollmentResultEndedReason;
+}
+
+export interface RestoreStudentEnrollmentInput {
+  studentId: string;
+}
+
+export interface RestoreStudentEnrollmentResult {
+  studentId: string;
+  enrollmentId: string;
+  className: string;
+  sectionName: string;
+  academicYear: string;
 }
 
 export type PromoteStudentsInputSectionMap = {[key: string]: string};
@@ -2104,6 +2146,10 @@ offset?: number;
 export type GetStudentsParams = {
 sectionId?: string;
 classId?: string;
+/**
+ * Administrators may include students whose latest enrollment has ended.
+ */
+includeArchived?: boolean;
 /**
  * @maxLength 100
  */

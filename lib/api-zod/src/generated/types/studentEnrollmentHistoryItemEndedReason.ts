@@ -16,4 +16,5 @@ export const StudentEnrollmentHistoryItemEndedReason = {
   transferred: 'transferred',
   promoted: 'promoted',
   graduated: 'graduated',
+  withdrawn: 'withdrawn',
 } as const;
