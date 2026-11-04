@@ -132,19 +132,6 @@ export function Refined() {
                 <div className="dashboard-welcome-actions"><InertLink href="/boards/templates" className="dashboard-secondary-link"><Library size={15} />Smartboards</InertLink><InertLink href="/learning" className="dashboard-primary-link">Explore learning <ArrowRight size={16} /></InertLink></div>
               </section>
               <div className="dashboard-content">
-                <section className="dashboard-metrics" aria-label="School overview metrics">
-                  {dashboardData.metrics.map((metric, index) => {
-                    const Icon = [Users, BookOpen, Video, Activity][index];
-                    const card = <article key={metric.label} className={`dashboard-metric dashboard-metric-${metric.tone}`}>
-                      <div className="dashboard-metric-top"><span>{metric.label}</span><div className="dashboard-metric-icon"><Icon size={17} strokeWidth={1.8} /></div></div>
-                      <div className="dashboard-metric-value">{metric.value}</div>
-                      <div className="dashboard-metric-change">{metric.tone === "positive" ? <ArrowUpRight size={13} /> : metric.tone === "warning" ? <ArrowDown size={13} /> : null}<span>{metric.change}</span></div>
-                    </article>;
-                    return metric.label === "Total students"
-                      ? <InertLink key={`link-${metric.label}`} href="/admin/students" className="dashboard-metric-link" ariaLabel={`View the total student list for ${metric.value} students`}>{card}</InertLink>
-                      : card;
-                  })}
-                </section>
                 <section className="dashboard-admin-insights" aria-label="Attendance and fee overview">
                   <div className="dashboard-insight-attendance">
                     <div className="dashboard-insight-heading"><div className="dashboard-insight-symbol"><CalendarCheck size={16} /></div><div><span className="dashboard-panel-kicker">ATTENDANCE · {dashboardData.attendanceToday.attendanceDate}</span><h2>Today’s register</h2></div></div>
@@ -166,6 +153,19 @@ export function Refined() {
                     </div>
                     <div className="dashboard-overdue-summary"><span>Overdue invoices</span><strong>{dashboardData.fees.overdueInvoiceCount}</strong><InertLink href="/fees" className="dashboard-insight-link">Review fees <ArrowRight size={13} /></InertLink></div>
                   </div>
+                </section>
+                <section className="dashboard-metrics" aria-label="School overview metrics">
+                  {dashboardData.metrics.map((metric, index) => {
+                    const Icon = [Users, BookOpen, Video, Activity][index];
+                    const card = <article key={metric.label} className={`dashboard-metric dashboard-metric-${metric.tone}`}>
+                      <div className="dashboard-metric-top"><span>{metric.label}</span><div className="dashboard-metric-icon"><Icon size={17} strokeWidth={1.8} /></div></div>
+                      <div className="dashboard-metric-value">{metric.value}</div>
+                      <div className="dashboard-metric-change">{metric.tone === "positive" ? <ArrowUpRight size={13} /> : metric.tone === "warning" ? <ArrowDown size={13} /> : null}<span>{metric.change}</span></div>
+                    </article>;
+                    return metric.label === "Total students"
+                      ? <InertLink key={`link-${metric.label}`} href="/admin/students" className="dashboard-metric-link" ariaLabel={`View the total student list for ${metric.value} students`}>{card}</InertLink>
+                      : card;
+                  })}
                 </section>
                 <section className="dashboard-admin-actions" aria-label="Quick actions">
                   <div className="dashboard-admin-actions-heading"><h2>Quick actions</h2><span>Common school tasks</span></div>

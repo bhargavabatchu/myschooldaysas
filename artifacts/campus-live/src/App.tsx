@@ -454,19 +454,6 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
     </section>
     <QueryState loading={overview.isLoading} error={overview.error} empty={!data} retry={() => overview.refetch()}>
       {data && <div className="dashboard-content">
-        <section className="dashboard-metrics" aria-label="School overview metrics">
-          {data.metrics.map((metric, i) => {
-            const Icon = [Users, BookOpen, Video, Activity][i] ?? Activity;
-            const card = <article key={metric.label} className={`dashboard-metric dashboard-metric-${metric.tone}`}>
-              <div className="dashboard-metric-top"><span>{metric.label}</span><div className="dashboard-metric-icon"><Icon size={17} strokeWidth={1.8}/></div></div>
-              <div data-testid={`metric-value-${i}`} className="dashboard-metric-value">{metric.value}</div>
-              <div className="dashboard-metric-change">{metric.tone === 'positive' ? <ArrowUpRight size={13}/> : metric.tone === 'warning' ? <ArrowDown size={13}/> : null}<span>{metric.change}</span></div>
-            </article>;
-            return adminInsights && metric.label === 'Total students'
-              ? <Link key={`link-${metric.label}`} href="/admin/students" className="dashboard-metric-link" aria-label={`View the total student list for ${metric.value} students`}>{card}</Link>
-              : card;
-          })}
-        </section>
         {adminInsights && <section className="dashboard-admin-insights" aria-label="Attendance and fee overview" data-testid="dashboard-admin-insights">
           <div className="dashboard-insight-attendance" data-testid="dashboard-attendance-insight">
             <div className="dashboard-insight-heading">
@@ -499,6 +486,19 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
             <div className="dashboard-overdue-summary"><span>Overdue invoices</span><strong>{adminInsights.fees.overdueInvoiceCount}</strong><Link href="/fees" className="dashboard-insight-link">Review fees <ArrowRight size={13}/></Link></div>
           </div>
         </section>}
+        <section className="dashboard-metrics" aria-label="School overview metrics">
+          {data.metrics.map((metric, i) => {
+            const Icon = [Users, BookOpen, Video, Activity][i] ?? Activity;
+            const card = <article key={metric.label} className={`dashboard-metric dashboard-metric-${metric.tone}`}>
+              <div className="dashboard-metric-top"><span>{metric.label}</span><div className="dashboard-metric-icon"><Icon size={17} strokeWidth={1.8}/></div></div>
+              <div data-testid={`metric-value-${i}`} className="dashboard-metric-value">{metric.value}</div>
+              <div className="dashboard-metric-change">{metric.tone === 'positive' ? <ArrowUpRight size={13}/> : metric.tone === 'warning' ? <ArrowDown size={13}/> : null}<span>{metric.change}</span></div>
+            </article>;
+            return adminInsights && metric.label === 'Total students'
+              ? <Link key={`link-${metric.label}`} href="/admin/students" className="dashboard-metric-link" aria-label={`View the total student list for ${metric.value} students`}>{card}</Link>
+              : card;
+          })}
+        </section>
         {adminInsights && <section className="dashboard-admin-actions" aria-label="Quick actions" data-testid="dashboard-admin-actions">
           <div className="dashboard-admin-actions-heading"><h2>Quick actions</h2><span>Common school tasks</span></div>
           <nav className="admin-quick-actions" aria-label="Administrative shortcuts">

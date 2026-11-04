@@ -114,8 +114,8 @@ test("administrator dashboard data, navigation, and theme controls fit desktop a
       .filter((className): className is string => Boolean(className));
   });
   expect(overviewOrder.slice(0, 4)).toEqual([
-    "dashboard-metrics",
     "dashboard-admin-insights",
+    "dashboard-metrics",
     "dashboard-admin-actions",
     "dashboard-panels",
   ]);
