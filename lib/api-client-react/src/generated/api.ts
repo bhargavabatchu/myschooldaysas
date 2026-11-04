@@ -155,8 +155,8 @@ import type {
   SetAcademicEntityActivityInput,
   StudentEnrollmentHistoryPage,
   StudentPage,
-  StudentProfileFields,
   StudentProfileResponse,
+  StudentProfileUpdateInput,
   StudentSummary,
   TemporaryPasswordResult,
   TimetableSlot,
@@ -4153,10 +4153,10 @@ export const getUpdateStudentProfileUrl = (studentId: string,) => {
 }
 
 /**
- * @summary Replace a student's profile fields
+ * @summary Update a student's identity, current admission number, and profile
  */
 export const updateStudentProfile = async (studentId: string,
-    studentProfileFields: StudentProfileFields, options?: Parameters<typeof customFetch>[1]): Promise<StudentProfileResponse> => {
+    studentProfileUpdateInput: StudentProfileUpdateInput, options?: Parameters<typeof customFetch>[1]): Promise<StudentProfileResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -4177,7 +4177,7 @@ return customFetch<StudentProfileResponse>(getUpdateStudentProfileUrl(studentId)
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(studentProfileFields)
+    body: JSON.stringify(studentProfileUpdateInput)
   }
 );}
 
@@ -4215,12 +4215,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type UpdateStudentProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateStudentProfile>>>
-    export type UpdateStudentProfileMutationBody = BodyType<StudentProfileFields>
+    export type UpdateStudentProfileMutationBody = BodyType<StudentProfileUpdateInput>
     export type UpdateStudentProfileMutationError = ErrorType<void>
-    export type UpdateStudentProfileMutationVariables = {studentId: string;data: BodyType<StudentProfileFields>}
+    export type UpdateStudentProfileMutationVariables = {studentId: string;data: BodyType<StudentProfileUpdateInput>}
 
     /**
- * @summary Replace a student's profile fields
+ * @summary Update a student's identity, current admission number, and profile
  */
 export const useUpdateStudentProfile = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStudentProfile>>, TError,UpdateStudentProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

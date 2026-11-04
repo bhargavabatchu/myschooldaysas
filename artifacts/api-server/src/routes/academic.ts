@@ -2252,17 +2252,25 @@ router.put("/academic/students/:studentId/profile", requireAuth, async (req, res
     return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide valid student profile fields."));
   }
 
+  const name = parsed.data.name.trim();
+  const email = parsed.data.email.trim().toLowerCase();
+  const admissionNo = parsed.data.admissionNo?.trim() || null;
+  if (!name || !email || (parsed.data.admissionNo !== undefined && !admissionNo)) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Name, email, and admission number cannot be blank."));
+  }
+
   const clean = (value: string | null) => value?.trim() || null;
+  const fields = parsed.data.profile;
   const profile = {
-    dateOfBirth: clean(parsed.data.dateOfBirth),
-    gender: clean(parsed.data.gender),
-    phone: clean(parsed.data.phone),
-    address: clean(parsed.data.address),
-    bloodGroup: clean(parsed.data.bloodGroup),
-    guardianName: clean(parsed.data.guardianName),
-    guardianEmail: clean(parsed.data.guardianEmail)?.toLowerCase() ?? null,
-    guardianPhone: clean(parsed.data.guardianPhone),
-    guardianRelationship: clean(parsed.data.guardianRelationship),
+    dateOfBirth: clean(fields.dateOfBirth),
+    gender: clean(fields.gender),
+    phone: clean(fields.phone),
+    address: clean(fields.address),
+    bloodGroup: clean(fields.bloodGroup),
+    guardianName: clean(fields.guardianName),
+    guardianEmail: clean(fields.guardianEmail)?.toLowerCase() ?? null,
+    guardianPhone: clean(fields.guardianPhone),
+    guardianRelationship: clean(fields.guardianRelationship),
   };
   if (profile.dateOfBirth) {
     const parsedDate = new Date(`${profile.dateOfBirth}T00:00:00.000Z`);
@@ -2289,10 +2297,58 @@ router.put("/academic/students/:studentId/profile", requireAuth, async (req, res
             AND EXISTS (
               SELECT 1 FROM identity.user_roles role
                WHERE role.org_id = u.org_id AND role.user_id = u.id AND role.role = 'student'
-            )`,
+            )
+          FOR UPDATE OF u`,
         [user.orgId, params.data.studentId],
       );
-      if (!student.rowCount) return null;
+      if (!student.rowCount) return { kind: "not_found" as const };
+
+      const emailConflict = await client.query(
+        `SELECT 1 FROM identity.users
+          WHERE org_id = $1 AND lower(email) = $2 AND id <> $3
+          LIMIT 1`,
+        [user.orgId, email, params.data.studentId],
+      );
+      if (emailConflict.rowCount) return { kind: "email_conflict" as const };
+
+      const currentEnrollment = await client.query<{ id: string; academic_year: string }>(
+        `SELECT id, academic_year
+           FROM academic.enrollments
+          WHERE org_id = $1 AND student_user_id = $2 AND status = 'active'
+          ORDER BY academic_year DESC, created_at DESC, id DESC
+          LIMIT 1
+          FOR UPDATE`,
+        [user.orgId, params.data.studentId],
+      );
+      const enrollment = currentEnrollment.rows[0];
+      if (admissionNo && !enrollment) return { kind: "no_active_enrollment" as const };
+
+      if (admissionNo && enrollment) {
+        const admissionConflict = await client.query(
+          `SELECT 1 FROM academic.enrollments
+            WHERE org_id = $1 AND academic_year = $2 AND status = 'active'
+              AND id <> $3 AND upper(admission_no) = upper($4)
+            LIMIT 1`,
+          [user.orgId, enrollment.academic_year, enrollment.id, admissionNo],
+        );
+        if (admissionConflict.rowCount) return { kind: "admission_conflict" as const };
+      }
+
+      await client.query(
+        `UPDATE identity.users
+            SET name = $3, email = $4, updated_at = now()
+          WHERE org_id = $1 AND id = $2`,
+        [user.orgId, params.data.studentId, name, email],
+      );
+      if (admissionNo && enrollment) {
+        await client.query(
+          `UPDATE academic.enrollments
+              SET admission_no = $3
+            WHERE org_id = $1 AND id = $2 AND status = 'active'`,
+          [user.orgId, enrollment.id, admissionNo],
+        );
+      }
+
       await client.query(
         `INSERT INTO identity.profiles
            (org_id, user_id, date_of_birth, gender, phone, address, blood_group,
@@ -2315,11 +2371,24 @@ router.put("/academic/students/:studentId/profile", requireAuth, async (req, res
           profile.guardianPhone, profile.guardianRelationship,
         ],
       );
-      return readStudentProfile(client, user.orgId, params.data.studentId);
+      const result = await readStudentProfile(client, user.orgId, params.data.studentId);
+      return result ? { kind: "updated" as const, profile: result } : { kind: "not_found" as const };
     });
-    if (!updated) return void res.status(404).json(errorBody("NOT_FOUND", "Student not found."));
-    res.json(updated);
+    if (updated.kind === "not_found") return void res.status(404).json(errorBody("NOT_FOUND", "Student not found."));
+    if (updated.kind === "email_conflict") {
+      return void res.status(409).json(errorBody("CONFLICT", "That login email is already used by another account in this school."));
+    }
+    if (updated.kind === "admission_conflict") {
+      return void res.status(409).json(errorBody("CONFLICT", "That admission number is already used for this academic year."));
+    }
+    if (updated.kind === "no_active_enrollment") {
+      return void res.status(409).json(errorBody("CONFLICT", "Admission number can only be changed for a student with an active enrollment."));
+    }
+    res.json(updated.profile);
   } catch (error) {
+    if ((error as { code?: string })?.code === "23505") {
+      return void res.status(409).json(errorBody("CONFLICT", "That login email or admission number is already in use."));
+    }
     next(error);
   }
 });

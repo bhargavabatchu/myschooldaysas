@@ -864,7 +864,7 @@ paths:
     put:
       operationId: updateStudentProfile
       tags: [academic]
-      summary: Replace a student's profile fields
+      summary: Update a student's identity, current admission number, and profile
       security:
         - bearerAuth: []
       requestBody:
@@ -878,9 +878,10 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/StudentProfileResponse" }
-        "400": { description: Invalid profile data }
+        "400": { description: Invalid student details }
         "403": { description: Administrator role required }
         "404": { description: Student not found }
+        "409": { description: Student email or admission number is already in use }
   /academic/students/{studentId}/enrollments:
     get:
       operationId: getStudentEnrollmentHistory
@@ -2593,7 +2594,14 @@ components:
         sectionName: { type: string }
         status: { type: string, enum: [active, disabled] }
     StudentProfileUpdateInput:
-      $ref: "#/components/schemas/StudentProfileFields"
+      type: object
+      additionalProperties: false
+      required: [name, email, profile]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        email: { type: string, format: email, maxLength: 254 }
+        admissionNo: { type: string, minLength: 1, maxLength: 40 }
+        profile: { $ref: "#/components/schemas/StudentProfileFields" }
     StudentPage:
       type: object
       required: [items, total, limit, offset]

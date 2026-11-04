@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  getGetStudentsQueryKey,
   getGetStudentProfileQueryKey,
   useGetStudentProfile,
   useUpdateStudentProfile,
@@ -37,13 +38,20 @@ export function StudentProfileEditor({
     query: { enabled: !!studentId },
   });
   const [draft, setDraft] = useState<StudentProfileFields>(emptyProfile);
+  const [identityDraft, setIdentityDraft] = useState({ name: "", email: "", admissionNo: "" });
   const [saved, setSaved] = useState(false);
   const update = useUpdateStudentProfile({
     mutation: {
       onSuccess: (result) => {
         setDraft(result.profile);
+        setIdentityDraft({
+          name: result.name,
+          email: result.email,
+          admissionNo: result.currentEnrollment?.admissionNo ?? "",
+        });
         setSaved(true);
         queryClient.setQueryData(getGetStudentProfileQueryKey(studentId), result);
+        queryClient.invalidateQueries({ queryKey: getGetStudentsQueryKey() });
       },
     },
   });
@@ -51,6 +59,11 @@ export function StudentProfileEditor({
   useEffect(() => {
     if (profileQuery.data) {
       setDraft(profileQuery.data.profile);
+      setIdentityDraft({
+        name: profileQuery.data.name,
+        email: profileQuery.data.email,
+        admissionNo: profileQuery.data.currentEnrollment?.admissionNo ?? "",
+      });
       setSaved(false);
     }
   }, [profileQuery.data]);
@@ -62,7 +75,15 @@ export function StudentProfileEditor({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    update.mutate({ studentId, data: draft });
+    update.mutate({
+      studentId,
+      data: {
+        name: identityDraft.name,
+        email: identityDraft.email,
+        ...(profileQuery.data?.currentEnrollment ? { admissionNo: identityDraft.admissionNo } : {}),
+        profile: draft,
+      },
+    });
   }
 
   if (profileQuery.isLoading) {
@@ -110,6 +131,40 @@ export function StudentProfileEditor({
 
       <form onSubmit={submit} className="mt-4 grid gap-3 md:grid-cols-2">
         <h3 className="m-0 text-xs font-bold md:col-span-2">Student details</h3>
+        <label className="text-xs font-semibold">Student name
+          <input
+            className="field mt-1.5"
+            required
+            maxLength={120}
+            value={identityDraft.name}
+            onChange={(event) => { setIdentityDraft((current) => ({ ...current, name: event.target.value })); setSaved(false); }}
+          />
+        </label>
+        <label className="text-xs font-semibold">Login email
+          <input
+            className="field mt-1.5"
+            type="email"
+            required
+            maxLength={254}
+            autoComplete="off"
+            value={identityDraft.email}
+            onChange={(event) => { setIdentityDraft((current) => ({ ...current, email: event.target.value })); setSaved(false); }}
+          />
+          <span className="mt-1 block font-normal text-[hsl(var(--muted-foreground))]">Changing this changes the email used at the next sign-in.</span>
+        </label>
+        <label className="text-xs font-semibold">Current admission number
+          <input
+            className="field mt-1.5"
+            required={!!data.currentEnrollment}
+            maxLength={40}
+            disabled={!data.currentEnrollment}
+            value={identityDraft.admissionNo}
+            onChange={(event) => { setIdentityDraft((current) => ({ ...current, admissionNo: event.target.value })); setSaved(false); }}
+          />
+          <span className="mt-1 block font-normal text-[hsl(var(--muted-foreground))]">
+            {data.currentEnrollment ? "Only the current enrollment changes; historical admission numbers stay unchanged." : "A withdrawn student has no current admission number to edit."}
+          </span>
+        </label>
         <label className="text-xs font-semibold">Date of birth
           <input className="field mt-1.5" type="date" value={draft.dateOfBirth ?? ""} onChange={(event) => setField("dateOfBirth", event.target.value || null)} />
         </label>
@@ -146,7 +201,7 @@ export function StudentProfileEditor({
         </div>
 
         {update.isError && <p role="alert" className="m-0 text-xs text-[hsl(var(--destructive))] md:col-span-2">{errorMessage(update.error)}</p>}
-        {saved && <p role="status" className="m-0 text-xs text-[hsl(var(--primary))] md:col-span-2">Profile saved.</p>}
+        {saved && <p role="status" className="m-0 text-xs text-[hsl(var(--primary))] md:col-span-2">Student details saved.</p>}
         <div className="flex justify-end md:col-span-2">
           <button className="btn btn-primary min-h-9 px-4" disabled={update.isPending}>
             <Save size={15}/>{update.isPending ? "Saving…" : "Save profile"}

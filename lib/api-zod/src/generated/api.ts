@@ -1087,41 +1087,52 @@ export const GetStudentProfileResponse = zod.object({
 
 
 /**
- * @summary Replace a student's profile fields
+ * @summary Update a student's identity, current admission number, and profile
  */
 export const UpdateStudentProfileParams = zod.object({
   "studentId": zod.uuid()
 })
 
-export const updateStudentProfileBodyDateOfBirthRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
-export const updateStudentProfileBodyGenderMax = 40;
+export const updateStudentProfileBodyNameMax = 120;
 
-export const updateStudentProfileBodyPhoneMax = 32;
+export const updateStudentProfileBodyEmailMax = 254;
 
-export const updateStudentProfileBodyAddressMax = 500;
+export const updateStudentProfileBodyAdmissionNoMax = 40;
 
-export const updateStudentProfileBodyBloodGroupMax = 8;
+export const updateStudentProfileBodyProfileDateOfBirthRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const updateStudentProfileBodyProfileGenderMax = 40;
 
-export const updateStudentProfileBodyGuardianNameMax = 120;
+export const updateStudentProfileBodyProfilePhoneMax = 32;
 
-export const updateStudentProfileBodyGuardianEmailMax = 254;
+export const updateStudentProfileBodyProfileAddressMax = 500;
 
-export const updateStudentProfileBodyGuardianPhoneMax = 32;
+export const updateStudentProfileBodyProfileBloodGroupMax = 8;
 
-export const updateStudentProfileBodyGuardianRelationshipMax = 40;
+export const updateStudentProfileBodyProfileGuardianNameMax = 120;
+
+export const updateStudentProfileBodyProfileGuardianEmailMax = 254;
+
+export const updateStudentProfileBodyProfileGuardianPhoneMax = 32;
+
+export const updateStudentProfileBodyProfileGuardianRelationshipMax = 40;
 
 
 
 export const UpdateStudentProfileBody = zod.object({
-  "dateOfBirth": zod.string().regex(updateStudentProfileBodyDateOfBirthRegExp).nullable(),
-  "gender": zod.string().max(updateStudentProfileBodyGenderMax).nullable(),
-  "phone": zod.string().max(updateStudentProfileBodyPhoneMax).nullable(),
-  "address": zod.string().max(updateStudentProfileBodyAddressMax).nullable(),
-  "bloodGroup": zod.string().max(updateStudentProfileBodyBloodGroupMax).nullable(),
-  "guardianName": zod.string().max(updateStudentProfileBodyGuardianNameMax).nullable(),
-  "guardianEmail": zod.email().max(updateStudentProfileBodyGuardianEmailMax).nullable(),
-  "guardianPhone": zod.string().max(updateStudentProfileBodyGuardianPhoneMax).nullable(),
-  "guardianRelationship": zod.string().max(updateStudentProfileBodyGuardianRelationshipMax).nullable()
+  "name": zod.string().min(1).max(updateStudentProfileBodyNameMax),
+  "email": zod.email().max(updateStudentProfileBodyEmailMax),
+  "admissionNo": zod.string().min(1).max(updateStudentProfileBodyAdmissionNoMax).optional(),
+  "profile": zod.object({
+  "dateOfBirth": zod.string().regex(updateStudentProfileBodyProfileDateOfBirthRegExp).nullable(),
+  "gender": zod.string().max(updateStudentProfileBodyProfileGenderMax).nullable(),
+  "phone": zod.string().max(updateStudentProfileBodyProfilePhoneMax).nullable(),
+  "address": zod.string().max(updateStudentProfileBodyProfileAddressMax).nullable(),
+  "bloodGroup": zod.string().max(updateStudentProfileBodyProfileBloodGroupMax).nullable(),
+  "guardianName": zod.string().max(updateStudentProfileBodyProfileGuardianNameMax).nullable(),
+  "guardianEmail": zod.email().max(updateStudentProfileBodyProfileGuardianEmailMax).nullable(),
+  "guardianPhone": zod.string().max(updateStudentProfileBodyProfileGuardianPhoneMax).nullable(),
+  "guardianRelationship": zod.string().max(updateStudentProfileBodyProfileGuardianRelationshipMax).nullable()
+})
 })
 
 export const updateStudentProfileResponseCurrentEnrollmentOneGradeLevelMax = 12;

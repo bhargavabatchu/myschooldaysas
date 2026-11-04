@@ -537,7 +537,21 @@ export interface StudentProfileResponse {
   profile: StudentProfileFields;
 }
 
-export type StudentProfileUpdateInput = StudentProfileFields;
+export interface StudentProfileUpdateInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  admissionNo?: string;
+  profile: StudentProfileFields;
+}
 
 export interface StudentPage {
   items: StudentSummary[];

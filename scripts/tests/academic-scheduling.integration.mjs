@@ -504,6 +504,39 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
 
     const singleStudent = singleCreated.body.items[0];
     assert.ok(singleStudent?.id, "The integration student must be created.");
+    const profileBeforeEdit = await api(`/academic/students/${singleStudent.id}/profile`, admin);
+    assert.equal(profileBeforeEdit.status, 200, JSON.stringify(profileBeforeEdit.body));
+    const editPayload = {
+      name: "Updated Integration Student",
+      email: `updated-${batchSuffix}@example.test`,
+      admissionNo: `ADM-EDIT-${batchSuffix}`,
+      profile: profileBeforeEdit.body.profile,
+    };
+    const deniedStudentEdit = await api(
+      `/academic/students/${singleStudent.id}/profile`,
+      teacher,
+      "PUT",
+      editPayload,
+    );
+    assert.equal(deniedStudentEdit.status, 403, "teachers cannot edit student identity details");
+    const duplicateStudentEmail = await api(
+      `/academic/students/${singleStudent.id}/profile`,
+      admin,
+      "PUT",
+      { ...editPayload, email: admin.email },
+    );
+    assert.equal(duplicateStudentEmail.status, 409, "duplicate school login emails are rejected");
+    const editedStudent = await api(
+      `/academic/students/${singleStudent.id}/profile`,
+      admin,
+      "PUT",
+      editPayload,
+    );
+    assert.equal(editedStudent.status, 200, JSON.stringify(editedStudent.body));
+    assert.equal(editedStudent.body.name, editPayload.name);
+    assert.equal(editedStudent.body.email, editPayload.email);
+    assert.equal(editedStudent.body.currentEnrollment.admissionNo, editPayload.admissionNo);
+
     const deniedStudentWithdrawal = await api(
       "/academic/enrollments/withdraw",
       teacher,
@@ -531,14 +564,14 @@ test("development DB/API: section capacity, enrollment year, and timetable room"
     assert.equal(withdrawnHistory.body.items[0].endedReason, "withdrawn");
     assert.ok(withdrawnHistory.body.items[0].endedAt, "Withdrawal date is kept in the enrollment history.");
     const archivedStudentSearch = await api(
-      `/academic/students?includeArchived=true&q=${encodeURIComponent(singleAdmission.rows[0].name)}`,
+      `/academic/students?includeArchived=true&q=${encodeURIComponent(editPayload.name)}`,
       admin,
     );
     assert.ok(archivedStudentSearch.body.items.some((item) =>
-      item.id === singleStudent.id && item.endedReason === "withdrawn",
+      item.id === singleStudent.id && item.endedReason === "withdrawn" && item.admissionNo === editPayload.admissionNo,
     ));
     const activeStudentSearch = await api(
-      `/academic/students?includeArchived=false&q=${encodeURIComponent(singleAdmission.rows[0].name)}`,
+      `/academic/students?includeArchived=false&q=${encodeURIComponent(editPayload.name)}`,
       admin,
     );
     assert.ok(!activeStudentSearch.body.items.some((item) => item.id === singleStudent.id));
