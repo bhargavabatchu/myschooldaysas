@@ -22,3 +22,9 @@ Creating a restricted role and granting it access does not change the identity u
 **Why:** A saved runtime URL still authenticated as the platform owner after restricted-role setup, so the API continued to reject startup.
 
 **How to apply:** Before another publish, verify `current_user`, `rolsuper`, and `rolbypassrls` through the application's runtime pool without printing connection strings. Distinguish a workspace reproduction from production runtime evidence when published-revision logs are missing.
+
+Do not treat a successful build or a no-difference Publish schema report as proof that required production database objects exist.
+
+**Why:** Read-only development/production object checks disagreed with the Publish schema comparison for a service-schema table. The reason was not established; custom-schema support and database-target differences must not be asserted as proven causes.
+
+**How to apply:** Verify required objects and migration records directly, preserve database isolation, and report contradictory platform results explicitly. Do not keep recommending identical republishes or add startup DDL to bypass a managed schema-sync failure.
