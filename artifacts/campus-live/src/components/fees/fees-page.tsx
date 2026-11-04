@@ -10,13 +10,14 @@ import {
   useGetFeeInvoices,
   useGetFeeReceipt,
   useGetMyFeeInvoices,
-  useGetStudents,
+  useGetAcademicYears,
   useGetSections,
   usePayFeeInvoice,
   type FeeInvoice,
 } from "@workspace/api-client-react";
 import { SCHOOL_NAME } from "@/lib/branding";
 import { onlinePaymentsEnabled } from "@/lib/features";
+import { AcademicYearSelect } from "@/components/academic/academic-year-select";
 import { FeeConcessionEditor } from "./fee-concession-editor";
 import { FeePaymentRecorder } from "./fee-payment-recorder";
 import './school-work-pages.css';
@@ -70,6 +71,7 @@ export function FeesPage({ roles }: FeesPageProps) {
   const isStudentOnlyView = isStudent && !isParent;
   const queryClient = useQueryClient();
   const sections = useGetSections(undefined, { query: { enabled: isAdmin } });
+  const academicYears = useGetAcademicYears({ query: { enabled: isAdmin } });
   const sectionItems = sections.data?.items ?? [];
   const classItems = Array.from(new Map(
     sectionItems.map((section) => [section.classId, { id: section.classId, name: section.className }]),
@@ -95,22 +97,12 @@ export function FeesPage({ roles }: FeesPageProps) {
   const targetSectionCount = targetMode === "class"
     ? selectedClassSections.length
     : sectionId ? 1 : 0;
-  const feeTargetParams = {
-    ...(targetMode === "class"
-      ? (classId ? { classId } : {})
-      : (sectionId ? { sectionId } : {})),
-    limit: 100,
-    offset: 0,
-  };
-  const feeTargetStudents = useGetStudents(feeTargetParams, {
-    query: { enabled: isAdmin && targetSectionCount > 0 },
-  });
-  const availableAcademicYears = Array.from(new Set(
-    feeTargetStudents.data?.items.map((student) => student.academicYear) ?? [],
-  )).sort((left, right) => right.localeCompare(left));
+  const academicYearItems = academicYears.data?.items ?? [];
+  const availableAcademicYears = academicYearItems.map((year) => year.academicYear);
+  const currentAcademicYear = academicYearItems.find((year) => year.status === "current")?.academicYear ?? "";
   const selectedAcademicYear = availableAcademicYears.includes(academicYear)
     ? academicYear
-    : availableAcademicYears[0] ?? "";
+    : currentAcademicYear || availableAcademicYears[0] || "";
   const targetLabel = targetMode === "class"
     ? `${classItems.find((item) => item.id === classId)?.name ?? "selected class"} across ${selectedClassSections.length} section${selectedClassSections.length === 1 ? "" : "s"}`
     : selectedSection ? `${selectedSection.className} · ${selectedSection.name}` : "selected section";
@@ -148,7 +140,7 @@ export function FeesPage({ roles }: FeesPageProps) {
       return;
     }
     if (!selectedAcademicYear) {
-      setNotice("No current student enrollments were found for this class or section.");
+      setNotice("Set up an academic year from the Academic calendar first.");
       return;
     }
     const target = targetMode === "class" ? { classId } : { sectionId };
@@ -206,35 +198,28 @@ export function FeesPage({ roles }: FeesPageProps) {
                 </select>
               </label>
             )}
-            <label className="block text-sm font-semibold">
-              Academic year
-              <select
-                className={`${fieldClass} mt-2`}
+            <div>
+              <AcademicYearSelect
+                label="Academic year"
+                items={academicYearItems}
                 value={selectedAcademicYear}
-                onChange={(event) => setAcademicYear(event.target.value)}
-                required
-                disabled={targetSectionCount === 0 || feeTargetStudents.isLoading || generate.isPending || availableAcademicYears.length === 0}
-              >
-                <option value="">
-                  {targetSectionCount === 0
-                    ? "Choose a class or section first"
-                    : feeTargetStudents.isLoading
-                      ? "Loading enrollment years…"
-                      : "No active enrollment year found"}
-                </option>
-                {availableAcademicYears.map((year) => <option key={year} value={year}>{year}</option>)}
-              </select>
+                onChange={setAcademicYear}
+                disabled={targetSectionCount === 0 || academicYears.isLoading || generate.isPending || availableAcademicYears.length === 0}
+              />
               {availableAcademicYears.length > 0 && (
                 <span className="mt-1 block text-xs font-normal text-[hsl(var(--muted-foreground))]">
-                  Years are taken from current student enrollments for this target.
+                  Invoices are created only for students actively enrolled in the selected year.
                 </span>
               )}
-              {feeTargetStudents.isError && (
+              {academicYears.isError && (
                 <span className="mt-1 block text-xs font-normal text-red-700">
-                  Enrollment years could not be loaded. Refresh and try again.
+                  Academic years could not be loaded. Refresh and try again.
                 </span>
               )}
-            </label>
+              {!academicYears.isLoading && !academicYears.isError && availableAcademicYears.length === 0 && (
+                <a href="/calendar" className="mt-1 block text-xs font-semibold text-[hsl(var(--primary))]">Set up academic years</a>
+              )}
+            </div>
             <label className="block text-sm font-semibold">
               Billing period
               <input className={`${fieldClass} mt-2`} value={period} onChange={(event) => setPeriod(event.target.value)} placeholder="Term 1 or 2026-10" maxLength={40} required />

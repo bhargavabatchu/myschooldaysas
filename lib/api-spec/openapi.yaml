@@ -601,6 +601,60 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardOverview"
+  /academic/years:
+    get:
+      operationId: getAcademicYears
+      tags: [academic]
+      summary: List the school's configured academic years
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Configured academic years
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicYearPage" }
+        "401": { description: Authentication required }
+    post:
+      operationId: createAcademicYear
+      tags: [academic]
+      summary: Add an academic year to the school catalog
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAcademicYearInput" }
+      responses:
+        "201":
+          description: Academic year added
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicYear" }
+        "400": { description: Invalid request }
+        "403": { description: Administrator role required }
+        "409": { description: Academic year already exists }
+  /academic/years/{yearId}/current:
+    patch:
+      operationId: setCurrentAcademicYear
+      tags: [academic]
+      summary: Set the school's current academic year
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: yearId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Current academic year updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcademicYear" }
+        "403": { description: Administrator role required }
+        "404": { description: Academic year not found }
   /academic/classes:
     get:
       operationId: getClasses
@@ -2397,6 +2451,28 @@ components:
       required: [status]
       properties:
         status: { type: string, enum: [active, disabled] }
+    AcademicYear:
+      type: object
+      required: [id, academicYear, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        academicYear: { type: string, minLength: 4, maxLength: 24 }
+        status: { type: string, enum: [planned, current, completed] }
+        createdAt: { type: string, format: date-time }
+    AcademicYearPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AcademicYear" }
+        total: { type: integer, minimum: 0 }
+    CreateAcademicYearInput:
+      type: object
+      additionalProperties: false
+      required: [academicYear]
+      properties:
+        academicYear: { type: string, minLength: 4, maxLength: 24 }
     DashboardOverview:
       type: object
       required: [userName, role, metrics, upcomingSessions, recentActivity]

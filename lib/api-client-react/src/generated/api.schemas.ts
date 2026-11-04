@@ -160,6 +160,40 @@ export interface UpdateSchoolAdminAccountInput {
   status: UpdateSchoolAdminAccountInputStatus;
 }
 
+export type AcademicYearStatus = typeof AcademicYearStatus[keyof typeof AcademicYearStatus];
+
+
+export const AcademicYearStatus = {
+  planned: 'planned',
+  current: 'current',
+  completed: 'completed',
+} as const;
+
+export interface AcademicYear {
+  id: string;
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  academicYear: string;
+  status: AcademicYearStatus;
+  createdAt: string;
+}
+
+export interface AcademicYearPage {
+  items: AcademicYear[];
+  /** @minimum 0 */
+  total: number;
+}
+
+export interface CreateAcademicYearInput {
+  /**
+     * @minLength 4
+     * @maxLength 24
+     */
+  academicYear: string;
+}
+
 export type DashboardMetricTone = typeof DashboardMetricTone[keyof typeof DashboardMetricTone];
 
 

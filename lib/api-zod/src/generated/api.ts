@@ -783,6 +783,72 @@ export const GetDashboardOverviewResponse = zod.object({
 
 
 /**
+ * @summary List the school's configured academic years
+ */
+export const getAcademicYearsResponseItemsItemAcademicYearMin = 4;
+export const getAcademicYearsResponseItemsItemAcademicYearMax = 24;
+
+export const getAcademicYearsResponseTotalMin = 0;
+
+
+
+export const GetAcademicYearsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "academicYear": zod.string().min(getAcademicYearsResponseItemsItemAcademicYearMin).max(getAcademicYearsResponseItemsItemAcademicYearMax),
+  "status": zod.enum(['planned', 'current', 'completed']),
+  "createdAt": zod.coerce.date()
+})),
+  "total": zod.int().min(getAcademicYearsResponseTotalMin)
+})
+
+
+/**
+ * @summary Add an academic year to the school catalog
+ */
+export const createAcademicYearBodyAcademicYearMin = 4;
+export const createAcademicYearBodyAcademicYearMax = 24;
+
+
+
+export const CreateAcademicYearBody = zod.object({
+  "academicYear": zod.string().min(createAcademicYearBodyAcademicYearMin).max(createAcademicYearBodyAcademicYearMax)
+})
+
+export const createAcademicYearResponseAcademicYearMin = 4;
+export const createAcademicYearResponseAcademicYearMax = 24;
+
+
+
+export const CreateAcademicYearResponse = zod.object({
+  "id": zod.uuid(),
+  "academicYear": zod.string().min(createAcademicYearResponseAcademicYearMin).max(createAcademicYearResponseAcademicYearMax),
+  "status": zod.enum(['planned', 'current', 'completed']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Set the school's current academic year
+ */
+export const SetCurrentAcademicYearParams = zod.object({
+  "yearId": zod.uuid()
+})
+
+export const setCurrentAcademicYearResponseAcademicYearMin = 4;
+export const setCurrentAcademicYearResponseAcademicYearMax = 24;
+
+
+
+export const SetCurrentAcademicYearResponse = zod.object({
+  "id": zod.uuid(),
+  "academicYear": zod.string().min(setCurrentAcademicYearResponseAcademicYearMin).max(setCurrentAcademicYearResponseAcademicYearMax),
+  "status": zod.enum(['planned', 'current', 'completed']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary List classes
  */
 export const getClassesQueryIncludeArchivedDefault = false;

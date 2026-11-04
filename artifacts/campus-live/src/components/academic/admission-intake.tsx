@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetAvailableStudentsQueryKey,
   getGetSectionsQueryKey,
   getGetStudentsQueryKey,
+  useGetAcademicYears,
   useCreateStudentAdmissions,
   usePreviewStudentAdmissions,
 } from "@workspace/api-client-react";
 import type { SectionSummary } from "@workspace/api-client-react";
 import { FileUp, UserPlus } from "lucide-react";
+import { AcademicYearSelect } from "./academic-year-select";
 
 type AdmissionRow = {
   name: string;
@@ -99,6 +101,8 @@ const errorMessage = (error: unknown) => error instanceof Error ? error.message 
 
 export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
   const queryClient = useQueryClient();
+  const academicYears = useGetAcademicYears();
+  const academicYearItems = academicYears.data?.items ?? [];
   const [mode, setMode] = useState<"single" | "bulk">("single");
   const [sectionId, setSectionId] = useState("");
   const [academicYear, setAcademicYear] = useState("");
@@ -138,6 +142,11 @@ export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
       },
     },
   });
+  const currentYear = academicYearItems.find((year) => year.status === "current")?.academicYear ?? "";
+
+  useEffect(() => {
+    if (!academicYear && currentYear) setAcademicYear(currentYear);
+  }, [academicYear, currentYear]);
 
   const clearResults = () => {
     preview.reset();
@@ -238,9 +247,19 @@ export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
             {selectedSection.studentCount} active · {selectedSection.capacity == null ? "no capacity limit" : `capacity ${selectedSection.capacity}`}
           </span>}
         </label>
-        <label className="text-xs font-semibold">Academic year
-          <input className="field mt-1.5" required minLength={4} maxLength={24} value={academicYear} placeholder="e.g. 2026-27" onChange={(event) => { setAcademicYear(event.target.value); clearResults(); }} />
-        </label>
+        <AcademicYearSelect
+          label="Academic year"
+          items={academicYearItems}
+          value={academicYear}
+          onChange={(value) => { setAcademicYear(value); clearResults(); }}
+          disabled={academicYears.isLoading || preview.isPending || create.isPending}
+        />
+        {academicYearItems.length === 0 && !academicYears.isLoading && (
+          <p className="m-0 text-xs text-[hsl(var(--muted-foreground))]">
+            Add the school year in <a className="font-semibold text-[hsl(var(--primary))]" href="/calendar">Academic calendar</a> first.
+          </p>
+        )}
+        {academicYears.isError && <p role="alert" className="m-0 text-xs text-[hsl(var(--destructive))]">Academic years could not be loaded. Refresh and try again.</p>}
 
         {mode === "single" ? <>
           <label className="text-xs font-semibold">Student name

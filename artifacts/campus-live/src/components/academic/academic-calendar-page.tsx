@@ -28,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import "./academic-calendar-page.css";
+import { AcademicYearsPanel } from "./academic-years-panel";
 
 const adminRoles = ["super_admin", "org_admin", "campus_admin"];
 const kinds: { value: CalendarEventKind; label: string }[] = [
@@ -232,6 +233,7 @@ export function AcademicCalendarPage({ roles }: Props) {
 
     {notice && <div role="status" className="mb-4 flex items-center gap-2 rounded-xl border border-[hsl(var(--status-good)/.3)] bg-[hsl(var(--status-good-bg))] px-4 py-3 text-sm font-semibold text-[hsl(var(--brand-mint-ink))]"><Check size={16} />{notice}</div>}
     {visibleError && <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-[hsl(var(--destructive)/.25)] bg-[hsl(var(--destructive)/.07)] px-4 py-3 text-sm text-[hsl(var(--destructive))]"><AlertCircle className="mt-0.5 shrink-0" size={16} />{visibleError}</div>}
+    {canManage && <AcademicYearsPanel />}
 
     {composerOpen && canManage && <form onSubmit={submit} className="surface mb-5 space-y-4 border-l-4 border-l-[hsl(var(--accent))] p-4 sm:p-5" data-testid="calendar-event-form">
       <div className="flex items-start justify-between gap-3">

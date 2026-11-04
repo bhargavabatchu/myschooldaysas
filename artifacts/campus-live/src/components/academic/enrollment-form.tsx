@@ -1,16 +1,18 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetAvailableStudentsQueryKey,
   getGetSectionsQueryKey,
   getGetStudentsQueryKey,
+  useGetAcademicYears,
   useCreateEnrollment,
   useGetAvailableStudents,
 } from "@workspace/api-client-react";
 import type { SectionSummary } from "@workspace/api-client-react";
 import { Plus, X } from "lucide-react";
+import { AcademicYearSelect } from "./academic-year-select";
 
 const readableError = (error: unknown) => error instanceof Error ? error.message : "Unable to enroll this student.";
 
@@ -22,7 +24,13 @@ export function EnrollmentForm({ sections }: { sections: SectionSummary[] }) {
   const [search, setSearch] = useState("");
   const [studentId, setStudentId] = useState("");
   const [admissionNo, setAdmissionNo] = useState("");
+  const academicYears = useGetAcademicYears({ query: { enabled: open } });
+  const academicYearItems = academicYears.data?.items ?? [];
+  const currentYear = academicYearItems.find((item) => item.status === "current")?.academicYear ?? "";
   const year = academicYear.trim();
+  useEffect(() => {
+    if (open && !academicYear && currentYear) setAcademicYear(currentYear);
+  }, [academicYear, currentYear, open]);
   const effectiveSectionId = sectionId || sections[0]?.id || "";
   const params = useMemo(
     () => ({ academicYear: year, q: search.trim() || undefined, limit: 50, offset: 0 }),
@@ -85,9 +93,19 @@ export function EnrollmentForm({ sections }: { sections: SectionSummary[] }) {
             </span>}
           </label>
 
-          <label className="text-xs font-semibold">Academic year
-            <input className="field mt-1.5" required minLength={4} maxLength={24} value={academicYear} onChange={(event) => { setAcademicYear(event.target.value); setStudentId(""); }} placeholder="e.g. 2026-27" />
-          </label>
+          <AcademicYearSelect
+            label="Academic year"
+            items={academicYearItems}
+            value={academicYear}
+            onChange={(value) => { setAcademicYear(value); setStudentId(""); }}
+            disabled={academicYears.isLoading || create.isPending}
+          />
+          {academicYearItems.length === 0 && !academicYears.isLoading && (
+            <p className="m-0 text-xs text-[hsl(var(--muted-foreground))]">
+              Add the school year in <a className="font-semibold text-[hsl(var(--primary))]" href="/calendar">Academic calendar</a> first.
+            </p>
+          )}
+          {academicYears.isError && <p role="alert" className="m-0 text-xs text-[hsl(var(--destructive))]">Academic years could not be loaded. Refresh and try again.</p>}
 
           <label className="text-xs font-semibold">Find student
             <input className="field mt-1.5" value={search} onChange={(event) => { setSearch(event.target.value); setStudentId(""); }} placeholder={year.length >= 4 ? "Search by student name or email" : "Enter an academic year first"} disabled={year.length < 4} />

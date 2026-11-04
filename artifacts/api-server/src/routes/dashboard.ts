@@ -182,12 +182,17 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
              SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date AS today
            ),
            current_academic_year AS (
-             SELECT CASE
-               WHEN EXTRACT(MONTH FROM today) >= 4
-                 THEN to_char(today, 'YYYY') || '-' || to_char(today + interval '1 year', 'YY')
-               ELSE to_char(today - interval '1 year', 'YYYY') || '-' || to_char(today, 'YY')
-             END AS academic_year
-               FROM school_date
+              SELECT COALESCE(
+                (SELECT academic_year
+                   FROM academic.academic_years
+                  WHERE org_id = $1 AND status = 'current'),
+                CASE
+                  WHEN EXTRACT(MONTH FROM today) >= 4
+                    THEN to_char(today, 'YYYY') || '-' || to_char(today + interval '1 year', 'YY')
+                  ELSE to_char(today - interval '1 year', 'YYYY') || '-' || to_char(today, 'YY')
+                END
+              ) AS academic_year
+                FROM school_date
            ),
            invoice_balances AS (
              SELECT invoice.id, invoice.academic_year, invoice.status, invoice.due_date,

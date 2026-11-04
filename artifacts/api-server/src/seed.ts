@@ -86,6 +86,22 @@ try {
   try {
     await client.query("BEGIN");
     await client.query("SELECT set_config('app.org_id', $1, true)", [orgId]);
+    await client.query(
+      `INSERT INTO academic.academic_years (org_id, academic_year, status)
+       SELECT $1, '2026-27',
+              CASE WHEN EXISTS (
+                SELECT 1 FROM academic.academic_years
+                 WHERE org_id = $1 AND status = 'current'
+              ) THEN 'completed' ELSE 'current' END
+       ON CONFLICT (org_id, academic_year) DO NOTHING`,
+      [orgId],
+    );
+    await client.query(
+      `INSERT INTO academic.academic_years (org_id, academic_year, status)
+       VALUES ($1, '2027-28', 'planned')
+       ON CONFLICT (org_id, academic_year) DO NOTHING`,
+      [orgId],
+    );
 
     const userIds = new Map<string, string>();
     for (const user of users) {

@@ -34,6 +34,8 @@ import type {
   AcademicTeacherAssignmentInput,
   AcademicTeacherAssignmentPage,
   AcademicTeacherPage,
+  AcademicYear,
+  AcademicYearPage,
   AdmissionBatchInput,
   AdmissionEnquiry,
   AdmissionEnquiryPage,
@@ -60,6 +62,7 @@ import type {
   ConsentPurpose,
   ConsentRecord,
   ConsentReviewStatus,
+  CreateAcademicYearInput,
   CreateEnrollmentInput,
   CreateSchoolAdminAccountInput,
   CreateTeacherAccountInput,
@@ -3219,6 +3222,269 @@ export function useGetDashboardOverview<TData = Awaited<ReturnType<typeof getDas
 
 
 
+
+export const getGetAcademicYearsUrl = () => {
+
+
+
+
+  return `/api/academic/years`
+}
+
+/**
+ * @summary List the school's configured academic years
+ */
+export const getAcademicYears = async ( options?: Parameters<typeof customFetch>[1]): Promise<AcademicYearPage> => {
+
+  return customFetch<AcademicYearPage>(getGetAcademicYearsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAcademicYearsQueryKey = () => {
+    return [
+    `/api/academic/years`
+    ] as const;
+    }
+
+
+export const getGetAcademicYearsQueryOptions = <TData = Awaited<ReturnType<typeof getAcademicYears>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAcademicYears>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAcademicYearsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAcademicYears>>> = ({ signal }) => getAcademicYears({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAcademicYears>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAcademicYearsQueryResult = NonNullable<Awaited<ReturnType<typeof getAcademicYears>>>
+export type GetAcademicYearsQueryError = ErrorType<void>
+
+
+export function useGetAcademicYears<TData = Awaited<ReturnType<typeof getAcademicYears>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAcademicYears>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAcademicYears>>,
+          TError,
+          Awaited<ReturnType<typeof getAcademicYears>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAcademicYears<TData = Awaited<ReturnType<typeof getAcademicYears>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAcademicYears>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAcademicYears>>,
+          TError,
+          Awaited<ReturnType<typeof getAcademicYears>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAcademicYears<TData = Awaited<ReturnType<typeof getAcademicYears>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAcademicYears>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List the school's configured academic years
+ */
+
+export function useGetAcademicYears<TData = Awaited<ReturnType<typeof getAcademicYears>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAcademicYears>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAcademicYearsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAcademicYearUrl = () => {
+
+
+
+
+  return `/api/academic/years`
+}
+
+/**
+ * @summary Add an academic year to the school catalog
+ */
+export const createAcademicYear = async (createAcademicYearInput: CreateAcademicYearInput, options?: Parameters<typeof customFetch>[1]): Promise<AcademicYear> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AcademicYear>(getCreateAcademicYearUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createAcademicYearInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAcademicYearMutationKey = () => ['createAcademicYear'] as const;
+
+export const getCreateAcademicYearMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAcademicYear>>, TError,CreateAcademicYearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAcademicYear>>, TError,CreateAcademicYearMutationVariables, TContext> => {
+
+const mutationKey = getCreateAcademicYearMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAcademicYear>>, CreateAcademicYearMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAcademicYear(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAcademicYearMutationResult = NonNullable<Awaited<ReturnType<typeof createAcademicYear>>>
+    export type CreateAcademicYearMutationBody = BodyType<CreateAcademicYearInput>
+    export type CreateAcademicYearMutationError = ErrorType<void>
+    export type CreateAcademicYearMutationVariables = {data: BodyType<CreateAcademicYearInput>}
+
+    /**
+ * @summary Add an academic year to the school catalog
+ */
+export const useCreateAcademicYear = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAcademicYear>>, TError,CreateAcademicYearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createAcademicYear>>,
+        TError,
+        CreateAcademicYearMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAcademicYearMutationOptions(options), queryClient);
+    }
+
+export const getSetCurrentAcademicYearUrl = (yearId: string,) => {
+
+
+
+
+  return `/api/academic/years/${yearId}/current`
+}
+
+/**
+ * @summary Set the school's current academic year
+ */
+export const setCurrentAcademicYear = async (yearId: string, options?: Parameters<typeof customFetch>[1]): Promise<AcademicYear> => {
+
+  return customFetch<AcademicYear>(getSetCurrentAcademicYearUrl(yearId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getSetCurrentAcademicYearMutationKey = () => ['setCurrentAcademicYear'] as const;
+
+export const getSetCurrentAcademicYearMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setCurrentAcademicYear>>, TError,SetCurrentAcademicYearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setCurrentAcademicYear>>, TError,SetCurrentAcademicYearMutationVariables, TContext> => {
+
+const mutationKey = getSetCurrentAcademicYearMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setCurrentAcademicYear>>, SetCurrentAcademicYearMutationVariables> = (props) => {
+          const {yearId} = props ?? {};
+
+          return  setCurrentAcademicYear(yearId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetCurrentAcademicYearMutationResult = NonNullable<Awaited<ReturnType<typeof setCurrentAcademicYear>>>
+
+    export type SetCurrentAcademicYearMutationError = ErrorType<void>
+    export type SetCurrentAcademicYearMutationVariables = {yearId: string}
+
+    /**
+ * @summary Set the school's current academic year
+ */
+export const useSetCurrentAcademicYear = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setCurrentAcademicYear>>, TError,SetCurrentAcademicYearMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setCurrentAcademicYear>>,
+        TError,
+        SetCurrentAcademicYearMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetCurrentAcademicYearMutationOptions(options), queryClient);
+    }
 
 export const getGetClassesUrl = (params?: GetClassesParams,) => {
   const normalizedParams = new URLSearchParams();

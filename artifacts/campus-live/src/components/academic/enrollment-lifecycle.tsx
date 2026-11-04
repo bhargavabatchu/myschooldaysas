@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetSectionsQueryKey,
   getGetStudentsQueryKey,
+  useGetAcademicYears,
   useCommitEnrollmentPromotion,
   useCommitEnrollmentTransfer,
   usePreviewEnrollmentPromotion,
@@ -18,6 +19,7 @@ import type {
   StudentSummary,
 } from "@workspace/api-client-react";
 import { ArrowRightLeft, GraduationCap } from "lucide-react";
+import { AcademicYearSelect } from "./academic-year-select";
 
 const message = (error: unknown) => error instanceof Error ? error.message : "The request could not be completed.";
 
@@ -31,6 +33,8 @@ export function EnrollmentLifecycle({
   students: StudentSummary[];
 }) {
   const queryClient = useQueryClient();
+  const academicYears = useGetAcademicYears();
+  const academicYearItems = academicYears.data?.items ?? [];
   const [mode, setMode] = useState<"transfer" | "promotion">("transfer");
   const [studentId, setStudentId] = useState("");
   const [targetSectionId, setTargetSectionId] = useState("");
@@ -48,6 +52,11 @@ export function EnrollmentLifecycle({
     [sections, sourceClassId],
   );
   const sourceClass = classes.find((item) => item.id === sourceClassId);
+  const currentYear = academicYearItems.find((year) => year.status === "current")?.academicYear ?? "";
+  const promotionTargetYears = useMemo(
+    () => academicYearItems.filter((year) => year.status !== "completed" && year.academicYear !== sourceYear),
+    [academicYearItems, sourceYear],
+  );
   const validPromotionTargets = sections.filter((section) => {
     const destinationClass = classes.find((item) => item.id === section.classId);
     return !!destinationClass && !!sourceClass && destinationClass.gradeLevel > sourceClass.gradeLevel;
@@ -71,6 +80,19 @@ export function EnrollmentLifecycle({
   });
   const pending = transferPreview.isPending || promotionPreview.isPending || transfer.isPending || promotion.isPending;
   const requestError = transferPreview.error || promotionPreview.error || transfer.error || promotion.error;
+
+  useEffect(() => {
+    if (!sourceYear && currentYear) setSourceYear(currentYear);
+  }, [currentYear, sourceYear]);
+
+  useEffect(() => {
+    const fallback = promotionTargetYears.find((year) => year.status === "planned")?.academicYear
+      ?? promotionTargetYears[0]?.academicYear
+      ?? "";
+    if (!promotionTargetYears.some((year) => year.academicYear === targetYearPromotion)) {
+      setTargetYearPromotion(fallback);
+    }
+  }, [promotionTargetYears, targetYearPromotion]);
 
   function resetReview() {
     setReview(null);
@@ -153,10 +175,14 @@ export function EnrollmentLifecycle({
               {sections.map((section) => <option key={section.id} value={section.id}>{section.className} · {section.name}</option>)}
             </select>
           </label>
-          <label className="text-xs font-semibold sm:col-span-2">Destination academic year
-            <input className="field mt-1.5" minLength={4} maxLength={24} value={targetYear} onChange={(event) => setTargetYear(event.target.value)} placeholder="e.g. 2026-27" />
-          </label>
-          <button type="button" className="btn btn-primary min-h-9 px-4 text-xs sm:col-span-2 sm:justify-self-end" disabled={!selectedStudent || !targetSectionId || targetYear.trim().length < 4 || pending} onClick={previewTransfer}>
+          <AcademicYearSelect
+            label="Destination academic year"
+            items={academicYearItems}
+            value={targetYear}
+            onChange={setTargetYear}
+            disabled={academicYears.isLoading || pending}
+          />
+          <button type="button" className="btn btn-primary min-h-9 px-4 text-xs sm:col-span-2 sm:justify-self-end" disabled={!selectedStudent || !targetSectionId || !academicYearItems.some((year) => year.academicYear === targetYear) || pending} onClick={previewTransfer}>
             {transferPreview.isPending ? "Preparing review…" : "Review transfer"}
           </button>
         </div>
@@ -170,12 +196,31 @@ export function EnrollmentLifecycle({
               {classes.map((item) => <option key={item.id} value={item.id}>{item.name} · Grade {item.gradeLevel}</option>)}
             </select>
           </label>
-          <label className="text-xs font-semibold">Current academic year
-            <input className="field mt-1.5" minLength={4} maxLength={24} value={sourceYear} onChange={(event) => setSourceYear(event.target.value)} placeholder="e.g. 2025-26" />
-          </label>
-          <label className="text-xs font-semibold sm:col-span-2">Next academic year
-            <input className="field mt-1.5" minLength={4} maxLength={24} value={targetYearPromotion} onChange={(event) => setTargetYearPromotion(event.target.value)} placeholder="e.g. 2026-27" />
-          </label>
+          <AcademicYearSelect
+            label="Current academic year"
+            items={academicYearItems}
+            value={sourceYear}
+            onChange={setSourceYear}
+            disabled={academicYears.isLoading || pending}
+          />
+          <AcademicYearSelect
+            label="Next academic year"
+            items={promotionTargetYears}
+            value={targetYearPromotion}
+            onChange={setTargetYearPromotion}
+            disabled={academicYears.isLoading || pending}
+          />
+          {academicYearItems.length === 0 && !academicYears.isLoading && (
+            <p className="m-0 text-xs text-[hsl(var(--muted-foreground))] sm:col-span-2">
+              Add the current and next year in <a className="font-semibold text-[hsl(var(--primary))]" href="/calendar">Academic calendar</a> first.
+            </p>
+          )}
+          {academicYearItems.length > 0 && promotionTargetYears.length === 0 && (
+            <p className="m-0 text-xs text-[hsl(var(--muted-foreground))] sm:col-span-2">
+              Add a planned year in <a className="font-semibold text-[hsl(var(--primary))]" href="/calendar">Academic calendar</a> before promoting this class.
+            </p>
+          )}
+          {academicYears.isError && <p role="alert" className="m-0 text-xs text-[hsl(var(--destructive))] sm:col-span-2">Academic years could not be loaded. Refresh and try again.</p>}
           {sourceSections.map((section) => (
             <label key={section.id} className="text-xs font-semibold">Move {section.name} to
               <select className="field mt-1.5" value={sectionMap[section.id] ?? ""} onChange={(event) => setSectionMap((current) => ({ ...current, [section.id]: event.target.value }))}>
@@ -185,7 +230,7 @@ export function EnrollmentLifecycle({
             </label>
           ))}
           {!sourceSections.length && <p className="m-0 text-xs text-[hsl(var(--muted-foreground))] sm:col-span-2">Choose a class with sections to map its students.</p>}
-          <button type="button" className="btn btn-primary min-h-9 px-4 text-xs sm:col-span-2 sm:justify-self-end" disabled={!sourceSections.length || sourceYear.trim().length < 4 || targetYearPromotion.trim().length < 4 || sourceSections.some((section) => !sectionMap[section.id]) || pending} onClick={previewPromotion}>
+          <button type="button" className="btn btn-primary min-h-9 px-4 text-xs sm:col-span-2 sm:justify-self-end" disabled={!sourceSections.length || !academicYearItems.some((year) => year.academicYear === sourceYear) || !promotionTargetYears.some((year) => year.academicYear === targetYearPromotion) || sourceSections.some((section) => !sectionMap[section.id]) || pending} onClick={previewPromotion}>
             {promotionPreview.isPending ? "Preparing review…" : "Review class promotion"}
           </button>
         </div>

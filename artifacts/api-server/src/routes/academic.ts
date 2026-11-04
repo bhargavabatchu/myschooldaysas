@@ -34,6 +34,8 @@ import {
   RemoveSectionParams,
   SetClassActivityBody,
   SetClassActivityParams,
+  CreateAcademicYearBody,
+  SetCurrentAcademicYearParams,
   SetSectionActivityBody,
   SetSectionActivityParams,
 } from "@workspace/api-zod";
@@ -51,6 +53,136 @@ const router = createRouteRegistrar(fastify);
 const adminRoles: CampusRole[] = ["super_admin", "org_admin", "campus_admin"];
 const teachingRoles: CampusRole[] = ["teacher", "class_teacher", "hod"];
 type ConsentPurpose = "live_view" | "recording" | "photo" | "data_processing";
+
+router.get("/academic/years", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+
+  try {
+    const result = await withOrg(user.orgId, (client) =>
+      client.query<{
+        id: string;
+        academic_year: string;
+        status: "planned" | "current" | "completed";
+        created_at: Date;
+      }>(
+        `SELECT id, academic_year, status, created_at
+           FROM academic.academic_years
+          WHERE org_id = $1
+          ORDER BY CASE status WHEN 'current' THEN 0 WHEN 'planned' THEN 1 ELSE 2 END,
+                   academic_year DESC`,
+        [user.orgId],
+      ),
+    );
+    res.json({
+      items: result.rows.map((row) => ({
+        id: row.id,
+        academicYear: row.academic_year,
+        status: row.status,
+        createdAt: row.created_at,
+      })),
+      total: result.rowCount ?? 0,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/academic/years", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Administrator role required."));
+  }
+  const body = CreateAcademicYearBody.safeParse(req.body);
+  if (!body.success) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Enter an academic year label between 4 and 24 characters."));
+  }
+  const academicYear = body.data.academicYear.trim();
+  if (academicYear.length < 4 || academicYear.length > 24) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Enter an academic year label between 4 and 24 characters."));
+  }
+
+  try {
+    const result = await withOrg(user.orgId, (client) =>
+      client.query<{
+        id: string;
+        academic_year: string;
+        status: "planned" | "current" | "completed";
+        created_at: Date;
+      }>(
+        `INSERT INTO academic.academic_years (org_id, academic_year, created_by)
+         VALUES ($1, $2, $3)
+         RETURNING id, academic_year, status, created_at`,
+        [user.orgId, academicYear, user.id],
+      ),
+    );
+    const row = result.rows[0]!;
+    res.status(201).json({
+      id: row.id,
+      academicYear: row.academic_year,
+      status: row.status,
+      createdAt: row.created_at,
+    });
+  } catch (error: any) {
+    if (error?.code === "23505") {
+      return void res.status(409).json(errorBody("CONFLICT", "That academic year has already been added."));
+    }
+    next(error);
+  }
+});
+
+router.patch("/academic/years/:yearId/current", requireAuth, async (req, res, next) => {
+  const user = req.campusUser;
+  if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  if (!canManageAcademicSetup(user.roles)) {
+    return void res.status(403).json(errorBody("FORBIDDEN", "Administrator role required."));
+  }
+  const params = SetCurrentAcademicYearParams.safeParse(req.params);
+  if (!params.success) {
+    return void res.status(400).json(errorBody("INVALID_REQUEST", "Choose a valid academic year."));
+  }
+
+  try {
+    const result = await withOrg(user.orgId, async (client) => {
+      await client.query("SELECT id FROM identity.organizations WHERE id = $1 FOR UPDATE", [user.orgId]);
+      const target = await client.query<{ id: string }>(
+        "SELECT id FROM academic.academic_years WHERE org_id = $1 AND id = $2 FOR UPDATE",
+        [user.orgId, params.data.yearId],
+      );
+      if (!target.rowCount) return null;
+
+      await client.query(
+        `UPDATE academic.academic_years
+            SET status = 'completed', updated_at = now()
+          WHERE org_id = $1 AND status = 'current' AND id <> $2`,
+        [user.orgId, params.data.yearId],
+      );
+      const updated = await client.query<{
+        id: string;
+        academic_year: string;
+        status: "planned" | "current" | "completed";
+        created_at: Date;
+      }>(
+        `UPDATE academic.academic_years
+            SET status = 'current', updated_at = now()
+          WHERE org_id = $1 AND id = $2
+          RETURNING id, academic_year, status, created_at`,
+        [user.orgId, params.data.yearId],
+      );
+      return updated.rows[0] ?? null;
+    });
+    if (!result) return void res.status(404).json(errorBody("NOT_FOUND", "Academic year not found."));
+    res.json({
+      id: result.id,
+      academicYear: result.academic_year,
+      status: result.status,
+      createdAt: result.created_at,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 type AdmissionInputRow = {
   name: string;

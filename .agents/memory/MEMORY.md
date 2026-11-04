@@ -17,3 +17,4 @@
 - [Publishing startup diagnosis](publishing-startup-diagnosis.md) — generic root-probe errors do not identify the failed service; check production configuration before changing probes.
 - [Core-only release scope](core-only-release-scope.md) — defer live classes and online payments in production; preserve their implementation for later.
 - [Campus Live fee concessions](campus-live-fee-concessions.md) — apply concessions after issue to one student's invoice; preserve captured payments and reduce only the unpaid balance.
+- [Campus Live academic years](campus-live-academic-years.md) — manage school years centrally; current-year changes update defaults and annual dashboard summaries, not student enrollments or invoices.

@@ -6,10 +6,12 @@ import {
   getGetClassesQueryKey,
   getGetSectionsQueryKey,
   getGetStudentsQueryKey,
+  useGetAcademicYears,
   usePromoteStudents,
 } from "@workspace/api-client-react";
 import type { ClassSummary, SectionSummary } from "@workspace/api-client-react";
 import { ArrowUpRight, ChevronDown, GraduationCap } from "lucide-react";
+import { AcademicYearSelect } from "./academic-year-select";
 
 const readableError = (error: unknown) => error instanceof Error ? error.message : "Unable to promote students.";
 
@@ -21,6 +23,8 @@ export function ClassPromotionWizard({
   sections: SectionSummary[];
 }) {
   const queryClient = useQueryClient();
+  const academicYears = useGetAcademicYears();
+  const academicYearItems = academicYears.data?.items ?? [];
   const [open, setOpen] = useState(false);
   const [fromClassId, setFromClassId] = useState("");
   const [toClassId, setToClassId] = useState("");
@@ -47,6 +51,11 @@ export function ClassPromotionWizard({
     () => sections.filter((section) => section.classId === toClassId),
     [sections, toClassId],
   );
+  const currentYear = academicYearItems.find((year) => year.status === "current")?.academicYear ?? "";
+  const targetYearItems = useMemo(
+    () => academicYearItems.filter((year) => year.status !== "completed" && year.academicYear !== fromAcademicYear),
+    [academicYearItems, fromAcademicYear],
+  );
 
   useEffect(() => {
     setSectionMap((current) => Object.fromEntries(sourceSections.map((source) => {
@@ -57,6 +66,20 @@ export function ClassPromotionWizard({
     })));
     setConfirmed(false);
   }, [sourceSections, targetSections]);
+
+  useEffect(() => {
+    if (!currentYear) return;
+    setFromAcademicYear((current) => current && academicYearItems.some((year) => year.academicYear === current)
+      ? current
+      : currentYear);
+  }, [academicYearItems, currentYear]);
+
+  useEffect(() => {
+    const fallback = targetYearItems.find((year) => year.status === "planned")?.academicYear
+      ?? targetYearItems[0]?.academicYear
+      ?? "";
+    setToAcademicYear((current) => targetYearItems.some((year) => year.academicYear === current) ? current : fallback);
+  }, [targetYearItems]);
 
   const promote = usePromoteStudents({
     mutation: {
@@ -73,9 +96,9 @@ export function ClassPromotionWizard({
   const mappingReady = sourceSections.length > 0
     && targetSections.length > 0
     && sourceSections.every((section) => targetSections.some((target) => target.id === sectionMap[section.id]));
-  const yearsReady = fromAcademicYear.trim().length >= 4
-    && toAcademicYear.trim().length >= 4
-    && fromAcademicYear.trim() !== toAcademicYear.trim();
+  const yearsReady = academicYearItems.some((year) => year.academicYear === fromAcademicYear)
+    && targetYearItems.some((year) => year.academicYear === toAcademicYear)
+    && fromAcademicYear !== toAcademicYear;
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -126,12 +149,31 @@ export function ClassPromotionWizard({
               {classes.filter((item) => item.id !== fromClassId).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           </label>
-          <label className="text-xs font-semibold">Current academic year
-            <input className="field mt-1.5" required minLength={4} maxLength={24} value={fromAcademicYear} onChange={(event) => { setFromAcademicYear(event.target.value); setConfirmed(false); }} placeholder="e.g. 2026-27" />
-          </label>
-          <label className="text-xs font-semibold">New academic year
-            <input className="field mt-1.5" required minLength={4} maxLength={24} value={toAcademicYear} onChange={(event) => { setToAcademicYear(event.target.value); setConfirmed(false); }} placeholder="e.g. 2027-28" />
-          </label>
+          <AcademicYearSelect
+            label="Current academic year"
+            items={academicYearItems}
+            value={fromAcademicYear}
+            onChange={(value) => { setFromAcademicYear(value); setConfirmed(false); }}
+            disabled={academicYears.isLoading || promote.isPending}
+          />
+          <AcademicYearSelect
+            label="New academic year"
+            items={targetYearItems}
+            value={toAcademicYear}
+            onChange={(value) => { setToAcademicYear(value); setConfirmed(false); }}
+            disabled={academicYears.isLoading || promote.isPending}
+          />
+          {academicYearItems.length === 0 && !academicYears.isLoading && (
+            <p className="m-0 text-xs text-[hsl(var(--muted-foreground))] md:col-span-2">
+              Add the current and next year in <a className="font-semibold text-[hsl(var(--primary))]" href="/calendar">Academic calendar</a> first.
+            </p>
+          )}
+          {academicYearItems.length > 0 && targetYearItems.length === 0 && (
+            <p className="m-0 text-xs text-[hsl(var(--muted-foreground))] md:col-span-2">
+              Add a planned year in <a className="font-semibold text-[hsl(var(--primary))]" href="/calendar">Academic calendar</a> before promoting this class.
+            </p>
+          )}
+          {academicYears.isError && <p role="alert" className="m-0 text-xs text-[hsl(var(--destructive))] md:col-span-2">Academic years could not be loaded. Refresh and try again.</p>}
 
           {sourceSections.length > 0 && (
             <fieldset className="space-y-3 rounded-lg border border-[hsl(var(--border))] p-3 md:col-span-2">
