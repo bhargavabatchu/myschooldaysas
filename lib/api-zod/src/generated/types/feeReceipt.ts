@@ -21,4 +21,6 @@ export interface FeeReceipt {
   paymentMethod: FeeReceiptPaymentMethod;
   /** @nullable */
   paymentReference: string | null;
+  /** @nullable */
+  collectorName: string | null;
 }

@@ -3083,7 +3083,8 @@ export const GetFeeInvoicesResponse = zod.object({
   "amountPaise": zod.int().min(1),
   "paymentDate": zod.coerce.date(),
   "paymentMethod": zod.enum(['mock', 'razorpay', 'manual', 'cash', 'upi', 'bank_transfer', 'cheque', 'other']),
-  "paymentReference": zod.string().nullable()
+  "paymentReference": zod.string().nullable(),
+  "collectorName": zod.string().nullable()
 }))
 })),
   "total": zod.int()
@@ -3185,7 +3186,8 @@ export const GenerateFeeInvoicesResponse = zod.object({
   "amountPaise": zod.int().min(1),
   "paymentDate": zod.coerce.date(),
   "paymentMethod": zod.enum(['mock', 'razorpay', 'manual', 'cash', 'upi', 'bank_transfer', 'cheque', 'other']),
-  "paymentReference": zod.string().nullable()
+  "paymentReference": zod.string().nullable(),
+  "collectorName": zod.string().nullable()
 }))
 }))
 })
@@ -3245,7 +3247,8 @@ export const UpdateFeeInvoiceConcessionResponse = zod.object({
   "amountPaise": zod.int().min(1),
   "paymentDate": zod.coerce.date(),
   "paymentMethod": zod.enum(['mock', 'razorpay', 'manual', 'cash', 'upi', 'bank_transfer', 'cheque', 'other']),
-  "paymentReference": zod.string().nullable()
+  "paymentReference": zod.string().nullable(),
+  "collectorName": zod.string().nullable()
 }))
 })
 
@@ -3313,7 +3316,8 @@ export const GetMyFeeInvoicesResponse = zod.object({
   "amountPaise": zod.int().min(1),
   "paymentDate": zod.coerce.date(),
   "paymentMethod": zod.enum(['mock', 'razorpay', 'manual', 'cash', 'upi', 'bank_transfer', 'cheque', 'other']),
-  "paymentReference": zod.string().nullable()
+  "paymentReference": zod.string().nullable(),
+  "collectorName": zod.string().nullable()
 }))
 })),
   "total": zod.int()
@@ -3410,7 +3414,8 @@ export const GetFeeReceiptResponse = zod.object({
   "paidAt": zod.coerce.date(),
   "paymentDate": zod.coerce.date(),
   "paymentMethod": zod.enum(['mock', 'razorpay', 'manual', 'cash', 'upi', 'bank_transfer', 'cheque', 'other']),
-  "paymentReference": zod.string().nullable()
+  "paymentReference": zod.string().nullable(),
+  "collectorName": zod.string().nullable()
 })
 
 

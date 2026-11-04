@@ -49,6 +49,7 @@ type InvoicePaymentRow = {
   paymentDate: string | Date;
   paymentMethod: string;
   paymentReference: string | null;
+  collectorName: string | null;
 };
 
 function dateValue(value: string | Date): string {
@@ -68,6 +69,7 @@ function mapPaymentHistory(value: InvoiceRow["payments"]): InvoicePaymentRow[] {
     paymentDate: dateValue(payment.paymentDate),
     paymentMethod: payment.paymentMethod,
     paymentReference: payment.paymentReference ?? null,
+    collectorName: payment.collectorName ?? null,
   }));
 }
 
@@ -83,13 +85,16 @@ const paymentHistoryJoin = `
                  'amountPaise', recorded.amount_paise,
                  'paymentDate', TO_CHAR(recorded.received_on, 'YYYY-MM-DD'),
                  'paymentMethod', COALESCE(recorded.payment_method, recorded.gateway),
-                 'paymentReference', recorded.payment_reference
+                  'paymentReference', recorded.payment_reference,
+                  'collectorName', CASE WHEN recorded.gateway = 'manual' THEN collector.name ELSE NULL END
                )
                ORDER BY recorded.received_on DESC, recorded.captured_at DESC, recorded.id DESC
              ),
              '[]'::jsonb
            ) AS payments
       FROM fees.payments recorded
+       LEFT JOIN identity.users collector
+         ON collector.org_id = recorded.org_id AND collector.id = recorded.received_by
      WHERE recorded.org_id = i.org_id
        AND recorded.invoice_id = i.id
        AND recorded.status = 'captured'
@@ -829,16 +834,20 @@ const routes: FastifyPluginAsync = async (fastify) => {
           payment_method: string | null;
           payment_reference: string | null;
           gateway: "mock" | "razorpay" | "manual";
+          collector_name: string | null;
         }>(
           `SELECT payment.receipt_number, invoice.invoice_number, student.name AS student_name,
                   invoice.description, invoice.academic_year, invoice.period, payment.amount_paise,
                   payment.captured_at, payment.received_on, payment.payment_method,
-                  payment.payment_reference, payment.gateway
+                  payment.payment_reference, payment.gateway,
+                  CASE WHEN payment.gateway = 'manual' THEN collector.name ELSE NULL END AS collector_name
              FROM fees.payments payment
              JOIN fees.invoices invoice
                ON invoice.org_id = payment.org_id AND invoice.id = payment.invoice_id
              JOIN identity.users student
                ON student.org_id = invoice.org_id AND student.id = invoice.student_user_id
+             LEFT JOIN identity.users collector
+               ON collector.org_id = payment.org_id AND collector.id = payment.received_by
             WHERE payment.org_id = $1 AND payment.receipt_number = $2
               AND ($3::boolean OR ($4::boolean AND invoice.student_user_id = $5) OR EXISTS (
                 SELECT 1 FROM identity.guardian_links guardian
@@ -863,6 +872,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
           paymentDate: dateValue(row.received_on),
           paymentMethod: row.payment_method ?? row.gateway,
           paymentReference: row.payment_reference,
+          collectorName: row.collector_name,
       });
     } catch (error) {
       next(error);

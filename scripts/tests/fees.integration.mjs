@@ -422,6 +422,7 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
   assert.equal(partiallyPaidInvoice.payments.length, 1);
   assert.equal(partiallyPaidInvoice.payments[0].paymentMethod, "cash");
   assert.equal(partiallyPaidInvoice.payments[0].paymentReference, "cash-counter-test");
+  assert.equal(partiallyPaidInvoice.payments[0].collectorName, users.admin.name);
 
   const firstPayment = await apiRequest("POST", `/fees/invoices/${parentInvoice.id}/pay`, parentToken, { amountPaise: 1 });
   assert.equal(firstPayment.statusCode, 200, firstPayment.body);
@@ -449,6 +450,7 @@ test("fee MVP scopes student invoices and receipts while retaining parent paymen
   assert.equal(manualReceipt.statusCode, 200, manualReceipt.body);
   assert.equal(manualReceipt.json().paymentMethod, "cash");
   assert.equal(manualReceipt.json().paymentReference, "cash-counter-test");
+  assert.equal(manualReceipt.json().collectorName, users.admin.name);
   assert.equal(manualReceipt.json().amountPaise, 4000);
 
   const studentReceipt = await apiRequest("GET", `/fees/receipts/${encodeURIComponent(manualPayment.receiptNumber)}`, studentToken);

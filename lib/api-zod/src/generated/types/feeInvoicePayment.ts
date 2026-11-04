@@ -15,4 +15,6 @@ export interface FeeInvoicePayment {
   paymentMethod: FeeInvoicePaymentPaymentMethod;
   /** @nullable */
   paymentReference: string | null;
+  /** @nullable */
+  collectorName: string | null;
 }

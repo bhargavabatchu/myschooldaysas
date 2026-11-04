@@ -293,6 +293,7 @@ export function FeesPage({ roles }: FeesPageProps) {
                                 <p className="text-xs text-[hsl(var(--muted-foreground))]">
                                   {money(payment.amountPaise)} · {paymentMethodText(payment.paymentMethod)} · {dateText(payment.paymentDate)}
                                   {payment.paymentReference ? ` · ${payment.paymentReference}` : ""}
+                                  {payment.collectorName ? ` · Collected by ${payment.collectorName}` : ""}
                                 </p>
                               </div>
                             ))}
@@ -407,7 +408,7 @@ export function FeesPage({ roles }: FeesPageProps) {
                         {invoice.payments.map((payment) => (
                           <li key={payment.receiptNumber}>
                             <Link className="btn btn-muted min-h-9 px-3 text-xs" href={`/fees/receipts/${encodeURIComponent(payment.receiptNumber)}`}>
-                              {money(payment.amountPaise)} · {paymentMethodText(payment.paymentMethod)} · receipt
+                              {money(payment.amountPaise)} · {paymentMethodText(payment.paymentMethod)}{payment.collectorName ? ` · Collected by ${payment.collectorName}` : ""} · receipt
                             </Link>
                           </li>
                         ))}
@@ -449,6 +450,7 @@ export function FeeReceiptPage() {
           <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Description</dt><dd className="mt-1 font-semibold">{item.description}</dd></div>
           <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Billing period</dt><dd className="mt-1 font-semibold">{item.period} · {item.academicYear}</dd></div>
           <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Payment method</dt><dd className="mt-1 font-semibold">{paymentMethodText(item.paymentMethod)}</dd></div>
+          {item.collectorName && <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Collected by</dt><dd className="mt-1 font-semibold">{item.collectorName}</dd></div>}
           {item.paymentReference && <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Reference</dt><dd className="mt-1 font-semibold">{item.paymentReference}</dd></div>}
           <div><dt className="text-xs text-[hsl(var(--muted-foreground))]">Amount paid</dt><dd className="mt-1 text-xl font-extrabold">{money(item.amountPaise)}</dd></div>
         </dl>

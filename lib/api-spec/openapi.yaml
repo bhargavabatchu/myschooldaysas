@@ -3363,7 +3363,7 @@ components:
       enum: [unpaid, paid, waived, void]
     FeeInvoicePayment:
       type: object
-      required: [receiptNumber, amountPaise, paymentDate, paymentMethod, paymentReference]
+      required: [receiptNumber, amountPaise, paymentDate, paymentMethod, paymentReference, collectorName]
       properties:
         receiptNumber: { type: string }
         amountPaise: { type: integer, minimum: 1 }
@@ -3372,6 +3372,7 @@ components:
           type: string
           enum: [mock, razorpay, manual, cash, upi, bank_transfer, cheque, other]
         paymentReference: { type: string, nullable: true }
+        collectorName: { type: string, nullable: true }
     FeeInvoice:
       type: object
       required: [id, studentId, studentName, sectionId, invoiceNumber, academicYear, period, description, amountPaise, concessionPaise, paidPaise, balancePaise, dueDate, status, receiptNumber, paidAt, canPay, payments]
@@ -3489,7 +3490,7 @@ components:
           enum: [cash, upi, bank_transfer, cheque, other]
     FeeReceipt:
       type: object
-      required: [receiptNumber, invoiceNumber, studentName, description, academicYear, period, amountPaise, paidAt, paymentDate, paymentMethod, paymentReference]
+      required: [receiptNumber, invoiceNumber, studentName, description, academicYear, period, amountPaise, paidAt, paymentDate, paymentMethod, paymentReference, collectorName]
       properties:
         receiptNumber: { type: string }
         invoiceNumber: { type: string }
@@ -3504,6 +3505,7 @@ components:
           type: string
           enum: [mock, razorpay, manual, cash, upi, bank_transfer, cheque, other]
         paymentReference: { type: string, nullable: true }
+        collectorName: { type: string, nullable: true }
     AdmissionEnquiryStatus:
       type: string
       enum: [new, contacted, visit_scheduled, application_issued, closed, lost]

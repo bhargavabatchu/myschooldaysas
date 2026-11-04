@@ -27,13 +27,16 @@ export function buildMyFeeInvoiceQuery(
                                'amountPaise', recorded.amount_paise,
                                'paymentDate', TO_CHAR(recorded.received_on, 'YYYY-MM-DD'),
                                'paymentMethod', COALESCE(recorded.payment_method, recorded.gateway),
-                               'paymentReference', recorded.payment_reference
+                               'paymentReference', recorded.payment_reference,
+                               'collectorName', CASE WHEN recorded.gateway = 'manual' THEN collector.name ELSE NULL END
                              )
                              ORDER BY recorded.received_on DESC, recorded.captured_at DESC, recorded.id DESC
                            ),
                            '[]'::jsonb
                          ) AS payments
                     FROM fees.payments recorded
+                      LEFT JOIN identity.users collector
+                        ON collector.org_id = recorded.org_id AND collector.id = recorded.received_by
                    WHERE recorded.org_id = i.org_id
                      AND recorded.invoice_id = i.id
                      AND recorded.status = 'captured'
@@ -67,13 +70,16 @@ export function buildMyFeeInvoiceQuery(
                              'amountPaise', recorded.amount_paise,
                              'paymentDate', TO_CHAR(recorded.received_on, 'YYYY-MM-DD'),
                              'paymentMethod', COALESCE(recorded.payment_method, recorded.gateway),
-                             'paymentReference', recorded.payment_reference
+                             'paymentReference', recorded.payment_reference,
+                             'collectorName', CASE WHEN recorded.gateway = 'manual' THEN collector.name ELSE NULL END
                            )
                            ORDER BY recorded.received_on DESC, recorded.captured_at DESC, recorded.id DESC
                          ),
                          '[]'::jsonb
                        ) AS payments
                   FROM fees.payments recorded
+                    LEFT JOIN identity.users collector
+                      ON collector.org_id = recorded.org_id AND collector.id = recorded.received_by
                  WHERE recorded.org_id = i.org_id
                    AND recorded.invoice_id = i.id
                    AND recorded.status = 'captured'
