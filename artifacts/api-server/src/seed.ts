@@ -11,6 +11,7 @@ if (!migratorUrl) throw new Error("MIGRATOR_DATABASE_URL is required to seed the
 
 const migrator = createPool(migratorUrl);
 const demoPasswordHash = await hashPassword("Passw0rd!");
+let seededStudentCount = 0;
 
 const users: Array<{ email: string; name: string; role: string; kind: "student" | "teacher" | "parent" | "other" }> = [
   { email: "admin@demo.edu", name: "Aarav Nair", role: "org_admin", kind: "other" },
@@ -22,7 +23,7 @@ const users: Array<{ email: string; name: string; role: string; kind: "student" 
   { email: "superadmin@demo.edu", name: "Campus Operator", role: "super_admin", kind: "other" },
 ];
 
-for (let index = 2; index <= 240; index += 1) {
+for (let index = 2; index <= 1860; index += 1) {
   users.push({
     email: `student${String(index).padStart(3, "0")}@demo.edu`,
     name: `Student ${String(index).padStart(3, "0")}`,
@@ -257,6 +258,20 @@ try {
       }
     }
 
+    const studentCount = await client.query<{ count: number }>(
+      `SELECT COUNT(DISTINCT enrollment.student_user_id)::int AS count
+         FROM academic.enrollments enrollment
+         JOIN identity.user_roles role
+           ON role.org_id = enrollment.org_id
+          AND role.user_id = enrollment.student_user_id
+        WHERE enrollment.org_id = $1
+          AND enrollment.academic_year = '2026-27'
+          AND enrollment.status = 'active'
+          AND role.role = 'student'`,
+      [orgId],
+    );
+    seededStudentCount = studentCount.rows[0]?.count ?? 0;
+
     for (let index = 0; index < teacherUsers.length; index += 1) {
       const teacher = teacherUsers[index]!;
       const assignedSection = sectionIds[index % sectionIds.length]!;
@@ -372,7 +387,7 @@ try {
     client.release();
   }
 
-  console.log(`Seeded ${users.length} baseline development users; Grade 1 sections A–E now have at least 40 students each.`);
+  console.log(`Development demo seed ready: ${seededStudentCount} active student enrollments for 2026-27; Grade 1 sections A–E each have at least 40 students.`);
 } finally {
   await migrator.end();
 }
