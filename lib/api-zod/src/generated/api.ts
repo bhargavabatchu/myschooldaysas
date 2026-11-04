@@ -254,6 +254,129 @@ export const MarkSchoolAttendanceResponse = zod.object({
 
 
 /**
+ * @summary List school calendar events visible to the signed-in user
+ */
+export const GetCalendarQueryParams = zod.object({
+  "from": zod.date(),
+  "to": zod.date()
+})
+
+export const GetCalendarResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "kind": zod.enum(['holiday', 'exam', 'event', 'ptm', 'working_day']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "scope": zod.enum(['org', 'class', 'section']),
+  "scopeId": zod.uuid().nullable(),
+  "scopeName": zod.string(),
+  "description": zod.string(),
+  "createdBy": zod.uuid()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Add an academic calendar event
+ */
+export const createCalendarEventBodyTitleMin = 3;
+export const createCalendarEventBodyTitleMax = 160;
+
+export const createCalendarEventBodyDescriptionDefault = ``;
+export const createCalendarEventBodyDescriptionMax = 2000;
+
+
+
+export const CreateCalendarEventBody = zod.object({
+  "title": zod.string().min(createCalendarEventBodyTitleMin).max(createCalendarEventBodyTitleMax),
+  "kind": zod.enum(['holiday', 'exam', 'event', 'ptm', 'working_day']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "scope": zod.enum(['org', 'class', 'section']),
+  "scopeId": zod.uuid().optional(),
+  "description": zod.string().max(createCalendarEventBodyDescriptionMax).default(createCalendarEventBodyDescriptionDefault)
+})
+
+export const CreateCalendarEventResponse = zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "kind": zod.enum(['holiday', 'exam', 'event', 'ptm', 'working_day']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "scope": zod.enum(['org', 'class', 'section']),
+  "scopeId": zod.uuid().nullable(),
+  "scopeName": zod.string(),
+  "description": zod.string(),
+  "createdBy": zod.uuid()
+})
+
+
+/**
+ * @summary Update an academic calendar event
+ */
+export const UpdateCalendarEventParams = zod.object({
+  "eventId": zod.uuid()
+})
+
+export const updateCalendarEventBodyTitleMin = 3;
+export const updateCalendarEventBodyTitleMax = 160;
+
+export const updateCalendarEventBodyDescriptionDefault = ``;
+export const updateCalendarEventBodyDescriptionMax = 2000;
+
+
+
+export const UpdateCalendarEventBody = zod.object({
+  "title": zod.string().min(updateCalendarEventBodyTitleMin).max(updateCalendarEventBodyTitleMax),
+  "kind": zod.enum(['holiday', 'exam', 'event', 'ptm', 'working_day']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "scope": zod.enum(['org', 'class', 'section']),
+  "scopeId": zod.uuid().optional(),
+  "description": zod.string().max(updateCalendarEventBodyDescriptionMax).default(updateCalendarEventBodyDescriptionDefault)
+})
+
+export const UpdateCalendarEventResponse = zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "kind": zod.enum(['holiday', 'exam', 'event', 'ptm', 'working_day']),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "scope": zod.enum(['org', 'class', 'section']),
+  "scopeId": zod.uuid().nullable(),
+  "scopeName": zod.string(),
+  "description": zod.string(),
+  "createdBy": zod.uuid()
+})
+
+
+/**
+ * @summary Remove an academic calendar event
+ */
+export const DeleteCalendarEventParams = zod.object({
+  "eventId": zod.uuid()
+})
+
+export const DeleteCalendarEventResponse = zod.void()
+
+
+/**
+ * @summary Check whether a date is a school working day
+ */
+export const GetCalendarWorkingDayQueryParams = zod.object({
+  "date": zod.date()
+})
+
+export const GetCalendarWorkingDayResponse = zod.object({
+  "date": zod.coerce.date(),
+  "isWorkingDay": zod.boolean(),
+  "reason": zod.string()
+})
+
+
+/**
  * @summary List announcements visible to the signed-in user
  */
 export const getAnnouncementsQueryUnreadDefault = false;

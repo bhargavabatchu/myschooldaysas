@@ -14,7 +14,7 @@ import {
 } from '@workspace/api-client-react';
 import type { BoardConfig, BoardTemplate, BoardTemplateInput, LiveSession, LiveSessionInput, SectionSummary } from '@workspace/api-client-react';
 import {
-  Activity, ArrowDown, ArrowRight, ArrowUpRight, BookOpen, Check, ChevronDown, ClipboardList,
+  Activity, ArrowDown, ArrowRight, ArrowUpRight, BookOpen, CalendarDays, Check, ChevronDown, ClipboardList,
   ChevronLeft, ChevronRight, CircleAlert, Clock3, DoorOpen, GraduationCap, LayoutDashboard,
   Library, LoaderCircle, LogOut, Menu, Moon, Plus, Radio, Search, Settings2, ShieldCheck,
   Sun, Users, Video, X, CalendarCheck,
@@ -34,6 +34,7 @@ import { ClassroomScreen } from '@/components/classroom/classroom-screen';
 import { LearningPage } from '@/components/learning/learning-page';
 import { AttendancePage } from '@/components/attendance/attendance-page';
 import { TimetablePage } from '@/components/academic/timetable-page';
+import { AcademicCalendarPage } from '@/components/academic/academic-calendar-page';
 import { SectionCapacityField } from '@/components/academic/section-capacity-field';
 import { ClassRemovalControls, SectionRemovalControls } from '@/components/academic/class-removal-controls';
 import { EnrollmentYearField } from '@/components/academic/enrollment-year-field';
@@ -152,6 +153,7 @@ function ProtectedApp() {
         <Route path="/learning" component={() => <LearningPage roles={user.roles} />} />
         <Route path="/announcements" component={() => <AnnouncementsPage roles={user.roles} userId={user.id} />} />
         <Route path="/attendance" component={() => <AttendancePage roles={user.roles} />} />
+        <Route path="/calendar" component={() => <AcademicCalendarPage roles={user.roles} />} />
         <Route path="/timetable" component={() => <TimetablePage canManage={user.roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role))} />} />
         <Route path="/family/consents" component={() => user.roles.includes('parent') ? <ConsentsPage/> : <NotFound/>} />
         <Route path="/fees/receipts/:receiptNumber" component={FeeReceiptPage} />
@@ -179,6 +181,7 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
     { label: 'Announcements', href: '/announcements', icon: Radio },
     { label: 'Attendance', href: '/attendance', icon: CalendarCheck },
     { label: 'Timetable', href: '/timetable', icon: CalendarCheck },
+    { label: 'Academic calendar', href: '/calendar', icon: CalendarDays },
   ];
   if (user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role))) {
     nav.push({ label: 'Teachers', href: '/admin/teachers', icon: Users });

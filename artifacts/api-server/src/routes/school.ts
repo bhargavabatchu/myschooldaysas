@@ -106,6 +106,35 @@ const routes: FastifyPluginAsync = async (fastify) => {
       const result = await withOrg(user.orgId, async (client) => {
         const allowed = await canAccessSection(client, user.orgId, user.id, user.roles, parsed.data.sectionId);
         if (!allowed) return { forbidden: true as const };
+        const isAdmin = user.roles.some((role) => adminRoles.includes(role));
+        if (!isAdmin) {
+          const calendarRule = await client.query(
+            `SELECT event.kind, event.title
+               FROM school.calendar_events event
+               JOIN academic.sections section
+                 ON section.org_id=event.org_id AND section.id=$3
+              WHERE event.org_id=$1 AND event.start_date <= $2::date AND event.end_date >= $2::date
+                AND event.kind IN ('holiday', 'working_day')
+                AND (
+                  event.scope='org'
+                  OR (event.scope='class' AND event.scope_id=section.class_id)
+                  OR (event.scope='section' AND event.scope_id=section.id)
+                )
+              ORDER BY CASE event.kind WHEN 'working_day' THEN 0 ELSE 1 END,
+                       CASE event.scope WHEN 'section' THEN 0 WHEN 'class' THEN 1 ELSE 2 END,
+                       event.created_at DESC
+              LIMIT 1`,
+            [user.orgId, date, parsed.data.sectionId],
+          );
+          const override = calendarRule.rows[0];
+          const isSunday = new Date(`${date}T00:00:00.000Z`).getUTCDay() === 0;
+          if (override?.kind === "holiday" || (!override && isSunday)) {
+            return {
+              nonWorkingDay: true as const,
+              reason: override?.title ?? "Sunday",
+            };
+          }
+        }
         const enrolled = await client.query(
           `SELECT student_user_id
              FROM academic.enrollments
@@ -145,6 +174,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
         return roster ? { roster } : { missing: true as const };
       });
       if ("forbidden" in result) return void res.status(403).json(errorBody("FORBIDDEN", "You do not have access to this section's attendance."));
+      if ("nonWorkingDay" in result) return void res.status(409).json(errorBody("NON_WORKING_DAY", `Attendance cannot be recorded: ${result.reason} is a non-working day.`));
       if ("invalidRoster" in result) return void res.status(400).json(errorBody("INVALID_ROSTER", "Submit exactly one mark for every active student in this section."));
       if ("missing" in result) return void res.status(404).json(errorBody("NOT_FOUND", "Section not found."));
       res.json(result.roster);

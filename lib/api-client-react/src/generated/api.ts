@@ -49,6 +49,10 @@ import type {
   BoardTemplate,
   BoardTemplateInput,
   BoardTemplateUpdate,
+  CalendarEvent,
+  CalendarEventInput,
+  CalendarEventPage,
+  CalendarWorkingDay,
   ChangePasswordInput,
   ClassCreateInput,
   ClassSummary,
@@ -80,6 +84,8 @@ import type {
   GetAnnouncementsParams,
   GetAvailableStudentsParams,
   GetBoardTemplates200,
+  GetCalendarParams,
+  GetCalendarWorkingDayParams,
   GetClasses200,
   GetClassesParams,
   GetConsents200,
@@ -1288,6 +1294,473 @@ export const useMarkSchoolAttendance = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getMarkSchoolAttendanceMutationOptions(options), queryClient);
     }
+
+export const getGetCalendarUrl = (params: GetCalendarParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/calendar?${stringifiedParams}` : `/api/calendar`
+}
+
+/**
+ * @summary List school calendar events visible to the signed-in user
+ */
+export const getCalendar = async (params: GetCalendarParams, options?: Parameters<typeof customFetch>[1]): Promise<CalendarEventPage> => {
+
+  return customFetch<CalendarEventPage>(getGetCalendarUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCalendarQueryKey = (params?: GetCalendarParams,) => {
+    return [
+    `/api/calendar`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCalendarQueryOptions = <TData = Awaited<ReturnType<typeof getCalendar>>, TError = ErrorType<unknown>>(params: GetCalendarParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCalendar>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCalendarQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCalendar>>> = ({ signal }) => getCalendar(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCalendar>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCalendarQueryResult = NonNullable<Awaited<ReturnType<typeof getCalendar>>>
+export type GetCalendarQueryError = ErrorType<unknown>
+
+
+export function useGetCalendar<TData = Awaited<ReturnType<typeof getCalendar>>, TError = ErrorType<unknown>>(
+ params: GetCalendarParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCalendar>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCalendar>>,
+          TError,
+          Awaited<ReturnType<typeof getCalendar>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCalendar<TData = Awaited<ReturnType<typeof getCalendar>>, TError = ErrorType<unknown>>(
+ params: GetCalendarParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCalendar>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCalendar>>,
+          TError,
+          Awaited<ReturnType<typeof getCalendar>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCalendar<TData = Awaited<ReturnType<typeof getCalendar>>, TError = ErrorType<unknown>>(
+ params: GetCalendarParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCalendar>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List school calendar events visible to the signed-in user
+ */
+
+export function useGetCalendar<TData = Awaited<ReturnType<typeof getCalendar>>, TError = ErrorType<unknown>>(
+ params: GetCalendarParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCalendar>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCalendarQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCalendarEventUrl = () => {
+
+
+
+
+  return `/api/calendar`
+}
+
+/**
+ * @summary Add an academic calendar event
+ */
+export const createCalendarEvent = async (calendarEventInput: CalendarEventInput, options?: Parameters<typeof customFetch>[1]): Promise<CalendarEvent> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CalendarEvent>(getCreateCalendarEventUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(calendarEventInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCalendarEventMutationKey = () => ['createCalendarEvent'] as const;
+
+export const getCreateCalendarEventMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCalendarEvent>>, TError,CreateCalendarEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCalendarEvent>>, TError,CreateCalendarEventMutationVariables, TContext> => {
+
+const mutationKey = getCreateCalendarEventMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCalendarEvent>>, CreateCalendarEventMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCalendarEvent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCalendarEventMutationResult = NonNullable<Awaited<ReturnType<typeof createCalendarEvent>>>
+    export type CreateCalendarEventMutationBody = BodyType<CalendarEventInput>
+    export type CreateCalendarEventMutationError = ErrorType<void>
+    export type CreateCalendarEventMutationVariables = {data: BodyType<CalendarEventInput>}
+
+    /**
+ * @summary Add an academic calendar event
+ */
+export const useCreateCalendarEvent = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCalendarEvent>>, TError,CreateCalendarEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createCalendarEvent>>,
+        TError,
+        CreateCalendarEventMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCalendarEventMutationOptions(options), queryClient);
+    }
+
+export const getUpdateCalendarEventUrl = (eventId: string,) => {
+
+
+
+
+  return `/api/calendar/${eventId}`
+}
+
+/**
+ * @summary Update an academic calendar event
+ */
+export const updateCalendarEvent = async (eventId: string,
+    calendarEventInput: CalendarEventInput, options?: Parameters<typeof customFetch>[1]): Promise<CalendarEvent> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CalendarEvent>(getUpdateCalendarEventUrl(eventId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(calendarEventInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateCalendarEventMutationKey = () => ['updateCalendarEvent'] as const;
+
+export const getUpdateCalendarEventMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCalendarEvent>>, TError,UpdateCalendarEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCalendarEvent>>, TError,UpdateCalendarEventMutationVariables, TContext> => {
+
+const mutationKey = getUpdateCalendarEventMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCalendarEvent>>, UpdateCalendarEventMutationVariables> = (props) => {
+          const {eventId,data} = props ?? {};
+
+          return  updateCalendarEvent(eventId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCalendarEventMutationResult = NonNullable<Awaited<ReturnType<typeof updateCalendarEvent>>>
+    export type UpdateCalendarEventMutationBody = BodyType<CalendarEventInput>
+    export type UpdateCalendarEventMutationError = ErrorType<void>
+    export type UpdateCalendarEventMutationVariables = {eventId: string;data: BodyType<CalendarEventInput>}
+
+    /**
+ * @summary Update an academic calendar event
+ */
+export const useUpdateCalendarEvent = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCalendarEvent>>, TError,UpdateCalendarEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateCalendarEvent>>,
+        TError,
+        UpdateCalendarEventMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateCalendarEventMutationOptions(options), queryClient);
+    }
+
+export const getDeleteCalendarEventUrl = (eventId: string,) => {
+
+
+
+
+  return `/api/calendar/${eventId}`
+}
+
+/**
+ * @summary Remove an academic calendar event
+ */
+export const deleteCalendarEvent = async (eventId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteCalendarEventUrl(eventId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteCalendarEventMutationKey = () => ['deleteCalendarEvent'] as const;
+
+export const getDeleteCalendarEventMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCalendarEvent>>, TError,DeleteCalendarEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCalendarEvent>>, TError,DeleteCalendarEventMutationVariables, TContext> => {
+
+const mutationKey = getDeleteCalendarEventMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCalendarEvent>>, DeleteCalendarEventMutationVariables> = (props) => {
+          const {eventId} = props ?? {};
+
+          return  deleteCalendarEvent(eventId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCalendarEventMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCalendarEvent>>>
+
+    export type DeleteCalendarEventMutationError = ErrorType<void>
+    export type DeleteCalendarEventMutationVariables = {eventId: string}
+
+    /**
+ * @summary Remove an academic calendar event
+ */
+export const useDeleteCalendarEvent = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCalendarEvent>>, TError,DeleteCalendarEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCalendarEvent>>,
+        TError,
+        DeleteCalendarEventMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteCalendarEventMutationOptions(options), queryClient);
+    }
+
+export const getGetCalendarWorkingDayUrl = (params: GetCalendarWorkingDayParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/calendar/is-working-day?${stringifiedParams}` : `/api/calendar/is-working-day`
+}
+
+/**
+ * @summary Check whether a date is a school working day
+ */
+export const getCalendarWorkingDay = async (params: GetCalendarWorkingDayParams, options?: Parameters<typeof customFetch>[1]): Promise<CalendarWorkingDay> => {
+
+  return customFetch<CalendarWorkingDay>(getGetCalendarWorkingDayUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCalendarWorkingDayQueryKey = (params?: GetCalendarWorkingDayParams,) => {
+    return [
+    `/api/calendar/is-working-day`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCalendarWorkingDayQueryOptions = <TData = Awaited<ReturnType<typeof getCalendarWorkingDay>>, TError = ErrorType<unknown>>(params: GetCalendarWorkingDayParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCalendarWorkingDay>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCalendarWorkingDayQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCalendarWorkingDay>>> = ({ signal }) => getCalendarWorkingDay(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCalendarWorkingDay>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCalendarWorkingDayQueryResult = NonNullable<Awaited<ReturnType<typeof getCalendarWorkingDay>>>
+export type GetCalendarWorkingDayQueryError = ErrorType<unknown>
+
+
+export function useGetCalendarWorkingDay<TData = Awaited<ReturnType<typeof getCalendarWorkingDay>>, TError = ErrorType<unknown>>(
+ params: GetCalendarWorkingDayParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCalendarWorkingDay>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCalendarWorkingDay>>,
+          TError,
+          Awaited<ReturnType<typeof getCalendarWorkingDay>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCalendarWorkingDay<TData = Awaited<ReturnType<typeof getCalendarWorkingDay>>, TError = ErrorType<unknown>>(
+ params: GetCalendarWorkingDayParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCalendarWorkingDay>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCalendarWorkingDay>>,
+          TError,
+          Awaited<ReturnType<typeof getCalendarWorkingDay>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCalendarWorkingDay<TData = Awaited<ReturnType<typeof getCalendarWorkingDay>>, TError = ErrorType<unknown>>(
+ params: GetCalendarWorkingDayParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCalendarWorkingDay>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Check whether a date is a school working day
+ */
+
+export function useGetCalendarWorkingDay<TData = Awaited<ReturnType<typeof getCalendarWorkingDay>>, TError = ErrorType<unknown>>(
+ params: GetCalendarWorkingDayParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCalendarWorkingDay>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCalendarWorkingDayQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetAnnouncementsUrl = (params?: GetAnnouncementsParams,) => {
   const normalizedParams = new URLSearchParams();

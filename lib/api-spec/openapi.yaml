@@ -210,6 +210,84 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SchoolAttendancePage" }
+  /calendar:
+    get:
+      operationId: getCalendar
+      tags: [school]
+      summary: List school calendar events visible to the signed-in user
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: from, required: true, schema: { type: string, format: date } }
+        - { in: query, name: to, required: true, schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: Calendar events overlapping the requested date range
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarEventPage" }
+    post:
+      operationId: createCalendarEvent
+      tags: [school]
+      summary: Add an academic calendar event
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CalendarEventInput" }
+      responses:
+        "201":
+          description: Calendar event created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarEvent" }
+        "403": { description: Administrator role required }
+  /calendar/{eventId}:
+    put:
+      operationId: updateCalendarEvent
+      tags: [school]
+      summary: Update an academic calendar event
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: eventId, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CalendarEventInput" }
+      responses:
+        "200":
+          description: Calendar event updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarEvent" }
+        "403": { description: Administrator role required }
+        "404": { description: Calendar event not found }
+    delete:
+      operationId: deleteCalendarEvent
+      tags: [school]
+      summary: Remove an academic calendar event
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: eventId, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Calendar event deleted }
+        "403": { description: Administrator role required }
+        "404": { description: Calendar event not found }
+  /calendar/is-working-day:
+    get:
+      operationId: getCalendarWorkingDay
+      tags: [school]
+      summary: Check whether a date is a school working day
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: date, required: true, schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: Working-day status for the date
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarWorkingDay" }
   /announcements:
     get:
       operationId: getAnnouncements
@@ -3140,6 +3218,52 @@ components:
               studentId: { type: string, format: uuid }
               status: { $ref: "#/components/schemas/SchoolAttendanceStatus" }
               remark: { type: string, maxLength: 500 }
+    CalendarEventKind:
+      type: string
+      enum: [holiday, exam, event, ptm, working_day]
+    CalendarEventScope:
+      type: string
+      enum: [org, class, section]
+    CalendarEvent:
+      type: object
+      required: [id, title, kind, startDate, endDate, scope, scopeId, scopeName, description, createdBy]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        kind: { $ref: "#/components/schemas/CalendarEventKind" }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        scope: { $ref: "#/components/schemas/CalendarEventScope" }
+        scopeId: { type: string, format: uuid, nullable: true }
+        scopeName: { type: string }
+        description: { type: string }
+        createdBy: { type: string, format: uuid }
+    CalendarEventPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CalendarEvent" }
+        total: { type: integer }
+    CalendarEventInput:
+      type: object
+      required: [title, kind, startDate, endDate, scope]
+      properties:
+        title: { type: string, minLength: 3, maxLength: 160 }
+        kind: { $ref: "#/components/schemas/CalendarEventKind" }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        scope: { $ref: "#/components/schemas/CalendarEventScope" }
+        scopeId: { type: string, format: uuid }
+        description: { type: string, maxLength: 2000, default: "" }
+    CalendarWorkingDay:
+      type: object
+      required: [date, isWorkingDay, reason]
+      properties:
+        date: { type: string, format: date }
+        isWorkingDay: { type: boolean }
+        reason: { type: string }
     LearningReportCardSubject:
       type: object
       required: [subjectId, subjectName, score, maxPoints, percent, grade, remark]

@@ -1447,6 +1447,66 @@ export interface SchoolAttendanceInput {
   marks: SchoolAttendanceInputMarksItem[];
 }
 
+export type CalendarEventKind = typeof CalendarEventKind[keyof typeof CalendarEventKind];
+
+
+export const CalendarEventKind = {
+  holiday: 'holiday',
+  exam: 'exam',
+  event: 'event',
+  ptm: 'ptm',
+  working_day: 'working_day',
+} as const;
+
+export type CalendarEventScope = typeof CalendarEventScope[keyof typeof CalendarEventScope];
+
+
+export const CalendarEventScope = {
+  org: 'org',
+  class: 'class',
+  section: 'section',
+} as const;
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  kind: CalendarEventKind;
+  startDate: string;
+  endDate: string;
+  scope: CalendarEventScope;
+  /** @nullable */
+  scopeId: string | null;
+  scopeName: string;
+  description: string;
+  createdBy: string;
+}
+
+export interface CalendarEventPage {
+  items: CalendarEvent[];
+  total: number;
+}
+
+export interface CalendarEventInput {
+  /**
+     * @minLength 3
+     * @maxLength 160
+     */
+  title: string;
+  kind: CalendarEventKind;
+  startDate: string;
+  endDate: string;
+  scope: CalendarEventScope;
+  scopeId?: string;
+  /** @maxLength 2000 */
+  description?: string;
+}
+
+export interface CalendarWorkingDay {
+  date: string;
+  isWorkingDay: boolean;
+  reason: string;
+}
+
 export interface LearningReportCardSubject {
   subjectId: string;
   subjectName: string;
@@ -1873,6 +1933,15 @@ sectionId?: string;
 
 export type GetSchoolAttendanceParams = {
 sectionId: string;
+date: string;
+};
+
+export type GetCalendarParams = {
+from: string;
+to: string;
+};
+
+export type GetCalendarWorkingDayParams = {
 date: string;
 };
 

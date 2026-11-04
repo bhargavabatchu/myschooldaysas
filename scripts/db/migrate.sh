@@ -46,6 +46,7 @@ academic:008|services/academic/migrations/008_class_section_archive.sql
 academic:009|services/academic/migrations/009_section_subjects.sql
 school:001|services/school/migrations/001_attendance.sql
 school:002|services/school/migrations/002_announcements.sql
+school:003|services/school/migrations/003_calendar_events.sql
 live:001|services/live/migrations/001_live.sql
 board:001|services/board/migrations/001_board.sql
 board:002|services/board/migrations/002_realtime.sql
