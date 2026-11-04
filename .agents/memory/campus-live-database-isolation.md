@@ -22,3 +22,9 @@ The fee integration test is deliberately restricted to the local `campus` databa
 **Why:** fee integration fixtures assume a disposable local database and a least-privilege role, and must not write into a shared development or production database.
 
 **How to apply:** run the fee integration test only when its local database prerequisites are available; otherwise report the environment block.
+
+Preserve existing production records during database repairs; do not replace production with the development/demo database.
+
+**Why:** the user explicitly chose to preserve production records when offered a development-to-production database copy.
+
+**How to apply:** keep schema repair separate from demo-data provisioning and avoid database-overwrite options.
