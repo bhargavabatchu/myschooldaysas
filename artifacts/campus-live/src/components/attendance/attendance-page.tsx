@@ -15,18 +15,26 @@ export function AttendancePage({ roles }: Props) {
   const authorized = roles.some(role => allowedRoles.includes(role));
   const sections = useGetSections(undefined, { query: { enabled: authorized } });
   const assignments = useGetAcademicTeacherAssignments(undefined, { query: { enabled: authorized && !roles.some(role => ['org_admin', 'campus_admin', 'super_admin', 'hod'].includes(role)) } });
+  const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
   const [date, setDate] = useState(today);
   const queryClient = useQueryClient();
   const [edits, setEdits] = useState<Record<string, Mark>>({});
   const [notice, setNotice] = useState('');
   const isAdmin = roles.some(role => ['org_admin', 'campus_admin', 'super_admin', 'hod'].includes(role));
-  const sectionOptions = useMemo(() => {
+  const availableSections = useMemo(() => {
     const all = sections.data?.items ?? [];
     if (isAdmin) return all;
     const assigned = new Set((assignments.data?.items ?? []).map(row => row.sectionId));
     return all.filter(section => assigned.has(section.id));
   }, [sections.data, assignments.data, isAdmin]);
+  const classOptions = useMemo(() => {
+    const classes = new Map<string, string>();
+    for (const section of availableSections) classes.set(section.classId, section.className);
+    return [...classes].map(([id, name]) => ({ id, name }));
+  }, [availableSections]);
+  const resolvedClass = classOptions.some(item => item.id === classId) ? classId : classOptions[0]?.id ?? '';
+  const sectionOptions = availableSections.filter(section => section.classId === resolvedClass);
   const resolvedSection = sectionOptions.some(section => section.id === sectionId) ? sectionId : sectionOptions[0]?.id ?? '';
   const query = useGetSchoolAttendance({ sectionId: resolvedSection, date }, { query: { enabled: authorized && !!resolvedSection && !!date, queryKey: getGetSchoolAttendanceQueryKey({ sectionId: resolvedSection, date }) } });
   const save = useMarkSchoolAttendance({ mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetSchoolAttendanceQueryKey({ sectionId: resolvedSection, date }) }) } });
@@ -50,20 +58,21 @@ export function AttendancePage({ roles }: Props) {
     <header className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
       <div><div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--primary))]"><span className="h-px w-7 bg-[hsl(var(--accent))]"/>Daily register</div><h1 className="display m-0 text-[32px] font-extrabold tracking-[-.045em] md:text-[38px]">Attendance</h1><p className="mb-0 mt-2 max-w-xl text-[13px] text-[hsl(var(--muted-foreground))]">A reliable record of who was here, and who needs a check-in.</p></div>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <label className="sr-only" htmlFor="attendance-section">Section</label><select id="attendance-section" className="field min-h-[42px] sm:w-[210px]" value={resolvedSection} onChange={event => { setSectionId(event.target.value); setEdits({}); }}><option value="">Choose section</option>{sectionOptions.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select>
+        <label className="sr-only" htmlFor="attendance-class">Class</label><select id="attendance-class" className="field min-h-[42px] sm:w-[170px]" value={resolvedClass} onChange={event => { setClassId(event.target.value); setSectionId(''); setEdits({}); }} disabled={!classOptions.length}><option value="">Choose class</option>{classOptions.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+        <label className="sr-only" htmlFor="attendance-section">Section</label><select id="attendance-section" className="field min-h-[42px] sm:w-[170px]" value={resolvedSection} onChange={event => { setSectionId(event.target.value); setEdits({}); }} disabled={!sectionOptions.length}><option value="">Choose section</option>{sectionOptions.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select>
         <label className="flex items-center gap-2 rounded-[10px] border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3"><CalendarDays size={16} className="text-[hsl(var(--primary))]"/><span className="sr-only">Attendance date</span><input className="min-h-[40px] bg-transparent text-sm outline-none" type="date" value={date} onChange={event => { setDate(event.target.value); setEdits({}); }}/></label>
       </div>
     </header>
-    {!isAdmin && !assignments.isLoading && !sectionOptions.length && <div className="surface p-5 text-sm text-[hsl(var(--muted-foreground))]">No assigned sections are available for attendance.</div>}
+    {!isAdmin && !assignments.isLoading && !availableSections.length && <div className="surface p-5 text-sm text-[hsl(var(--muted-foreground))]">No assigned sections are available for attendance.</div>}
     {notice && <div role="status" className="rounded-xl border border-[hsl(var(--status-good)/.3)] bg-[hsl(var(--status-good-bg))] px-4 py-3 text-sm text-[hsl(var(--brand-mint-ink))]">{notice}</div>}
     {(sections.isError || assignments.isError || query.isError || save.isError) && <div role="alert" className="surface flex items-center gap-3 p-4 text-sm text-[hsl(var(--destructive))]"><CircleAlert size={17}/>{errorText(sections.error || assignments.error || query.error || save.error)}<button className="btn btn-muted btn-sm ml-auto" onClick={() => { sections.refetch(); assignments.refetch(); query.refetch(); }}>Retry</button></div>}
     <section className="surface overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[hsl(var(--border))] p-4 md:p-5">
-        <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><ClipboardCheck size={19}/></div><div><h2 className="display m-0 text-base font-extrabold">{page?.sectionName ?? sectionOptions.find(section => section.id === resolvedSection)?.name ?? 'Section register'}</h2><p className="mb-0 mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">{page?.total ?? 0} students · {date}</p></div></div>
+        <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><ClipboardCheck size={19}/></div><div><h2 className="display m-0 text-base font-extrabold">{page?.sectionName ?? sectionOptions.find(section => section.id === resolvedSection)?.name ?? 'Section register'}{resolvedClass ? ` · ${classOptions.find(item => item.id === resolvedClass)?.name ?? ''}` : ''}</h2><p className="mb-0 mt-1 text-[11px] text-[hsl(var(--muted-foreground))]">{page?.total ?? 0} students · {date}</p></div></div>
         <div className="flex flex-wrap items-center gap-2">{(['present', 'absent', 'late', 'leave'] as const).map(status => <span key={status} className="tag capitalize">{status} <b className="ml-1">{counts[status] ?? 0}</b></span>)}</div>
       </div>
       {query.isLoading || sections.isLoading || (!isAdmin && assignments.isLoading) ? <div className="space-y-3 p-4"><div className="skeleton h-12 w-full"/><div className="skeleton h-12 w-full"/><div className="skeleton h-12 w-full"/></div>
-      : !resolvedSection ? <div className="p-10 text-center"><UsersRound className="mx-auto mb-3 text-[hsl(var(--primary))]"/><b className="display">Choose a section</b><p className="mb-0 mt-2 text-sm text-[hsl(var(--muted-foreground))]">Select a section to open its attendance register.</p></div>
+      : !resolvedSection ? <div className="p-10 text-center"><UsersRound className="mx-auto mb-3 text-[hsl(var(--primary))]"/><b className="display">Choose a class and section</b><p className="mb-0 mt-2 text-sm text-[hsl(var(--muted-foreground))]">Select a class first, then choose one of its sections to open the attendance register.</p></div>
       : !students.length ? <div className="p-10 text-center"><div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><UsersRound size={19}/></div><b className="display">No attendance roster returned</b><p className="mb-0 mt-2 text-sm text-[hsl(var(--muted-foreground))]">No marks or students were returned for this date. Nothing has been filled in.</p></div>
       : <><div className="flex flex-wrap items-center justify-between gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-3"><span className="text-[11px] text-[hsl(var(--muted-foreground))]">Unmarked students remain visibly missing until a status is chosen.</span><div className="flex gap-2"><button className="btn btn-quiet btn-sm" onClick={() => markAll('present')}>Mark all present</button><button className="btn btn-quiet btn-sm" onClick={() => setEdits({})}><RotateCcw size={13}/>Reset changes</button></div></div>
         <div className="divide-y divide-[hsl(var(--border))]">{students.map((item, index) => { const mark = rowMark(item); return <div key={item.studentId} className="grid gap-3 p-4 md:grid-cols-[minmax(160px,1fr)_minmax(300px,1.2fr)_minmax(150px,.7fr)] md:items-center">
