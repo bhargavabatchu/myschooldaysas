@@ -36,6 +36,8 @@ export function TimetablePage({ canManage }: { canManage: boolean }) {
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("08:45");
   const [room, setRoom] = useState("");
+  const [filterClassId, setFilterClassId] = useState("");
+  const [filterSectionId, setFilterSectionId] = useState("");
   const assignment = useMemo(
     () => assignments.data?.items.find((item) => item.id === assignmentId),
     [assignments.data, assignmentId],
@@ -44,9 +46,31 @@ export function TimetablePage({ canManage }: { canManage: boolean }) {
     () => new Map((sections.data?.items ?? []).map(section => [section.id, `${section.className} · ${section.name}`])),
     [sections.data],
   );
+  const sectionById = useMemo(
+    () => new Map((sections.data?.items ?? []).map((section) => [section.id, section])),
+    [sections.data],
+  );
+  const classOptions = useMemo(
+    () => Array.from(new Map(
+      (sections.data?.items ?? []).map((section) => [
+        section.classId,
+        { id: section.classId, name: section.className },
+      ]),
+    ).values()),
+    [sections.data],
+  );
+  const sectionOptions = useMemo(
+    () => (sections.data?.items ?? []).filter((section) => section.classId === filterClassId),
+    [sections.data, filterClassId],
+  );
   const sorted = [...(timetable.data?.items ?? [])].sort(
     (a, b) => a.weekday - b.weekday || a.startTime.localeCompare(b.startTime),
   );
+  const filteredSlots = sorted.filter((slot) => {
+    if (filterSectionId && slot.sectionId !== filterSectionId) return false;
+    if (filterClassId && sectionById.get(slot.sectionId)?.classId !== filterClassId) return false;
+    return true;
+  });
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -128,15 +152,62 @@ export function TimetablePage({ canManage }: { canManage: boolean }) {
         </>
       )}
 
+      <section className="surface mb-5 grid gap-3 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <label className="text-xs font-semibold">
+          Class
+          <select
+            className="field mt-1.5"
+            value={filterClassId}
+            onChange={(event) => {
+              setFilterClassId(event.target.value);
+              setFilterSectionId("");
+            }}
+            disabled={sections.isLoading || classOptions.length === 0}
+            aria-label="Filter timetable by class"
+          >
+            <option value="">All classes</option>
+            {classOptions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </label>
+        <label className="text-xs font-semibold">
+          Section
+          <select
+            className="field mt-1.5"
+            value={filterSectionId}
+            onChange={(event) => setFilterSectionId(event.target.value)}
+            disabled={!filterClassId || sections.isLoading}
+            aria-label="Filter timetable by section"
+          >
+            <option value="">All sections in class</option>
+            {sectionOptions.map((section) => (
+              <option key={section.id} value={section.id}>{section.name}</option>
+            ))}
+          </select>
+        </label>
+        <button
+          className="btn btn-muted min-h-10"
+          type="button"
+          onClick={() => {
+            setFilterClassId("");
+            setFilterSectionId("");
+          }}
+          disabled={!filterClassId && !filterSectionId}
+        >
+          Clear filters
+        </button>
+      </section>
+
       {timetable.isLoading ? (
         <div className="skeleton h-40" aria-label="Loading timetable" />
       ) : timetable.isError ? (
         <div className="surface p-5 text-sm text-[hsl(var(--destructive))]" role="alert">
           {readableError(timetable.error)}
         </div>
-      ) : sorted.length === 0 ? (
+      ) : filteredSlots.length === 0 ? (
         <div className="surface p-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
-          No timetable slots are available for your account yet.
+          {filterClassId || filterSectionId
+            ? "No timetable slots match these filters."
+            : "No timetable slots are available for your account yet."}
         </div>
       ) : (
         <div className="surface overflow-hidden">
@@ -153,7 +224,7 @@ export function TimetablePage({ canManage }: { canManage: boolean }) {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((slot) => (
+                {filteredSlots.map((slot) => (
                   <tr key={slot.id} className="border-t border-[hsl(var(--border))]">
                     <td className="px-4 py-3 text-xs font-semibold">{weekdays[slot.weekday]} · {slot.startTime}–{slot.endTime}</td>
                     <td className="px-4 py-3 text-xs">{sectionLabels.get(slot.sectionId) ?? slot.sectionName}</td>
