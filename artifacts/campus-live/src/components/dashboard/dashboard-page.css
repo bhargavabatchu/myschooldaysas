@@ -333,6 +333,27 @@
   padding: 2px 0 0 5px;
 }
 
+.dashboard-activity {
+  align-self: start;
+}
+
+.dashboard-activity-toggle {
+  margin: 13px 0 0 23px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: hsl(var(--primary));
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dashboard-activity-toggle:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
 .dashboard-activity-item {
   position: relative;
   display: flex;

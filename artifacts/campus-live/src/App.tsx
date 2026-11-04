@@ -456,12 +456,16 @@ function QueryState({ loading, error, empty, retry, children }: { loading: boole
 }
 
 function DashboardPage({ roles, userName }: { roles: string[]; userName: string }) {
+  const [activityExpanded, setActivityExpanded] = useState(false);
   const overview = useGetDashboardOverview();
   const data = overview.data;
   const isStudent = roles.includes('student');
   const adminInsights = data?.adminInsights;
   const collectionPercent = adminInsights?.fees.collectionPercentThisYear ?? null;
   const academicYear = adminInsights?.fees.academicYear ?? '';
+  const visibleActivity = activityExpanded
+    ? (data?.recentActivity ?? []).slice(0, 8)
+    : (data?.recentActivity ?? []).slice(0, 4);
   const timetable = useGetTimetable(undefined, { query: { enabled: Boolean(adminInsights) } });
   const schoolToday = new Date();
   const todayDateKey = schoolDateKey(schoolToday);
@@ -634,10 +638,17 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
               <div className="dashboard-activity-emblem"><Activity size={18}/></div>
               <div><div className="dashboard-panel-kicker">ACROSS THE SCHOOL</div><h2 id="dashboard-activity-title">Recent activity</h2><p>Latest updates from your school</p></div>
             </div>
-            {data.recentActivity.length ? <div className="dashboard-activity-list">{data.recentActivity.map((item, index) => <article key={item.id} data-testid={`activity-${item.id}`} className="dashboard-activity-item">
+            {data.recentActivity.length ? <div className="dashboard-activity-list" id="dashboard-activity-list">{visibleActivity.map((item, index) => <article key={item.id} data-testid={`activity-${item.id}`} className="dashboard-activity-item">
               <span className={`dashboard-activity-node node-${index + 1}`} aria-hidden="true"/>
               <div><div className="dashboard-activity-label">{item.label}</div><div className="dashboard-activity-description">{item.description}</div><div className="dashboard-activity-time">{fmtDate(item.occurredAt)}</div></div>
             </article>)}</div> : <InlineEmpty text="No recent updates to show."/>}
+            {data.recentActivity.length > 4 && <button
+              type="button"
+              className="dashboard-activity-toggle"
+              aria-controls="dashboard-activity-list"
+              aria-expanded={activityExpanded}
+              onClick={() => setActivityExpanded(expanded => !expanded)}
+            >{activityExpanded ? 'Show fewer' : `Show all ${Math.min(data.recentActivity.length, 8)} recent`}</button>}
           </section>
         </div>
         <section className="dashboard-toolband" aria-label="Learning tools">
