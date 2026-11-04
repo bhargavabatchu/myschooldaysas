@@ -12,6 +12,8 @@ if (!migratorUrl) throw new Error("MIGRATOR_DATABASE_URL is required to seed the
 const migrator = createPool(migratorUrl);
 const demoPasswordHash = await hashPassword("Passw0rd!");
 let seededStudentCount = 0;
+let seededTimetableSlotCount = 0;
+let seededCalendarEventCount = 0;
 
 const users: Array<{ email: string; name: string; role: string; kind: "student" | "teacher" | "parent" | "other" }> = [
   { email: "admin@demo.edu", name: "Aarav Nair", role: "org_admin", kind: "other" },
@@ -314,6 +316,205 @@ try {
       }
     }
 
+    const timetableTeacherIds = teacherUsers
+      .map((teacher) => userIds.get(teacher.email))
+      .filter((teacherId): teacherId is string => Boolean(teacherId));
+    const schoolDays = [1, 2, 3, 4, 5];
+    const periods = [
+      { startTime: "08:00", endTime: "08:45" },
+      { startTime: "08:50", endTime: "09:35" },
+      { startTime: "09:45", endTime: "10:30" },
+      { startTime: "10:50", endTime: "11:35" },
+      { startTime: "11:40", endTime: "12:25" },
+      { startTime: "13:00", endTime: "13:45" },
+    ];
+    const timetableRows: Array<{
+      sectionId: string;
+      subjectId: string;
+      teacherId: string;
+      weekday: number;
+      startTime: string;
+      endTime: string;
+      room: string;
+    }> = [];
+    if (subjectIds.length && timetableTeacherIds.length) {
+      allSectionIds.forEach((sectionId, sectionIndex) => {
+        schoolDays.forEach((weekday, dayIndex) => {
+          periods.forEach((period, periodIndex) => {
+            timetableRows.push({
+              sectionId,
+              subjectId: subjectIds[(sectionIndex + dayIndex * periods.length + periodIndex) % subjectIds.length]!,
+              teacherId: timetableTeacherIds[(sectionIndex + dayIndex + periodIndex) % timetableTeacherIds.length]!,
+              weekday,
+              startTime: period.startTime,
+              endTime: period.endTime,
+              room: `Room ${101 + sectionIndex}`,
+            });
+          });
+        });
+      });
+    }
+
+    const sectionTeacherAssignments = new Map<string, { sectionId: string; teacherId: string }>();
+    const subjectTeacherAssignments = new Map<string, { sectionId: string; subjectId: string; teacherId: string }>();
+    for (const slot of timetableRows) {
+      sectionTeacherAssignments.set(`${slot.sectionId}:${slot.teacherId}`, {
+        sectionId: slot.sectionId,
+        teacherId: slot.teacherId,
+      });
+      subjectTeacherAssignments.set(`${slot.sectionId}:${slot.subjectId}:${slot.teacherId}`, {
+        sectionId: slot.sectionId,
+        subjectId: slot.subjectId,
+        teacherId: slot.teacherId,
+      });
+    }
+
+    const sectionTeacherRows = [...sectionTeacherAssignments.values()];
+    if (sectionTeacherRows.length) {
+      await client.query(
+        `INSERT INTO academic.section_teachers (org_id, section_id, teacher_user_id, is_class_teacher)
+         SELECT $1, assignment.section_id, assignment.teacher_id, false
+           FROM unnest($2::uuid[], $3::uuid[]) AS assignment(section_id, teacher_id)
+         ON CONFLICT (org_id, section_id, teacher_user_id) DO NOTHING`,
+        [
+          orgId,
+          sectionTeacherRows.map((assignment) => assignment.sectionId),
+          sectionTeacherRows.map((assignment) => assignment.teacherId),
+        ],
+      );
+    }
+
+    const subjectTeacherRows = [...subjectTeacherAssignments.values()];
+    if (subjectTeacherRows.length) {
+      await client.query(
+        `INSERT INTO academic.teacher_assignments (org_id, section_id, subject_id, teacher_user_id, is_class_teacher)
+         SELECT $1, assignment.section_id, assignment.subject_id, assignment.teacher_id, false
+           FROM unnest($2::uuid[], $3::uuid[], $4::uuid[]) AS assignment(section_id, subject_id, teacher_id)
+         ON CONFLICT (org_id, section_id, subject_id, teacher_user_id) DO NOTHING`,
+        [
+          orgId,
+          subjectTeacherRows.map((assignment) => assignment.sectionId),
+          subjectTeacherRows.map((assignment) => assignment.subjectId),
+          subjectTeacherRows.map((assignment) => assignment.teacherId),
+        ],
+      );
+    }
+
+    if (timetableRows.length) {
+      await client.query(
+        `INSERT INTO academic.timetable_slots
+           (org_id, section_id, subject_id, teacher_user_id, weekday, start_time, end_time, room)
+         SELECT $1, slot.section_id, slot.subject_id, slot.teacher_id, slot.weekday,
+                slot.start_time::time, slot.end_time::time, slot.room
+           FROM unnest(
+             $2::uuid[], $3::uuid[], $4::uuid[], $5::smallint[],
+             $6::text[], $7::text[], $8::text[]
+           ) AS slot(section_id, subject_id, teacher_id, weekday, start_time, end_time, room)
+          WHERE NOT EXISTS (
+            SELECT 1
+              FROM academic.timetable_slots existing
+             WHERE existing.org_id = $1
+               AND existing.weekday = slot.weekday
+               AND (existing.section_id = slot.section_id OR existing.teacher_user_id = slot.teacher_id)
+               AND existing.start_time < slot.end_time::time
+               AND existing.end_time > slot.start_time::time
+          )`,
+        [
+          orgId,
+          timetableRows.map((slot) => slot.sectionId),
+          timetableRows.map((slot) => slot.subjectId),
+          timetableRows.map((slot) => slot.teacherId),
+          timetableRows.map((slot) => slot.weekday),
+          timetableRows.map((slot) => slot.startTime),
+          timetableRows.map((slot) => slot.endTime),
+          timetableRows.map((slot) => slot.room),
+        ],
+      );
+    }
+    const timetableCount = await client.query<{ count: number }>(
+      "SELECT COUNT(*)::int AS count FROM academic.timetable_slots WHERE org_id = $1 AND section_id = ANY($2::uuid[])",
+      [orgId, allSectionIds],
+    );
+    seededTimetableSlotCount = timetableCount.rows[0]?.count ?? 0;
+
+    const demoCalendarEvents = [
+      {
+        title: "Children's Day Celebration",
+        kind: "event",
+        startDate: "2026-11-14",
+        endDate: "2026-11-14",
+        description: "School-wide celebration and student activities.",
+      },
+      {
+        title: "Winter Break",
+        kind: "holiday",
+        startDate: "2026-12-24",
+        endDate: "2027-01-02",
+        description: "School holiday period.",
+      },
+      {
+        title: "School Reopens",
+        kind: "working_day",
+        startDate: "2027-01-04",
+        endDate: "2027-01-04",
+        description: "Classes resume after winter break.",
+      },
+      {
+        title: "Republic Day",
+        kind: "holiday",
+        startDate: "2027-01-26",
+        endDate: "2027-01-26",
+        description: "Republic Day school holiday.",
+      },
+      {
+        title: "Term 2 Examinations",
+        kind: "exam",
+        startDate: "2027-02-15",
+        endDate: "2027-02-20",
+        description: "School-wide Term 2 examination period.",
+      },
+      {
+        title: "Annual Day",
+        kind: "event",
+        startDate: "2027-03-12",
+        endDate: "2027-03-12",
+        description: "Annual school celebration.",
+      },
+      {
+        title: "Parent-Teacher Meeting",
+        kind: "ptm",
+        startDate: "2027-03-27",
+        endDate: "2027-03-27",
+        description: "School-wide parent-teacher meetings.",
+      },
+    ] as const;
+    const calendarCreatorId = userIds.get("admin@demo.edu");
+    if (calendarCreatorId) {
+      for (const event of demoCalendarEvents) {
+        await client.query(
+          `INSERT INTO school.calendar_events
+             (org_id, title, kind, start_date, end_date, scope, scope_id, description, created_by)
+           SELECT $1, $2, $3, $4::date, $5::date, 'org', NULL, $6, $7
+            WHERE NOT EXISTS (
+              SELECT 1
+                FROM school.calendar_events existing
+               WHERE existing.org_id = $1 AND existing.scope = 'org'
+                 AND existing.title = $2 AND existing.kind = $3
+                 AND existing.start_date = $4::date AND existing.end_date = $5::date
+            )`,
+          [orgId, event.title, event.kind, event.startDate, event.endDate, event.description, calendarCreatorId],
+        );
+      }
+    }
+    const calendarCount = await client.query<{ count: number }>(
+      `SELECT COUNT(*)::int AS count
+         FROM school.calendar_events
+        WHERE org_id = $1 AND scope = 'org'
+          AND start_date >= '2026-06-01'::date AND start_date <= '2027-03-31'::date`,
+      [orgId],
+    );
+    seededCalendarEventCount = calendarCount.rows[0]?.count ?? 0;
+
     const studentsByEmail = studentUsers.map((student) => userIds.get(student.email)).filter(Boolean) as string[];
     for (let index = 0; index < parentUsers.length; index += 1) {
       const parent = parentUsers[index]!;
@@ -387,7 +588,11 @@ try {
     client.release();
   }
 
-  console.log(`Development demo seed ready: ${seededStudentCount} active student enrollments for 2026-27; Grade 1 sections A–E each have at least 40 students.`);
+  console.log(
+    `Development demo seed ready: ${seededStudentCount} active student enrollments for 2026-27; `
+    + `${seededTimetableSlotCount} timetable slots across seeded sections; `
+    + `${seededCalendarEventCount} whole-school events in 2026-27.`
+  );
 } finally {
   await migrator.end();
 }

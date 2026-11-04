@@ -2124,7 +2124,7 @@ paths:
     post:
       operationId: generateFeeInvoices
       tags: [fees]
-      summary: Issue one invoice per active student in a section or all sections of a class
+      summary: Issue one invoice per active student in a section, class, or whole school
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -3754,6 +3754,7 @@ components:
       properties:
         sectionId: { type: string, format: uuid }
         classId: { type: string, format: uuid }
+        schoolWide: { type: boolean, enum: [true] }
         academicYear: { type: string, minLength: 4, maxLength: 24 }
         period: { type: string, minLength: 1, maxLength: 40 }
         description: { type: string, minLength: 1, maxLength: 160 }
@@ -3761,9 +3762,20 @@ components:
         dueDate: { type: string, format: date }
       oneOf:
         - required: [sectionId]
-          not: { required: [classId] }
+          not:
+            anyOf:
+              - required: [classId]
+              - required: [schoolWide]
         - required: [classId]
-          not: { required: [sectionId] }
+          not:
+            anyOf:
+              - required: [sectionId]
+              - required: [schoolWide]
+        - required: [schoolWide]
+          not:
+            anyOf:
+              - required: [sectionId]
+              - required: [classId]
     FeeInvoiceGenerateResult:
       type: object
       required: [generatedCount, total, items]

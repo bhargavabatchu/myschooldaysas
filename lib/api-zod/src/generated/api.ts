@@ -3311,7 +3311,7 @@ export const GetFeeInvoicesResponse = zod.object({
 
 
 /**
- * @summary Issue one invoice per active student in a section or all sections of a class
+ * @summary Issue one invoice per active student in a section, class, or whole school
  */
 export const generateFeeInvoicesBodyOneAcademicYearMin = 4;
 export const generateFeeInvoicesBodyOneAcademicYearMax = 24;
@@ -3340,11 +3340,21 @@ export const generateFeeInvoicesBodyThreeDescriptionMax = 160;
 
 export const generateFeeInvoicesBodyThreeAmountPaiseMax = 1000000000;
 
+export const generateFeeInvoicesBodyFourAcademicYearMin = 4;
+export const generateFeeInvoicesBodyFourAcademicYearMax = 24;
+
+export const generateFeeInvoicesBodyFourPeriodMax = 40;
+
+export const generateFeeInvoicesBodyFourDescriptionMax = 160;
+
+export const generateFeeInvoicesBodyFourAmountPaiseMax = 1000000000;
+
 
 
 export const GenerateFeeInvoicesBody = zod.union([zod.object({
   "sectionId": zod.uuid(),
   "classId": zod.never().optional(),
+  "schoolWide": zod.never().optional(),
   "academicYear": zod.string().min(generateFeeInvoicesBodyOneAcademicYearMin).max(generateFeeInvoicesBodyOneAcademicYearMax).optional(),
   "period": zod.string().min(1).max(generateFeeInvoicesBodyOnePeriodMax).optional(),
   "description": zod.string().min(1).max(generateFeeInvoicesBodyOneDescriptionMax).optional(),
@@ -3353,18 +3363,29 @@ export const GenerateFeeInvoicesBody = zod.union([zod.object({
 }),zod.object({
   "sectionId": zod.never().optional(),
   "classId": zod.uuid(),
+  "schoolWide": zod.never().optional(),
   "academicYear": zod.string().min(generateFeeInvoicesBodyTwoAcademicYearMin).max(generateFeeInvoicesBodyTwoAcademicYearMax).optional(),
   "period": zod.string().min(1).max(generateFeeInvoicesBodyTwoPeriodMax).optional(),
   "description": zod.string().min(1).max(generateFeeInvoicesBodyTwoDescriptionMax).optional(),
   "amountPaise": zod.int().min(1).max(generateFeeInvoicesBodyTwoAmountPaiseMax).optional(),
   "dueDate": zod.coerce.date().optional()
+}),zod.object({
+  "sectionId": zod.never().optional(),
+  "classId": zod.never().optional(),
+  "schoolWide": zod.literal(true),
+  "academicYear": zod.string().min(generateFeeInvoicesBodyThreeAcademicYearMin).max(generateFeeInvoicesBodyThreeAcademicYearMax).optional(),
+  "period": zod.string().min(1).max(generateFeeInvoicesBodyThreePeriodMax).optional(),
+  "description": zod.string().min(1).max(generateFeeInvoicesBodyThreeDescriptionMax).optional(),
+  "amountPaise": zod.int().min(1).max(generateFeeInvoicesBodyThreeAmountPaiseMax).optional(),
+  "dueDate": zod.coerce.date().optional()
 })]).and(zod.object({
   "sectionId": zod.uuid().optional(),
   "classId": zod.uuid().optional(),
-  "academicYear": zod.string().min(generateFeeInvoicesBodyThreeAcademicYearMin).max(generateFeeInvoicesBodyThreeAcademicYearMax),
-  "period": zod.string().min(1).max(generateFeeInvoicesBodyThreePeriodMax),
-  "description": zod.string().min(1).max(generateFeeInvoicesBodyThreeDescriptionMax),
-  "amountPaise": zod.int().min(1).max(generateFeeInvoicesBodyThreeAmountPaiseMax),
+  "schoolWide": zod.literal(true).optional(),
+  "academicYear": zod.string().min(generateFeeInvoicesBodyFourAcademicYearMin).max(generateFeeInvoicesBodyFourAcademicYearMax),
+  "period": zod.string().min(1).max(generateFeeInvoicesBodyFourPeriodMax),
+  "description": zod.string().min(1).max(generateFeeInvoicesBodyFourDescriptionMax),
+  "amountPaise": zod.int().min(1).max(generateFeeInvoicesBodyFourAmountPaiseMax),
   "dueDate": zod.coerce.date()
 }))
 

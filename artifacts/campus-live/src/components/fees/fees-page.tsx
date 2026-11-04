@@ -48,16 +48,16 @@ function invoiceGenerationError(error: unknown) {
   const code = candidate?.data?.error?.code;
 
   if (code === "INVOICE_CONFLICT") {
-    return "This fee has already been issued for the selected class or section, academic year, and billing period. Check Recent invoices; no duplicate was created.";
+    return "An invoice already exists for one or more students in this academic year and billing period with different details. Check Recent invoices; no duplicate was created.";
   }
   if (code === "NO_ACTIVE_STUDENTS") {
-    return "No active students are enrolled in the selected class or section for that academic year. Check your selection and academic year.";
+    return "No active students are enrolled in the selected target for that academic year. Check your selection and academic year.";
   }
   if (typeof candidate?.data?.error?.message === "string") {
     return candidate.data.error.message;
   }
   if (candidate?.status === 409) {
-    return "This billing period could not be issued. Check Recent invoices and confirm the class or section has active students for that academic year.";
+    return "This billing period could not be issued. Check Recent invoices and confirm the selected target has active students for that academic year.";
   }
   return candidate?.message || "Invoices could not be issued.";
 }
@@ -81,7 +81,7 @@ export function FeesPage({ roles }: FeesPageProps) {
     { query: { enabled: isAdmin } },
   );
   const myInvoices = useGetMyFeeInvoices({ query: { enabled: isParent || isStudent } });
-  const [targetMode, setTargetMode] = useState<"class" | "section">("class");
+  const [targetMode, setTargetMode] = useState<"school" | "class" | "section">("class");
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [academicYear, setAcademicYear] = useState("");
@@ -94,18 +94,21 @@ export function FeesPage({ roles }: FeesPageProps) {
   const [recordingInvoice, setRecordingInvoice] = useState<FeeInvoice | null>(null);
   const selectedClassSections = sectionItems.filter((section) => section.classId === classId);
   const selectedSection = sectionItems.find((section) => section.id === sectionId);
-  const targetSectionCount = targetMode === "class"
-    ? selectedClassSections.length
-    : sectionId ? 1 : 0;
+  const activeSectionItems = sectionItems.filter((section) => section.isActive && section.classIsActive);
+  const targetSectionCount = targetMode === "school"
+    ? activeSectionItems.length
+    : targetMode === "class" ? selectedClassSections.length : sectionId ? 1 : 0;
   const academicYearItems = academicYears.data?.items ?? [];
   const availableAcademicYears = academicYearItems.map((year) => year.academicYear);
   const currentAcademicYear = academicYearItems.find((year) => year.status === "current")?.academicYear ?? "";
   const selectedAcademicYear = availableAcademicYears.includes(academicYear)
     ? academicYear
     : currentAcademicYear || availableAcademicYears[0] || "";
-  const targetLabel = targetMode === "class"
-    ? `${classItems.find((item) => item.id === classId)?.name ?? "selected class"} across ${selectedClassSections.length} section${selectedClassSections.length === 1 ? "" : "s"}`
-    : selectedSection ? `${selectedSection.className} · ${selectedSection.name}` : "selected section";
+  const targetLabel = targetMode === "school"
+    ? "the entire school"
+    : targetMode === "class"
+      ? `${classItems.find((item) => item.id === classId)?.name ?? "selected class"} across ${selectedClassSections.length} section${selectedClassSections.length === 1 ? "" : "s"}`
+      : selectedSection ? `${selectedSection.className} · ${selectedSection.name}` : "selected section";
 
   const generate = useGenerateFeeInvoices({
     mutation: {
@@ -143,7 +146,9 @@ export function FeesPage({ roles }: FeesPageProps) {
       setNotice("Set up an academic year from the Academic calendar first.");
       return;
     }
-    const target = targetMode === "class" ? { classId } : { sectionId };
+    const target = targetMode === "school"
+      ? { schoolWide: true as const }
+      : targetMode === "class" ? { classId } : { sectionId };
     generate.mutate({
       data: { ...target, academicYear: selectedAcademicYear, period, description, amountPaise, dueDate },
     });
@@ -157,21 +162,22 @@ export function FeesPage({ roles }: FeesPageProps) {
           <p className="eyebrow">School finance</p>
           <h1 className="display text-3xl font-extrabold">Fee invoices</h1>
           <p className="mt-2 max-w-2xl text-sm text-[hsl(var(--muted-foreground))]">
-            Issue invoices to every active student in a class or target one section. Repeating the same period will not create duplicate invoices.
+            Issue invoices to every active student in the school, a class, or one section. Repeating the same period will not create duplicate invoices.
           </p>
         </header>
 
         <section className="surface fees-issue-panel p-5 md:p-6">
-          <h2 className="display text-lg font-bold">Issue invoices by class or section</h2>
+          <h2 className="display text-lg font-bold">Issue invoices by school, class, or section</h2>
           <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={submitInvoices}>
             <label className="block text-sm font-semibold">
               Issue to
               <select
                 className={`${fieldClass} mt-2`}
                 value={targetMode}
-                onChange={(event) => setTargetMode(event.target.value as "class" | "section")}
+                onChange={(event) => setTargetMode(event.target.value as "school" | "class" | "section")}
                 disabled={generate.isPending}
               >
+                <option value="school">Entire school</option>
                 <option value="class">All sections in a class</option>
                 <option value="section">One section</option>
               </select>
@@ -187,7 +193,7 @@ export function FeesPage({ roles }: FeesPageProps) {
                 </select>
                 {classId && <span className="mt-1 block text-xs font-normal text-[hsl(var(--muted-foreground))]">{selectedClassSections.length} section{selectedClassSections.length === 1 ? "" : "s"} included</span>}
               </label>
-            ) : (
+            ) : targetMode === "section" ? (
               <label className="block text-sm font-semibold">
                 Section
                 <select className={`${fieldClass} mt-2`} value={sectionId} onChange={(event) => setSectionId(event.target.value)} required disabled={generate.isPending}>
@@ -197,6 +203,10 @@ export function FeesPage({ roles }: FeesPageProps) {
                   ))}
                 </select>
               </label>
+            ) : (
+              <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-3 text-xs text-[hsl(var(--muted-foreground))]">
+                One invoice will be issued to each active student enrolled in the selected academic year. The total count and amount depend on that year’s active enrollments.
+              </div>
             )}
             <div>
               <AcademicYearSelect
@@ -238,7 +248,11 @@ export function FeesPage({ roles }: FeesPageProps) {
             </label>
             <div className="md:col-span-2 flex flex-wrap items-center gap-3">
               <button className="btn btn-primary" type="submit" disabled={generate.isPending || targetSectionCount === 0 || !selectedAcademicYear}>
-                {generate.isPending ? "Issuing…" : targetMode === "class" ? "Issue class invoices" : "Issue section invoices"}
+                {generate.isPending
+                  ? "Issuing…"
+                  : targetMode === "school"
+                    ? "Issue school-wide invoices"
+                    : targetMode === "class" ? "Issue class invoices" : "Issue section invoices"}
               </button>
               {notice && <p className="text-sm text-[hsl(var(--muted-foreground))]" role="status">{notice}</p>}
             </div>

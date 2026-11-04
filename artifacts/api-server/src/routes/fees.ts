@@ -188,7 +188,20 @@ const routes: FastifyPluginAsync = async (fastify) => {
     try {
       const result = await withOrg(user.orgId, async (client) => {
         let targetSectionIds: string[];
-        if (input.classId) {
+        if (input.schoolWide) {
+          const schoolSections = await client.query<{ id: string }>(
+            `SELECT section.id
+               FROM academic.sections section
+                JOIN academic.classes target_class
+                  ON target_class.org_id = section.org_id AND target_class.id = section.class_id
+              WHERE section.org_id = $1
+                AND section.is_active = true
+                 AND target_class.is_active = true
+               ORDER BY target_class.grade_level, section.name`,
+            [user.orgId],
+          );
+          targetSectionIds = schoolSections.rows.map((row) => row.id);
+        } else if (input.classId) {
           const classSections = await client.query<{ section_id: string | null }>(
             `SELECT s.id AS section_id
                FROM academic.classes c

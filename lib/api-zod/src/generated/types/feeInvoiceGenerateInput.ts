@@ -9,6 +9,7 @@
 export type FeeInvoiceGenerateInput = (unknown & {
   sectionId?: string;
   classId?: string;
+  schoolWide?: true;
   /**
      * @minLength 4
      * @maxLength 24
