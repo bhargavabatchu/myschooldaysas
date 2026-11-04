@@ -2157,8 +2157,22 @@ components:
         attendancePercent: { type: number, minimum: 0, maximum: 100, nullable: true }
     DashboardFeeSummary:
       type: object
-      required: [collectedThisMonthPaise, outstandingPaise, overdueInvoiceCount, collectionTrend]
+      required:
+        - academicYear
+        - totalFeesThisYearPaise
+        - collectedThisYearPaise
+        - outstandingThisYearPaise
+        - collectionPercentThisYear
+        - collectedThisMonthPaise
+        - outstandingPaise
+        - overdueInvoiceCount
+        - collectionTrend
       properties:
+        academicYear: { type: string }
+        totalFeesThisYearPaise: { type: integer, minimum: 0 }
+        collectedThisYearPaise: { type: integer, minimum: 0 }
+        outstandingThisYearPaise: { type: integer, minimum: 0 }
+        collectionPercentThisYear: { type: number, minimum: 0, maximum: 100, nullable: true }
         collectedThisMonthPaise: { type: integer, minimum: 0 }
         outstandingPaise: { type: integer, minimum: 0 }
         overdueInvoiceCount: { type: integer, minimum: 0 }

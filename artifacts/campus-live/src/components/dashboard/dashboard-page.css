@@ -174,6 +174,10 @@
   font-size: 9px;
 }
 
+.dashboard-metric-link { display: block; min-width: 0; height: 100%; border-radius: 10px; color: inherit; text-decoration: none; }
+.dashboard-metric-link .dashboard-metric { height: 100%; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.dashboard-metric-link:hover .dashboard-metric { transform: translateY(-2px); border-color: hsl(var(--primary) / .28); box-shadow: 0 7px 20px hsl(var(--primary) / .08); }
+.dashboard-metric-link:focus-visible { outline: 3px solid hsl(var(--ring) / .45); outline-offset: 3px; }
 .dashboard-metric-positive .dashboard-metric-change {
   color: hsl(var(--status-good));
 }
@@ -883,12 +887,21 @@
 .dashboard-attendance-unmarked span { color: hsl(var(--muted-foreground)); font-size: 10px; line-height: 1.5; }
 .dashboard-insight-link { display: inline-flex; align-items: center; gap: 6px; color: hsl(var(--primary)); font-size: 9px; font-weight: 800; text-decoration: none; }
 .dashboard-insight-link:hover { text-decoration: underline; }
-.dashboard-fee-totals { display: grid; grid-template-columns: 1fr 1fr auto; gap: 13px; margin: 15px 0 4px; }
+.dashboard-fee-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; margin: 15px 0 10px; }
 .dashboard-fee-totals > div { display: grid; gap: 4px; min-width: 0; }
 .dashboard-fee-totals span { color: hsl(var(--muted-foreground)); font-size: 9px; }
 .dashboard-fee-totals strong { font-family: var(--app-font-display); font-size: 17px; font-weight: 800; letter-spacing: -.04em; }
-.dashboard-fee-totals .dashboard-overdue { align-content: start; padding-left: 12px; border-left: 1px solid hsl(var(--border)); }
-.dashboard-fee-totals .dashboard-overdue strong { color: #a46c32; }
+.dashboard-fee-totals small { color: hsl(var(--muted-foreground)); font-size: 8px; }
+.dashboard-collection-progress { display: grid; gap: 7px; margin: 8px 0 11px; padding: 10px 11px; border: 1px solid hsl(var(--border)); border-radius: 8px; background: hsl(var(--background) / .65); }
+.dashboard-collection-progress-copy { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dashboard-collection-progress-copy > div { display: grid; gap: 3px; }
+.dashboard-collection-progress-copy span { font-size: 9px; font-weight: 700; }
+.dashboard-collection-progress-copy strong { color: hsl(var(--primary)); font-family: var(--app-font-display); font-size: 17px; font-weight: 800; letter-spacing: -.04em; }
+.dashboard-collection-progress-copy small { color: hsl(var(--muted-foreground)); font-size: 8px; text-align: right; }
+.dashboard-collection-progress-track { height: 6px; overflow: hidden; border-radius: 999px; background: hsl(var(--muted)); }
+.dashboard-collection-progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, hsl(var(--primary)), #c8a765); transition: width .35s ease; }
+.dashboard-overdue-summary { display: flex; align-items: center; justify-content: space-between; margin: 0 0 6px; color: hsl(var(--muted-foreground)); font-size: 8px; }
+.dashboard-overdue-summary strong { color: #a46c32; font-size: 10px; }
 .dashboard-trend { margin-top: 7px; }
 .dashboard-trend-label { display: flex; justify-content: space-between; color: hsl(var(--muted-foreground)); font-size: 8px; }
 .dashboard-trend-label span:first-child { color: hsl(var(--foreground)); font-weight: 700; }
@@ -1044,6 +1057,8 @@
 @media (max-width: 420px) {
   .dashboard-metric { min-height: 112px; padding: 12px; }
   .dashboard-metric-value { font-size: 23px; overflow-wrap: anywhere; }
+  .dashboard-fee-totals { gap: 6px; }
+  .dashboard-fee-totals strong { font-size: 12px; overflow-wrap: anywhere; }
   .dashboard-metric-top { align-items: flex-start; }
   .dashboard-metric-icon { width: 27px; height: 27px; }
   .dashboard-session-time { margin-left: 0; }
@@ -1052,6 +1067,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .dashboard-secondary-link,
-  .dashboard-followup { transition: none; }
+  .dashboard-followup,
+  .dashboard-metric-link .dashboard-metric,
+  .dashboard-collection-progress-track span { transition: none; }
   .dashboard-schedule-loading span { animation: none; }
 }

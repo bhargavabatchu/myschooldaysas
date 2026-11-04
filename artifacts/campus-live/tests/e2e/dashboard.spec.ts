@@ -67,9 +67,11 @@ async function expectAdminInsights(page: Page) {
   await expect(insights).toBeVisible();
   await expect(insights.getByRole("heading", { name: "Today’s register" })).toBeVisible();
   await expect(insights.getByRole("heading", { name: "Collection overview" })).toBeVisible();
+  await expect(insights.getByText("Total fees issued", { exact: true })).toBeVisible();
   await expect(insights.getByText("Collected", { exact: true })).toBeVisible();
   await expect(insights.getByText("Outstanding", { exact: true })).toBeVisible();
   await expect(insights.getByText("Overdue invoices", { exact: true })).toBeVisible();
+  await expect(insights.getByTestId("dashboard-collection-progress").getByRole("progressbar")).toBeVisible();
   const collectionTrend = insights.getByTestId("dashboard-fee-trend");
   if (await collectionTrend.count()) {
     await expect(collectionTrend.getByRole("img", { name: "Monthly fee collections" })).toBeVisible();
@@ -80,7 +82,23 @@ async function expectAdminInsights(page: Page) {
 }
 
 test("administrator dashboard data, navigation, and theme controls fit desktop and mobile", async ({ page }) => {
+  const overviewResponsePromise = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === "/api/dashboard/overview" &&
+    response.request().method() === "GET",
+  );
   await signIn(page, process.env.DASHBOARD_E2E_ADMIN_EMAIL ?? "admin@demo.edu");
+  const overviewResponse = await overviewResponsePromise;
+  expect(overviewResponse.ok()).toBeTruthy();
+  const feeSummary = (await overviewResponse.json()).adminInsights.fees;
+  expect(feeSummary.academicYear).toMatch(/^\d{4}-\d{2}$/);
+  expect(feeSummary.totalFeesThisYearPaise).toBe(
+    feeSummary.collectedThisYearPaise + feeSummary.outstandingThisYearPaise,
+  );
+  expect(feeSummary.collectionPercentThisYear).toBe(
+    feeSummary.totalFeesThisYearPaise === 0
+      ? null
+      : Math.round(feeSummary.collectedThisYearPaise / feeSummary.totalFeesThisYearPaise * 1000) / 10,
+  );
 
   await page.setViewportSize(desktop);
   await expectDashboardData(page, true);
@@ -96,6 +114,21 @@ test("administrator dashboard data, navigation, and theme controls fit desktop a
     getComputedStyle(element).gridTemplateColumns.split(" ").length,
   );
   expect(desktopMetricsColumns).toBe(4);
+
+  const totalStudentsLink = page.getByRole("link", { name: /View the total student list/ });
+  await expect(totalStudentsLink).toHaveAttribute("href", "/admin/students");
+  await totalStudentsLink.click();
+  await expect(page).toHaveURL(/\/admin\/students$/);
+  const studentSearch = page.getByTestId("input-search-students");
+  await expect(studentSearch).toBeVisible();
+  const searchResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === "/api/academic/students" && url.searchParams.get("q") === "student1@demo.edu";
+  });
+  await studentSearch.fill("student1@demo.edu");
+  expect((await searchResponse).ok()).toBeTruthy();
+  await page.getByTestId("link-nav-overview").click();
+  await expect(page).toHaveURL(/\/dashboard$/);
 
   const themeButton = page.getByTestId("button-theme");
   await expect(themeButton).toBeVisible();

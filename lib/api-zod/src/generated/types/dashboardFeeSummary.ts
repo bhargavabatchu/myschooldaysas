@@ -8,6 +8,19 @@
 import type { DashboardCollectionPoint } from './dashboardCollectionPoint';
 
 export interface DashboardFeeSummary {
+  academicYear: string;
+  /** @minimum 0 */
+  totalFeesThisYearPaise: number;
+  /** @minimum 0 */
+  collectedThisYearPaise: number;
+  /** @minimum 0 */
+  outstandingThisYearPaise: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  collectionPercentThisYear: number | null;
   /** @minimum 0 */
   collectedThisMonthPaise: number;
   /** @minimum 0 */

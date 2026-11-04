@@ -168,28 +168,71 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
               AND attendance.period IS NULL`,
           [user.orgId],
         );
-        const fees = await client.query(
-          `SELECT
-             COALESCE((
-               SELECT SUM(payment.amount_paise)
-                 FROM fees.payments payment
-                WHERE payment.org_id = $1
-                  AND payment.status = 'captured'
-                  AND payment.captured_at >= date_trunc('month', now())
-                  AND payment.captured_at < date_trunc('month', now()) + interval '1 month'
-             ), 0)::text AS collected_this_month_paise,
-             COALESCE((
-               SELECT SUM(invoice.amount_paise)
-                 FROM fees.invoices invoice
-                WHERE invoice.org_id = $1 AND invoice.status = 'unpaid'
-             ), 0)::text AS outstanding_paise,
-             (
-               SELECT COUNT(*)::int
-                 FROM fees.invoices invoice
-                WHERE invoice.org_id = $1
-                  AND invoice.status = 'unpaid'
-                  AND invoice.due_date < CURRENT_DATE
-             ) AS overdue_invoice_count`,
+        const fees = await client.query<{
+          academic_year: string;
+          total_fees_this_year_paise: string;
+          collected_this_year_paise: string;
+          outstanding_this_year_paise: string;
+          collection_percent_this_year: string | null;
+          collected_this_month_paise: string;
+          outstanding_paise: string;
+          overdue_invoice_count: number;
+        }>(
+          `WITH school_date AS (
+             SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date AS today
+           ),
+           current_academic_year AS (
+             SELECT CASE
+               WHEN EXTRACT(MONTH FROM today) >= 4
+                 THEN to_char(today, 'YYYY') || '-' || to_char(today + interval '1 year', 'YY')
+               ELSE to_char(today - interval '1 year', 'YYYY') || '-' || to_char(today, 'YY')
+             END AS academic_year
+               FROM school_date
+           ),
+           invoice_balances AS (
+             SELECT invoice.id, invoice.academic_year, invoice.status, invoice.due_date,
+                    GREATEST(invoice.amount_paise - invoice.concession_paise, 0)::bigint AS net_fee_paise,
+                    COALESCE(SUM(payment.amount_paise) FILTER (WHERE payment.status = 'captured'), 0)::bigint AS paid_paise
+               FROM fees.invoices invoice
+               LEFT JOIN fees.payments payment
+                 ON payment.org_id = invoice.org_id AND payment.invoice_id = invoice.id
+              WHERE invoice.org_id = $1 AND invoice.status <> 'void'
+              GROUP BY invoice.id
+           )
+           SELECT year.academic_year,
+                  COALESCE(SUM(balance.net_fee_paise)
+                    FILTER (WHERE balance.academic_year = year.academic_year), 0)::text
+                    AS total_fees_this_year_paise,
+                  COALESCE(SUM(LEAST(balance.net_fee_paise, balance.paid_paise))
+                    FILTER (WHERE balance.academic_year = year.academic_year), 0)::text
+                    AS collected_this_year_paise,
+                  COALESCE(SUM(GREATEST(balance.net_fee_paise - balance.paid_paise, 0))
+                    FILTER (WHERE balance.academic_year = year.academic_year), 0)::text
+                    AS outstanding_this_year_paise,
+                  ROUND(
+                    100.0 * SUM(LEAST(balance.net_fee_paise, balance.paid_paise))
+                      FILTER (WHERE balance.academic_year = year.academic_year)
+                    / NULLIF(SUM(balance.net_fee_paise)
+                      FILTER (WHERE balance.academic_year = year.academic_year), 0),
+                    1
+                  )::text AS collection_percent_this_year,
+                  COALESCE((
+                    SELECT SUM(payment.amount_paise)
+                      FROM fees.payments payment
+                     WHERE payment.org_id = $1
+                       AND payment.status = 'captured'
+                       AND payment.captured_at >= date_trunc('month', now())
+                       AND payment.captured_at < date_trunc('month', now()) + interval '1 month'
+                  ), 0)::text AS collected_this_month_paise,
+                  COALESCE(SUM(GREATEST(balance.net_fee_paise - balance.paid_paise, 0)), 0)::text
+                    AS outstanding_paise,
+                  COUNT(*) FILTER (
+                    WHERE balance.status = 'unpaid' AND balance.due_date < school_date.today
+                  )::int AS overdue_invoice_count
+             FROM current_academic_year year
+             CROSS JOIN school_date
+             LEFT JOIN invoice_balances balance ON true
+            GROUP BY year.academic_year`,
           [user.orgId],
         );
         const collectionTrend = await client.query(
@@ -221,6 +264,13 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
               : Number(attendanceRow.attendance_percent),
           },
           fees: {
+            academicYear: String(feeRow.academic_year),
+            totalFeesThisYearPaise: Number(feeRow.total_fees_this_year_paise),
+            collectedThisYearPaise: Number(feeRow.collected_this_year_paise),
+            outstandingThisYearPaise: Number(feeRow.outstanding_this_year_paise),
+            collectionPercentThisYear: feeRow.collection_percent_this_year === null
+              ? null
+              : Number(feeRow.collection_percent_this_year),
             collectedThisMonthPaise: Number(feeRow.collected_this_month_paise),
             outstandingPaise: Number(feeRow.outstanding_paise),
             overdueInvoiceCount: Number(feeRow.overdue_invoice_count),
@@ -244,7 +294,7 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
     const sessionCount = dashboard.sessions.length;
     const metrics = isAdmin
       ? [
-          { label: "Enrolled students", value: String(stats.students), change: "Active enrollments", tone: "positive" },
+          { label: "Total students", value: String(stats.students), change: "Active enrollments", tone: "positive" },
           { label: "Classes", value: String(stats.classes), change: `${stats.sections} active sections`, tone: "neutral" },
           { label: "Upcoming live classes", value: String(sessionCount), change: "Next sessions", tone: "neutral" },
           { label: "Teaching staff", value: String(stats.teachers), change: "Assigned to sections", tone: "positive" },

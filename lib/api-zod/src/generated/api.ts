@@ -509,6 +509,15 @@ export const getDashboardOverviewResponseAdminInsightsAttendanceTodayPresentStud
 export const getDashboardOverviewResponseAdminInsightsAttendanceTodayAttendancePercentMin = 0;
 export const getDashboardOverviewResponseAdminInsightsAttendanceTodayAttendancePercentMax = 100;
 
+export const getDashboardOverviewResponseAdminInsightsFeesTotalFeesThisYearPaiseMin = 0;
+
+export const getDashboardOverviewResponseAdminInsightsFeesCollectedThisYearPaiseMin = 0;
+
+export const getDashboardOverviewResponseAdminInsightsFeesOutstandingThisYearPaiseMin = 0;
+
+export const getDashboardOverviewResponseAdminInsightsFeesCollectionPercentThisYearMin = 0;
+export const getDashboardOverviewResponseAdminInsightsFeesCollectionPercentThisYearMax = 100;
+
 export const getDashboardOverviewResponseAdminInsightsFeesCollectedThisMonthPaiseMin = 0;
 
 export const getDashboardOverviewResponseAdminInsightsFeesOutstandingPaiseMin = 0;
@@ -553,6 +562,11 @@ export const GetDashboardOverviewResponse = zod.object({
   "attendancePercent": zod.number().min(getDashboardOverviewResponseAdminInsightsAttendanceTodayAttendancePercentMin).max(getDashboardOverviewResponseAdminInsightsAttendanceTodayAttendancePercentMax).nullable()
 }),
   "fees": zod.object({
+  "academicYear": zod.string(),
+  "totalFeesThisYearPaise": zod.int().min(getDashboardOverviewResponseAdminInsightsFeesTotalFeesThisYearPaiseMin),
+  "collectedThisYearPaise": zod.int().min(getDashboardOverviewResponseAdminInsightsFeesCollectedThisYearPaiseMin),
+  "outstandingThisYearPaise": zod.int().min(getDashboardOverviewResponseAdminInsightsFeesOutstandingThisYearPaiseMin),
+  "collectionPercentThisYear": zod.number().min(getDashboardOverviewResponseAdminInsightsFeesCollectionPercentThisYearMin).max(getDashboardOverviewResponseAdminInsightsFeesCollectionPercentThisYearMax).nullable(),
   "collectedThisMonthPaise": zod.int().min(getDashboardOverviewResponseAdminInsightsFeesCollectedThisMonthPaiseMin),
   "outstandingPaise": zod.int().min(getDashboardOverviewResponseAdminInsightsFeesOutstandingPaiseMin),
   "overdueInvoiceCount": zod.int().min(getDashboardOverviewResponseAdminInsightsFeesOverdueInvoiceCountMin),

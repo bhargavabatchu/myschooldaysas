@@ -422,6 +422,8 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
   const data = overview.data;
   const isStudent = roles.includes('student');
   const adminInsights = data?.adminInsights;
+  const collectionPercent = adminInsights?.fees.collectionPercentThisYear ?? null;
+  const academicYear = adminInsights?.fees.academicYear ?? '';
   const timetable = useGetTimetable(undefined, { query: { enabled: Boolean(adminInsights) } });
   const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const todayWeekdayName = new Intl.DateTimeFormat('en-US', {
@@ -463,11 +465,14 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
         <section className="dashboard-metrics" aria-label="School overview metrics">
           {data.metrics.map((metric, i) => {
             const Icon = [Users, BookOpen, Video, Activity][i] ?? Activity;
-            return <article key={metric.label} className={`dashboard-metric dashboard-metric-${metric.tone}`}>
+            const card = <article key={metric.label} className={`dashboard-metric dashboard-metric-${metric.tone}`}>
               <div className="dashboard-metric-top"><span>{metric.label}</span><div className="dashboard-metric-icon"><Icon size={17} strokeWidth={1.8}/></div></div>
               <div data-testid={`metric-value-${i}`} className="dashboard-metric-value">{metric.value}</div>
               <div className="dashboard-metric-change">{metric.tone === 'positive' ? <ArrowUpRight size={13}/> : metric.tone === 'warning' ? <ArrowDown size={13}/> : null}<span>{metric.change}</span></div>
             </article>;
+            return adminInsights && metric.label === 'Total students'
+              ? <Link key={`link-${metric.label}`} href="/admin/students" className="dashboard-metric-link" aria-label={`View the total student list for ${metric.value} students`}>{card}</Link>
+              : card;
           })}
         </section>
         {adminInsights && (adminInsights.attendanceToday.attendancePercent === null || adminInsights.fees.overdueInvoiceCount > 0) && <section className="dashboard-followups" aria-label="Administrator follow-ups" data-testid="dashboard-followups">
@@ -547,13 +552,30 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
           <div className="dashboard-insight-fees" data-testid="dashboard-fees-insight">
             <div className="dashboard-insight-heading">
               <div className="dashboard-insight-symbol gold"><CreditCard size={17}/></div>
-              <div><span className="dashboard-panel-kicker">FEES · THIS MONTH</span><h2>Collection overview</h2></div>
+              <div><span className="dashboard-panel-kicker">FEES · ACADEMIC YEAR {academicYear}</span><h2>Collection overview</h2></div>
             </div>
-            <div className="dashboard-fee-totals">
-              <div><span>Collected</span><strong>{formatRupees(adminInsights.fees.collectedThisMonthPaise)}</strong></div>
-              <div><span>Outstanding</span><strong>{formatRupees(adminInsights.fees.outstandingPaise)}</strong></div>
-              <div className="dashboard-overdue"><span>Overdue invoices</span><strong>{adminInsights.fees.overdueInvoiceCount}</strong></div>
+            <div className="dashboard-fee-totals" data-testid="dashboard-fee-totals">
+              <div><span>Total fees issued</span><strong>{formatRupees(adminInsights.fees.totalFeesThisYearPaise)}</strong><small>After concessions</small></div>
+              <div><span>Collected</span><strong>{formatRupees(adminInsights.fees.collectedThisYearPaise)}</strong><small>This academic year</small></div>
+              <div><span>Outstanding</span><strong>{formatRupees(adminInsights.fees.outstandingThisYearPaise)}</strong><small>This academic year</small></div>
             </div>
+            <div className="dashboard-collection-progress" data-testid="dashboard-collection-progress">
+              <div className="dashboard-collection-progress-copy">
+                <div><span>Collected this academic year</span><strong>{collectionPercent === null ? '—' : `${collectionPercent}%`}</strong></div>
+                <small>{collectionPercent === null ? `No fees issued for ${academicYear} yet.` : `Overall collection rate for ${academicYear}.`}</small>
+              </div>
+              <div
+                className="dashboard-collection-progress-track"
+                role="progressbar"
+                aria-label={collectionPercent === null ? 'No fee collection percentage available' : `${collectionPercent}% of net fees collected for ${academicYear}`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={collectionPercent ?? 0}
+              >
+                <span style={{ width: `${Math.max(0, Math.min(100, collectionPercent ?? 0))}%` }}/>
+              </div>
+            </div>
+            <div className="dashboard-overdue-summary"><span>Overdue invoices</span><strong>{adminInsights.fees.overdueInvoiceCount}</strong></div>
             {trend.length > 0 && hasRecordedCollections ? <div className="dashboard-trend" aria-label="Fee collection trend" data-testid="dashboard-fee-trend">
               <div className="dashboard-trend-label"><span>Collection trend</span><span>Last 6 months</span></div>
               <svg viewBox="0 0 100 76" preserveAspectRatio="none" role="img" aria-label="Monthly fee collections">
