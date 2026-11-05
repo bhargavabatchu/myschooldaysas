@@ -727,6 +727,15 @@ export const GetMeResponse = zod.object({
 /**
  * @summary Get role-scoped dashboard summary
  */
+export const getDashboardOverviewQueryAcademicYearMin = 4;
+export const getDashboardOverviewQueryAcademicYearMax = 24;
+
+
+
+export const GetDashboardOverviewQueryParams = zod.object({
+  "academicYear": zod.string().min(getDashboardOverviewQueryAcademicYearMin).max(getDashboardOverviewQueryAcademicYearMax).optional()
+})
+
 export const getDashboardOverviewResponseAdminInsightsAttendanceTodayMarkedStudentsMin = 0;
 
 export const getDashboardOverviewResponseAdminInsightsAttendanceTodayPresentStudentsMin = 0;

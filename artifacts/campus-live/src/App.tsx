@@ -12,7 +12,7 @@ import {
   useChangePassword, useGetConsents, getGetConsentsQueryKey, useGrantConsent, useRevokeConsent,
   getGetConsentReviewStatusQueryKey, useCompleteConsentReview, useGetConsentReviewStatus,
 } from '@workspace/api-client-react';
-import type { BoardConfig, BoardTemplate, BoardTemplateInput, LiveSession, LiveSessionInput, SectionSummary } from '@workspace/api-client-react';
+import type { AcademicYear, BoardConfig, BoardTemplate, BoardTemplateInput, LiveSession, LiveSessionInput, SectionSummary } from '@workspace/api-client-react';
 import {
   Activity, ArrowDown, ArrowRight, ArrowUpRight, BookOpen, CalendarDays, Check, ChevronDown, ClipboardList,
   ChevronLeft, ChevronRight, CircleAlert, Clock3, DoorOpen, GraduationCap, LayoutDashboard,
@@ -156,6 +156,12 @@ function canViewAcademicDirectory(roles: string[]) {
 function ProtectedApp() {
   const [path, setPath] = useLocation();
   const me = useGetMe({ query: { retry: false } });
+  const academicYearsQuery = useGetAcademicYears({
+    query: {
+      enabled: me.data?.roles?.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role)) ?? false,
+    },
+  });
+  const [academicYearOverride, setAcademicYearOverride] = useState('');
   const consentReview = useGetConsentReviewStatus({
     query: { enabled: me.data?.roles?.includes('parent') ?? false, retry: false },
   });
@@ -164,6 +170,12 @@ function ProtectedApp() {
   const user = me.data;
   if (!Array.isArray(user.roles)) return <LoginGate error={new Error('Your sign-in details are incomplete. Please sign in again.')} retry={() => me.refetch()} />;
   if (user.mustChangePassword) return <PasswordChangePage email={user.email} />;
+  const canSelectAcademicYear = user.roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role));
+  const academicYears = canSelectAcademicYear ? academicYearsQuery.data?.items ?? [] : [];
+  const currentAcademicYear = academicYears.find(year => year.status === 'current')?.academicYear ?? academicYears[0]?.academicYear ?? '';
+  const selectedAcademicYear = academicYears.some(year => year.academicYear === academicYearOverride)
+    ? academicYearOverride
+    : currentAcademicYear;
   const logout = () => { void logoutRememberedSession(); setAccessToken(null); queryClient.clear(); setPath('/login'); };
   if (user.roles.includes('parent')) {
     if (consentReview.isLoading) return <LoadingScreen />;
@@ -173,11 +185,18 @@ function ProtectedApp() {
     }
   }
   if (path.startsWith('/classroom/')) return liveClassesEnabled ? <ErrorBoundary resetKey={path}><ClassroomPage roles={user.roles}/></ErrorBoundary> : <div className="shell grain p-8"><LiveClassesUnavailable /></div>;
-  return <div className="shell grain"><AppShell user={user} path={path} onLogout={logout}>
+  return <div className="shell grain"><AppShell
+    user={user}
+    path={path}
+    onLogout={logout}
+    academicYears={academicYears}
+    selectedAcademicYear={selectedAcademicYear}
+    onAcademicYearChange={setAcademicYearOverride}
+  >
     <ErrorBoundary resetKey={path}>
       <Switch>
-        <Route path="/" component={() => <DashboardPage roles={user.roles} userName={user.name} />} />
-        <Route path="/dashboard" component={() => <DashboardPage roles={user.roles} userName={user.name} />} />
+        <Route path="/" component={() => <DashboardPage roles={user.roles} userName={user.name} requestedAcademicYear={selectedAcademicYear} />} />
+        <Route path="/dashboard" component={() => <DashboardPage roles={user.roles} userName={user.name} requestedAcademicYear={selectedAcademicYear} />} />
         <Route path="/admin/classes" component={() => canViewAcademicDirectory(user.roles) ? <ClassesPage roles={user.roles} /> : <NotFound />} />
         <Route path="/admin/teachers" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <TeachersPage /> : <NotFound />} />
         <Route path="/admin/administrators" component={() => user.roles.some(role => ['super_admin','org_admin'].includes(role)) ? <AdministratorsPage /> : <NotFound />} />
@@ -203,12 +222,29 @@ function ProtectedApp() {
   </AppShell></div>;
 }
 
-function AppShell({ user, path, onLogout, children }: { user: { name: string; email: string; roles: string[] }; path: string; onLogout: () => void; children: ReactNode }) {
+function AppShell({
+  user,
+  path,
+  onLogout,
+  academicYears,
+  selectedAcademicYear,
+  onAcademicYearChange,
+  children,
+}: {
+  user: { name: string; email: string; roles: string[] };
+  path: string;
+  onLogout: () => void;
+  academicYears: AcademicYear[];
+  selectedAcademicYear: string;
+  onAcademicYearChange: (value: string) => void;
+  children: ReactNode;
+}) {
   const [mobileNav, setMobileNav] = useState(false);
   const [dark, setDark] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
   const toggleTheme = () => { document.documentElement.classList.toggle('dark'); setDark(!dark); };
   const isDashboard = path === '/' || path === '/dashboard';
   const isStudent = user.roles.includes('student');
+  const isAdmin = user.roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role));
   const nav = [
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     ...(canViewAcademicDirectory(user.roles) ? [{ label: 'Classes', href: '/admin/classes', icon: BookOpen }] : []),
@@ -273,7 +309,32 @@ function AppShell({ user, path, onLogout, children }: { user: { name: string; em
           <button aria-label="Open navigation" data-testid="button-open-navigation" onClick={() => setMobileNav(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-[hsl(var(--border))] md:hidden"><Menu size={18}/></button>
           <div className="text-[11px] text-[hsl(var(--muted-foreground))]">Workspace / <span className="font-semibold capitalize text-[hsl(var(--foreground))]">{nav.find(item => path.startsWith(item.href))?.label ?? 'Classroom'}</span></div>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-[hsl(var(--muted-foreground))]"><span className="max-w-[118px] truncate sm:max-w-none"><span className="mr-2 inline-block h-2 w-2 rounded-full bg-[hsl(var(--status-good))]"/>{SCHOOL_NAME}</span><div className="grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--secondary))] font-bold text-[hsl(var(--secondary-foreground))]">{user.name.slice(0, 1).toUpperCase()}</div></div>
+         <div className="flex items-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]">
+           {isDashboard && isAdmin && (
+             <>
+               <label className="sr-only" htmlFor="dashboard-academic-year">Academic year</label>
+               <select
+                 id="dashboard-academic-year"
+                 data-testid="dashboard-academic-year-select"
+                 aria-label="Academic year"
+                 className="field h-8 min-h-8 w-[112px] px-2 py-1 text-[10px] font-semibold sm:w-[148px] sm:text-[11px]"
+                 value={selectedAcademicYear}
+                 onChange={event => onAcademicYearChange(event.target.value)}
+                 disabled={academicYears.length === 0}
+               >
+                 {academicYears.length === 0
+                   ? <option value="">No academic years</option>
+                   : academicYears.map(year => (
+                     <option key={year.id} value={year.academicYear}>
+                       {year.academicYear}{year.status === 'current' ? ' · Current' : year.status === 'planned' ? ' · Planned' : ' · Completed'}
+                     </option>
+                   ))}
+               </select>
+             </>
+           )}
+           <span className="hidden max-w-[118px] truncate sm:inline sm:max-w-none"><span className="mr-2 inline-block h-2 w-2 rounded-full bg-[hsl(var(--status-good))]"/>{SCHOOL_NAME}</span>
+           <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[hsl(var(--secondary))] font-bold text-[hsl(var(--secondary-foreground))]">{user.name.slice(0, 1).toUpperCase()}</div>
+         </div>
       </header>
       <div className={`page-enter mx-auto w-full max-w-[1450px] px-4 md:px-9 ${isStudent ? 'pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:py-9' : 'py-7 md:py-9'}`}>{children}</div>
     </main>
@@ -461,10 +522,13 @@ function QueryState({ loading, error, empty, retry, children }: { loading: boole
   return <>{children}</>;
 }
 
-function DashboardPage({ roles, userName }: { roles: string[]; userName: string }) {
+function DashboardPage({ roles, userName, requestedAcademicYear }: { roles: string[]; userName: string; requestedAcademicYear?: string }) {
   const [activityExpanded, setActivityExpanded] = useState(false);
   const isStudent = roles.includes('student');
-  const overview = useGetDashboardOverview({ query: { enabled: !isStudent } });
+  const overview = useGetDashboardOverview(
+    requestedAcademicYear ? { academicYear: requestedAcademicYear } : undefined,
+    { query: { enabled: !isStudent } },
+  );
   const data = overview.data;
   const adminInsights = data?.adminInsights;
   const collectionPercent = adminInsights?.fees.collectionPercentThisYear ?? null;

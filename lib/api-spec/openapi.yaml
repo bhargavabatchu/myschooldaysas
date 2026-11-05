@@ -604,6 +604,14 @@ paths:
       operationId: getDashboardOverview
       tags: [dashboard]
       summary: Get role-scoped dashboard summary
+      parameters:
+        - name: academicYear
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 4
+            maxLength: 24
       security:
         - bearerAuth: []
       responses:

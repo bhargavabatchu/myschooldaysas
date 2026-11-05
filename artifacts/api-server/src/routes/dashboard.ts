@@ -15,6 +15,14 @@ function errorBody(code: string, message: string) {
 router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
   const user = req.campusUser;
   if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+  const rawAcademicYear = (req.query as { academicYear?: unknown }).academicYear;
+  if (
+    rawAcademicYear !== undefined &&
+    (typeof rawAcademicYear !== "string" || rawAcademicYear.trim().length < 4 || rawAcademicYear.trim().length > 24)
+  ) {
+    return void res.status(400).json(errorBody("INVALID_ACADEMIC_YEAR", "Choose a valid academic year."));
+  }
+  const requestedAcademicYear = typeof rawAcademicYear === "string" ? rawAcademicYear.trim() || undefined : undefined;
 
   const isAdmin = user.roles.some((role) => adminRoles.includes(role));
   const isTeacher = user.roles.some((role) => teacherRoles.includes(role));
@@ -23,6 +31,14 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
 
   try {
     const dashboard = await withOrg(user.orgId, async (client) => {
+      if (isAdmin && requestedAcademicYear) {
+        const configuredYear = await client.query(
+          "SELECT 1 FROM academic.academic_years WHERE org_id = $1 AND academic_year = $2",
+          [user.orgId, requestedAcademicYear],
+        );
+        if (!configuredYear.rowCount) return { invalidAcademicYear: true as const };
+      }
+
       const stats = await client.query<{
         students: number;
         classes: number;
@@ -185,7 +201,12 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
               SELECT COALESCE(
                 (SELECT academic_year
                    FROM academic.academic_years
-                  WHERE org_id = $1 AND status = 'current'),
+                  WHERE org_id = $1
+                    AND (
+                      ($2::text IS NOT NULL AND academic_year = $2)
+                      OR ($2::text IS NULL AND status = 'current')
+                    )
+                  LIMIT 1),
                 CASE
                   WHEN EXTRACT(MONTH FROM today) >= 4
                     THEN to_char(today, 'YYYY') || '-' || to_char(today + interval '1 year', 'YY')
@@ -232,13 +253,15 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
                   COALESCE(SUM(GREATEST(balance.net_fee_paise - balance.paid_paise, 0)), 0)::text
                     AS outstanding_paise,
                   COUNT(*) FILTER (
-                    WHERE balance.status = 'unpaid' AND balance.due_date < school_date.today
+                    WHERE balance.academic_year = year.academic_year
+                      AND balance.status = 'unpaid'
+                      AND balance.due_date < school_date.today
                   )::int AS overdue_invoice_count
              FROM current_academic_year year
              CROSS JOIN school_date
              LEFT JOIN invoice_balances balance ON true
             GROUP BY year.academic_year`,
-          [user.orgId],
+          [user.orgId, requestedAcademicYear ?? null],
         );
         const collectionTrend = await client.query(
           `SELECT to_char(months.month_start, 'YYYY-MM') AS month,
@@ -288,12 +311,17 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
       }
 
       return {
+        invalidAcademicYear: false as const,
         stats: stats.rows[0],
         sessions: sessions.rows,
         activity: activity.rows,
         adminInsights,
       };
     });
+
+    if (dashboard.invalidAcademicYear) {
+      return void res.status(400).json(errorBody("INVALID_ACADEMIC_YEAR", "That academic year is not configured for this school."));
+    }
 
     const stats = dashboard.stats ?? { students: 0, classes: 0, sections: 0, teachers: 0 };
     const sessionCount = dashboard.sessions.length;

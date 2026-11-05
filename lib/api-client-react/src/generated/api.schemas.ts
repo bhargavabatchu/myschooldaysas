@@ -2339,6 +2339,14 @@ limit?: number;
 offset?: number;
 };
 
+export type GetDashboardOverviewParams = {
+/**
+ * @minLength 4
+ * @maxLength 24
+ */
+academicYear?: string;
+};
+
 export type GetClassesParams = {
 includeArchived?: boolean;
 };

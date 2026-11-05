@@ -102,6 +102,24 @@ test("administrator dashboard data, navigation, and theme controls fit desktop a
       ? null
       : Math.round(feeSummary.collectedThisYearPaise / feeSummary.totalFeesThisYearPaise * 1000) / 10,
   );
+  const academicYearSelect = page.getByTestId("dashboard-academic-year-select");
+  await expect(academicYearSelect).toBeVisible();
+  await expect(academicYearSelect).toHaveValue(feeSummary.academicYear);
+  const yearOptions = await academicYearSelect.locator("option").evaluateAll(options =>
+    options.map(option => (option as HTMLOptionElement).value).filter(Boolean),
+  );
+  const alternateAcademicYear = yearOptions.find(year => year !== feeSummary.academicYear);
+  expect(alternateAcademicYear, "the demo school should have another academic year to select").toBeTruthy();
+  const alternateYearResponsePromise = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === "/api/dashboard/overview"
+      && response.request().method() === "GET"
+      && url.searchParams.get("academicYear") === alternateAcademicYear;
+  });
+  await academicYearSelect.selectOption(alternateAcademicYear!);
+  const alternateYearResponse = await alternateYearResponsePromise;
+  expect(alternateYearResponse.ok()).toBeTruthy();
+  expect((await alternateYearResponse.json()).adminInsights.fees.academicYear).toBe(alternateAcademicYear);
 
   await page.setViewportSize(desktop);
   await expectDashboardData(page, true);
@@ -211,6 +229,7 @@ test("teacher navigation stays role-aware and theme control remains reachable on
   await page.setViewportSize(desktop);
   await expectDashboardData(page);
   await expect(page.getByTestId("dashboard-admin-insights")).toHaveCount(0);
+  await expect(page.getByTestId("dashboard-academic-year-select")).toHaveCount(0);
   await expect(page.getByTestId("dashboard-admin-actions")).toHaveCount(0);
   await expect(page.getByTestId("link-nav-students")).toBeVisible();
   await expect(page.getByTestId("link-nav-admissions")).toHaveCount(0);
