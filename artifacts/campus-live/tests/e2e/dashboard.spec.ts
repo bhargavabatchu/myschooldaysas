@@ -255,3 +255,34 @@ test("student accounts cannot open the student directory", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Student roster" })).toHaveCount(0);
   await expect(page.locator("[data-testid^='student-row-']")).toHaveCount(0);
 });
+
+test("assignment form filters sections by the selected class", async ({ page }) => {
+  await signIn(page, process.env.DASHBOARD_E2E_ADMIN_EMAIL ?? "admin@demo.edu");
+  const sectionsResponsePromise = page.waitForResponse(response =>
+    new URL(response.url()).pathname === "/api/academic/sections" &&
+    response.request().method() === "GET",
+  );
+  await page.goto("/learning");
+  const sectionsResponse = await sectionsResponsePromise;
+  expect(sectionsResponse.ok()).toBeTruthy();
+  const sectionItems = (await sectionsResponse.json()).items as { id: string; classId: string }[];
+
+  await page.getByRole("button", { name: "Assignment", exact: true }).click();
+  const classSelect = page.getByTestId("select-assignment-class");
+  const sectionSelect = page.getByTestId("select-assignment-section");
+  await expect(classSelect).toBeVisible();
+  await expect(sectionSelect).toBeVisible();
+
+  const classOptions = await classSelect.locator("option").evaluateAll(options =>
+    options.filter(option => (option as HTMLOptionElement).value).map(option => (option as HTMLOptionElement).value),
+  );
+  expect(classOptions.length).toBeGreaterThan(0);
+  const selectedClassId = classOptions[classOptions.length - 1];
+  await classSelect.selectOption(selectedClassId);
+
+  const visibleSectionIds = await sectionSelect.locator("option").evaluateAll(options =>
+    options.filter(option => (option as HTMLOptionElement).value).map(option => (option as HTMLOptionElement).value),
+  );
+  const expectedSectionIds = sectionItems.filter(section => section.classId === selectedClassId).map(section => section.id);
+  expect(visibleSectionIds).toEqual(expectedSectionIds);
+});

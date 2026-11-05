@@ -10,7 +10,7 @@ import {
   useGetLearningTerms, getGetLearningTermsQueryKey, useGetLearningGradeScale, useGetAcademicSubjects,
   getGetLearningGradeScaleQueryKey, useUpdateLearningGradeScale, useGetSections, useGetAcademicTeacherAssignments,
 } from '@workspace/api-client-react';
-import type { LearningAssignment, LearningExam, LearningMark, LearningSubmission } from '@workspace/api-client-react';
+import type { LearningAssignment, LearningExam, LearningMark, LearningSubmission, SectionSummary } from '@workspace/api-client-react';
 import { LearningOperations } from './learning-operations';
 import {
   BookOpenCheck, CalendarDays, Check, ClipboardList, Clock3, FileText,
@@ -21,6 +21,7 @@ type Props = { roles: string[]; initialTab?: Tab };
 type Tab = 'assignments' | 'exams' | 'terms' | 'catalog' | 'reports';
 const canManage = (roles: string[]) => roles.some(role => ['teacher', 'class_teacher', 'hod', 'org_admin', 'campus_admin', 'super_admin'].includes(role));
 const canAdminister = (roles: string[]) => roles.some(role => ['org_admin', 'campus_admin', 'super_admin'].includes(role));
+type AssignmentSection = Pick<SectionSummary, 'id' | 'classId' | 'className' | 'name'>;
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Please try again.';
 const formatDate = (value?: string | null) => {
   if (!value) return 'Not set';
@@ -137,22 +138,35 @@ function AssignmentList({ items, loading, error, manager, retry, onSelect, onEdi
   </section>;
 }
 
-function AssignmentForm({ sections, saving, onCancel, onSave, initial }: { sections: { id: string; name: string }[]; saving: boolean; onCancel: () => void; onSave: (data: { sectionId: string; title: string; instructions: string; dueAt: string; maxPoints: number }) => void; initial?: LearningAssignment }) {
+function AssignmentForm({ sections, saving, onCancel, onSave, initial }: { sections: AssignmentSection[]; saving: boolean; onCancel: () => void; onSave: (data: { sectionId: string; title: string; instructions: string; dueAt: string; maxPoints: number }) => void; initial?: LearningAssignment }) {
+  const classes = useMemo(() => {
+    const uniqueClasses = new Map<string, string>();
+    sections.forEach(section => uniqueClasses.set(section.classId, section.className));
+    return Array.from(uniqueClasses, ([id, name]) => ({ id, name }));
+  }, [sections]);
+  const initialSection = sections.find(section => section.id === initial?.sectionId);
+  const [classId, setClassId] = useState(initialSection?.classId ?? sections[0]?.classId ?? '');
   const [title, setTitle] = useState(initial?.title ?? '');
-  const [sectionId, setSectionId] = useState(initial?.sectionId ?? sections[0]?.id ?? '');
+  const [sectionId, setSectionId] = useState(initial?.sectionId ?? '');
   const [instructions, setInstructions] = useState(initial?.instructions ?? '');
   const [dueAt, setDueAt] = useState(localValue(initial?.dueAt));
   const [maxPoints, setMaxPoints] = useState(String(initial?.maxPoints ?? 100));
-  return <form className="surface space-y-4 border-l-4 border-l-[hsl(var(--primary))] p-4 md:p-5" onSubmit={event => { event.preventDefault(); onSave({ sectionId, title: title.trim(), instructions: instructions.trim(), dueAt: toIsoDate(dueAt), maxPoints: Number(maxPoints) }); }}>
+  const selectedClassId = classes.some(item => item.id === classId) ? classId : classes[0]?.id ?? '';
+  const classSections = sections.filter(section => section.classId === selectedClassId);
+  const selectedSectionId = classSections.some(section => section.id === sectionId) ? sectionId : classSections[0]?.id ?? '';
+  return <form className="surface space-y-4 border-l-4 border-l-[hsl(var(--primary))] p-4 md:p-5" onSubmit={event => { event.preventDefault(); onSave({ sectionId: selectedSectionId, title: title.trim(), instructions: instructions.trim(), dueAt: toIsoDate(dueAt), maxPoints: Number(maxPoints) }); }}>
     <div className="flex items-center justify-between"><div><h2 className="display m-0 text-lg font-extrabold">{initial ? 'Edit assignment' : 'Create assignment'}</h2><p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Set clear expectations and a due date.</p></div><button type="button" aria-label="Cancel assignment form" className="btn btn-quiet px-2" onClick={onCancel}><X size={18}/></button></div>
     <div className="grid gap-3 md:grid-cols-2">
-      {!initial && <label className="text-xs font-bold">Section<select required className="field mt-1.5" value={sectionId} onChange={event => setSectionId(event.target.value)}><option value="">Choose section</option>{sections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label>}
+      {!initial && <>
+        <label className="text-xs font-bold">Class<select required data-testid="select-assignment-class" className="field mt-1.5" value={selectedClassId} onChange={event => { setClassId(event.target.value); setSectionId(''); }}><option value="">Choose class</option>{classes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label className="text-xs font-bold">Section<select required data-testid="select-assignment-section" className="field mt-1.5" value={selectedSectionId} disabled={!selectedClassId || classSections.length === 0} onChange={event => setSectionId(event.target.value)}><option value="">Choose section</option>{classSections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label>
+      </>}
       <label className="text-xs font-bold">Title<input required maxLength={180} className="field mt-1.5" value={title} onChange={event => setTitle(event.target.value)}/></label>
       <label className="text-xs font-bold">Due date and time<input required type="datetime-local" className="field mt-1.5" value={dueAt} onChange={event => setDueAt(event.target.value)}/></label>
       <label className="text-xs font-bold">Maximum points<input required type="number" min="1" max="100000" className="field mt-1.5" value={maxPoints} onChange={event => setMaxPoints(event.target.value)}/></label>
     </div>
     <label className="block text-xs font-bold">Instructions<textarea maxLength={12000} rows={3} className="field mt-1.5 resize-y" value={instructions} onChange={event => setInstructions(event.target.value)}/></label>
-    <div className="flex justify-end gap-2"><button type="button" className="btn btn-muted" onClick={onCancel}>Cancel</button><button disabled={saving || !sectionId || !dueAt} className="btn btn-primary"><Save size={15}/>{saving ? 'Saving…' : initial ? 'Save changes' : 'Create assignment'}</button></div>
+    <div className="flex justify-end gap-2"><button type="button" className="btn btn-muted" onClick={onCancel}>Cancel</button><button disabled={saving || (!initial && !selectedSectionId) || !dueAt} className="btn btn-primary"><Save size={15}/>{saving ? 'Saving…' : initial ? 'Save changes' : 'Create assignment'}</button></div>
   </form>;
 }
 
