@@ -99,6 +99,7 @@ import type {
   GetLearningAssignmentsParams,
   GetLearningExamsParams,
   GetLearningReportCardsParams,
+  GetLearningSyllabusParams,
   GetSchoolAdminAccountsParams,
   GetSchoolAttendanceParams,
   GetSections200,
@@ -133,6 +134,16 @@ import type {
   LearningSubmission,
   LearningSubmissionInput,
   LearningSubmissionPage,
+  LearningSyllabusLesson,
+  LearningSyllabusLessonInput,
+  LearningSyllabusLessonUpdate,
+  LearningSyllabusMaterial,
+  LearningSyllabusMaterialInput,
+  LearningSyllabusMaterialUpdate,
+  LearningSyllabusPage,
+  LearningSyllabusTopic,
+  LearningSyllabusTopicInput,
+  LearningSyllabusTopicUpdate,
   LearningTerm,
   LearningTermInput,
   LearningTermPage,
@@ -7840,6 +7851,869 @@ export const useCreateLearningAssignment = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateLearningAssignmentMutationOptions(options), queryClient);
+    }
+
+export const getGetLearningSyllabusUrl = (params?: GetLearningSyllabusParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/learning/syllabus?${stringifiedParams}` : `/api/learning/syllabus`
+}
+
+/**
+ * @summary List syllabus content available to the caller
+ */
+export const getLearningSyllabus = async (params?: GetLearningSyllabusParams, options?: Parameters<typeof customFetch>[1]): Promise<LearningSyllabusPage> => {
+
+  return customFetch<LearningSyllabusPage>(getGetLearningSyllabusUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLearningSyllabusQueryKey = (params?: GetLearningSyllabusParams,) => {
+    return [
+    `/api/learning/syllabus`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLearningSyllabusQueryOptions = <TData = Awaited<ReturnType<typeof getLearningSyllabus>>, TError = ErrorType<unknown>>(params?: GetLearningSyllabusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLearningSyllabus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLearningSyllabusQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLearningSyllabus>>> = ({ signal }) => getLearningSyllabus(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLearningSyllabus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetLearningSyllabusQueryResult = NonNullable<Awaited<ReturnType<typeof getLearningSyllabus>>>
+export type GetLearningSyllabusQueryError = ErrorType<unknown>
+
+
+export function useGetLearningSyllabus<TData = Awaited<ReturnType<typeof getLearningSyllabus>>, TError = ErrorType<unknown>>(
+ params: undefined |  GetLearningSyllabusParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLearningSyllabus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLearningSyllabus>>,
+          TError,
+          Awaited<ReturnType<typeof getLearningSyllabus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetLearningSyllabus<TData = Awaited<ReturnType<typeof getLearningSyllabus>>, TError = ErrorType<unknown>>(
+ params?: GetLearningSyllabusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLearningSyllabus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLearningSyllabus>>,
+          TError,
+          Awaited<ReturnType<typeof getLearningSyllabus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetLearningSyllabus<TData = Awaited<ReturnType<typeof getLearningSyllabus>>, TError = ErrorType<unknown>>(
+ params?: GetLearningSyllabusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLearningSyllabus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List syllabus content available to the caller
+ */
+
+export function useGetLearningSyllabus<TData = Awaited<ReturnType<typeof getLearningSyllabus>>, TError = ErrorType<unknown>>(
+ params?: GetLearningSyllabusParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLearningSyllabus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetLearningSyllabusQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateLearningSyllabusLessonUrl = () => {
+
+
+
+
+  return `/api/learning/syllabus/lessons`
+}
+
+/**
+ * @summary Add a lesson to a class and subject syllabus
+ */
+export const createLearningSyllabusLesson = async (learningSyllabusLessonInput: LearningSyllabusLessonInput, options?: Parameters<typeof customFetch>[1]): Promise<LearningSyllabusLesson> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LearningSyllabusLesson>(getCreateLearningSyllabusLessonUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(learningSyllabusLessonInput)
+  }
+);}
+
+
+
+
+
+export const getCreateLearningSyllabusLessonMutationKey = () => ['createLearningSyllabusLesson'] as const;
+
+export const getCreateLearningSyllabusLessonMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLearningSyllabusLesson>>, TError,CreateLearningSyllabusLessonMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLearningSyllabusLesson>>, TError,CreateLearningSyllabusLessonMutationVariables, TContext> => {
+
+const mutationKey = getCreateLearningSyllabusLessonMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLearningSyllabusLesson>>, CreateLearningSyllabusLessonMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createLearningSyllabusLesson(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLearningSyllabusLessonMutationResult = NonNullable<Awaited<ReturnType<typeof createLearningSyllabusLesson>>>
+    export type CreateLearningSyllabusLessonMutationBody = BodyType<LearningSyllabusLessonInput>
+    export type CreateLearningSyllabusLessonMutationError = ErrorType<void>
+    export type CreateLearningSyllabusLessonMutationVariables = {data: BodyType<LearningSyllabusLessonInput>}
+
+    /**
+ * @summary Add a lesson to a class and subject syllabus
+ */
+export const useCreateLearningSyllabusLesson = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLearningSyllabusLesson>>, TError,CreateLearningSyllabusLessonMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createLearningSyllabusLesson>>,
+        TError,
+        CreateLearningSyllabusLessonMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateLearningSyllabusLessonMutationOptions(options), queryClient);
+    }
+
+export const getUpdateLearningSyllabusLessonUrl = (lessonId: string,) => {
+
+
+
+
+  return `/api/learning/syllabus/lessons/${lessonId}`
+}
+
+/**
+ * @summary Update a syllabus lesson
+ */
+export const updateLearningSyllabusLesson = async (lessonId: string,
+    learningSyllabusLessonUpdate: LearningSyllabusLessonUpdate, options?: Parameters<typeof customFetch>[1]): Promise<LearningSyllabusLesson> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LearningSyllabusLesson>(getUpdateLearningSyllabusLessonUrl(lessonId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(learningSyllabusLessonUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateLearningSyllabusLessonMutationKey = () => ['updateLearningSyllabusLesson'] as const;
+
+export const getUpdateLearningSyllabusLessonMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLearningSyllabusLesson>>, TError,UpdateLearningSyllabusLessonMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLearningSyllabusLesson>>, TError,UpdateLearningSyllabusLessonMutationVariables, TContext> => {
+
+const mutationKey = getUpdateLearningSyllabusLessonMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLearningSyllabusLesson>>, UpdateLearningSyllabusLessonMutationVariables> = (props) => {
+          const {lessonId,data} = props ?? {};
+
+          return  updateLearningSyllabusLesson(lessonId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLearningSyllabusLessonMutationResult = NonNullable<Awaited<ReturnType<typeof updateLearningSyllabusLesson>>>
+    export type UpdateLearningSyllabusLessonMutationBody = BodyType<LearningSyllabusLessonUpdate>
+    export type UpdateLearningSyllabusLessonMutationError = ErrorType<void>
+    export type UpdateLearningSyllabusLessonMutationVariables = {lessonId: string;data: BodyType<LearningSyllabusLessonUpdate>}
+
+    /**
+ * @summary Update a syllabus lesson
+ */
+export const useUpdateLearningSyllabusLesson = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLearningSyllabusLesson>>, TError,UpdateLearningSyllabusLessonMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateLearningSyllabusLesson>>,
+        TError,
+        UpdateLearningSyllabusLessonMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateLearningSyllabusLessonMutationOptions(options), queryClient);
+    }
+
+export const getDeleteLearningSyllabusLessonUrl = (lessonId: string,) => {
+
+
+
+
+  return `/api/learning/syllabus/lessons/${lessonId}`
+}
+
+/**
+ * @summary Remove a lesson and its topics and materials
+ */
+export const deleteLearningSyllabusLesson = async (lessonId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteLearningSyllabusLessonUrl(lessonId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteLearningSyllabusLessonMutationKey = () => ['deleteLearningSyllabusLesson'] as const;
+
+export const getDeleteLearningSyllabusLessonMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLearningSyllabusLesson>>, TError,DeleteLearningSyllabusLessonMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteLearningSyllabusLesson>>, TError,DeleteLearningSyllabusLessonMutationVariables, TContext> => {
+
+const mutationKey = getDeleteLearningSyllabusLessonMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteLearningSyllabusLesson>>, DeleteLearningSyllabusLessonMutationVariables> = (props) => {
+          const {lessonId} = props ?? {};
+
+          return  deleteLearningSyllabusLesson(lessonId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteLearningSyllabusLessonMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLearningSyllabusLesson>>>
+
+    export type DeleteLearningSyllabusLessonMutationError = ErrorType<void>
+    export type DeleteLearningSyllabusLessonMutationVariables = {lessonId: string}
+
+    /**
+ * @summary Remove a lesson and its topics and materials
+ */
+export const useDeleteLearningSyllabusLesson = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLearningSyllabusLesson>>, TError,DeleteLearningSyllabusLessonMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteLearningSyllabusLesson>>,
+        TError,
+        DeleteLearningSyllabusLessonMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteLearningSyllabusLessonMutationOptions(options), queryClient);
+    }
+
+export const getCreateLearningSyllabusTopicUrl = (lessonId: string,) => {
+
+
+
+
+  return `/api/learning/syllabus/lessons/${lessonId}/topics`
+}
+
+/**
+ * @summary Add a topic to a syllabus lesson
+ */
+export const createLearningSyllabusTopic = async (lessonId: string,
+    learningSyllabusTopicInput: LearningSyllabusTopicInput, options?: Parameters<typeof customFetch>[1]): Promise<LearningSyllabusTopic> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LearningSyllabusTopic>(getCreateLearningSyllabusTopicUrl(lessonId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(learningSyllabusTopicInput)
+  }
+);}
+
+
+
+
+
+export const getCreateLearningSyllabusTopicMutationKey = () => ['createLearningSyllabusTopic'] as const;
+
+export const getCreateLearningSyllabusTopicMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLearningSyllabusTopic>>, TError,CreateLearningSyllabusTopicMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLearningSyllabusTopic>>, TError,CreateLearningSyllabusTopicMutationVariables, TContext> => {
+
+const mutationKey = getCreateLearningSyllabusTopicMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLearningSyllabusTopic>>, CreateLearningSyllabusTopicMutationVariables> = (props) => {
+          const {lessonId,data} = props ?? {};
+
+          return  createLearningSyllabusTopic(lessonId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLearningSyllabusTopicMutationResult = NonNullable<Awaited<ReturnType<typeof createLearningSyllabusTopic>>>
+    export type CreateLearningSyllabusTopicMutationBody = BodyType<LearningSyllabusTopicInput>
+    export type CreateLearningSyllabusTopicMutationError = ErrorType<void>
+    export type CreateLearningSyllabusTopicMutationVariables = {lessonId: string;data: BodyType<LearningSyllabusTopicInput>}
+
+    /**
+ * @summary Add a topic to a syllabus lesson
+ */
+export const useCreateLearningSyllabusTopic = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLearningSyllabusTopic>>, TError,CreateLearningSyllabusTopicMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createLearningSyllabusTopic>>,
+        TError,
+        CreateLearningSyllabusTopicMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateLearningSyllabusTopicMutationOptions(options), queryClient);
+    }
+
+export const getUpdateLearningSyllabusTopicUrl = (topicId: string,) => {
+
+
+
+
+  return `/api/learning/syllabus/topics/${topicId}`
+}
+
+/**
+ * @summary Update a syllabus topic
+ */
+export const updateLearningSyllabusTopic = async (topicId: string,
+    learningSyllabusTopicUpdate: LearningSyllabusTopicUpdate, options?: Parameters<typeof customFetch>[1]): Promise<LearningSyllabusTopic> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LearningSyllabusTopic>(getUpdateLearningSyllabusTopicUrl(topicId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(learningSyllabusTopicUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateLearningSyllabusTopicMutationKey = () => ['updateLearningSyllabusTopic'] as const;
+
+export const getUpdateLearningSyllabusTopicMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLearningSyllabusTopic>>, TError,UpdateLearningSyllabusTopicMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLearningSyllabusTopic>>, TError,UpdateLearningSyllabusTopicMutationVariables, TContext> => {
+
+const mutationKey = getUpdateLearningSyllabusTopicMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLearningSyllabusTopic>>, UpdateLearningSyllabusTopicMutationVariables> = (props) => {
+          const {topicId,data} = props ?? {};
+
+          return  updateLearningSyllabusTopic(topicId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLearningSyllabusTopicMutationResult = NonNullable<Awaited<ReturnType<typeof updateLearningSyllabusTopic>>>
+    export type UpdateLearningSyllabusTopicMutationBody = BodyType<LearningSyllabusTopicUpdate>
+    export type UpdateLearningSyllabusTopicMutationError = ErrorType<void>
+    export type UpdateLearningSyllabusTopicMutationVariables = {topicId: string;data: BodyType<LearningSyllabusTopicUpdate>}
+
+    /**
+ * @summary Update a syllabus topic
+ */
+export const useUpdateLearningSyllabusTopic = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLearningSyllabusTopic>>, TError,UpdateLearningSyllabusTopicMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateLearningSyllabusTopic>>,
+        TError,
+        UpdateLearningSyllabusTopicMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateLearningSyllabusTopicMutationOptions(options), queryClient);
+    }
+
+export const getDeleteLearningSyllabusTopicUrl = (topicId: string,) => {
+
+
+
+
+  return `/api/learning/syllabus/topics/${topicId}`
+}
+
+/**
+ * @summary Remove a topic and its materials
+ */
+export const deleteLearningSyllabusTopic = async (topicId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteLearningSyllabusTopicUrl(topicId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteLearningSyllabusTopicMutationKey = () => ['deleteLearningSyllabusTopic'] as const;
+
+export const getDeleteLearningSyllabusTopicMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLearningSyllabusTopic>>, TError,DeleteLearningSyllabusTopicMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteLearningSyllabusTopic>>, TError,DeleteLearningSyllabusTopicMutationVariables, TContext> => {
+
+const mutationKey = getDeleteLearningSyllabusTopicMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteLearningSyllabusTopic>>, DeleteLearningSyllabusTopicMutationVariables> = (props) => {
+          const {topicId} = props ?? {};
+
+          return  deleteLearningSyllabusTopic(topicId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteLearningSyllabusTopicMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLearningSyllabusTopic>>>
+
+    export type DeleteLearningSyllabusTopicMutationError = ErrorType<void>
+    export type DeleteLearningSyllabusTopicMutationVariables = {topicId: string}
+
+    /**
+ * @summary Remove a topic and its materials
+ */
+export const useDeleteLearningSyllabusTopic = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLearningSyllabusTopic>>, TError,DeleteLearningSyllabusTopicMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteLearningSyllabusTopic>>,
+        TError,
+        DeleteLearningSyllabusTopicMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteLearningSyllabusTopicMutationOptions(options), queryClient);
+    }
+
+export const getCreateLearningSyllabusMaterialUrl = (topicId: string,) => {
+
+
+
+
+  return `/api/learning/syllabus/topics/${topicId}/materials`
+}
+
+/**
+ * @summary Add a document, video or link to a syllabus topic
+ */
+export const createLearningSyllabusMaterial = async (topicId: string,
+    learningSyllabusMaterialInput: LearningSyllabusMaterialInput, options?: Parameters<typeof customFetch>[1]): Promise<LearningSyllabusMaterial> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LearningSyllabusMaterial>(getCreateLearningSyllabusMaterialUrl(topicId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(learningSyllabusMaterialInput)
+  }
+);}
+
+
+
+
+
+export const getCreateLearningSyllabusMaterialMutationKey = () => ['createLearningSyllabusMaterial'] as const;
+
+export const getCreateLearningSyllabusMaterialMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLearningSyllabusMaterial>>, TError,CreateLearningSyllabusMaterialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLearningSyllabusMaterial>>, TError,CreateLearningSyllabusMaterialMutationVariables, TContext> => {
+
+const mutationKey = getCreateLearningSyllabusMaterialMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLearningSyllabusMaterial>>, CreateLearningSyllabusMaterialMutationVariables> = (props) => {
+          const {topicId,data} = props ?? {};
+
+          return  createLearningSyllabusMaterial(topicId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLearningSyllabusMaterialMutationResult = NonNullable<Awaited<ReturnType<typeof createLearningSyllabusMaterial>>>
+    export type CreateLearningSyllabusMaterialMutationBody = BodyType<LearningSyllabusMaterialInput>
+    export type CreateLearningSyllabusMaterialMutationError = ErrorType<void>
+    export type CreateLearningSyllabusMaterialMutationVariables = {topicId: string;data: BodyType<LearningSyllabusMaterialInput>}
+
+    /**
+ * @summary Add a document, video or link to a syllabus topic
+ */
+export const useCreateLearningSyllabusMaterial = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLearningSyllabusMaterial>>, TError,CreateLearningSyllabusMaterialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createLearningSyllabusMaterial>>,
+        TError,
+        CreateLearningSyllabusMaterialMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateLearningSyllabusMaterialMutationOptions(options), queryClient);
+    }
+
+export const getUpdateLearningSyllabusMaterialUrl = (materialId: string,) => {
+
+
+
+
+  return `/api/learning/syllabus/materials/${materialId}`
+}
+
+/**
+ * @summary Update a syllabus material link
+ */
+export const updateLearningSyllabusMaterial = async (materialId: string,
+    learningSyllabusMaterialUpdate: LearningSyllabusMaterialUpdate, options?: Parameters<typeof customFetch>[1]): Promise<LearningSyllabusMaterial> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LearningSyllabusMaterial>(getUpdateLearningSyllabusMaterialUrl(materialId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(learningSyllabusMaterialUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateLearningSyllabusMaterialMutationKey = () => ['updateLearningSyllabusMaterial'] as const;
+
+export const getUpdateLearningSyllabusMaterialMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLearningSyllabusMaterial>>, TError,UpdateLearningSyllabusMaterialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLearningSyllabusMaterial>>, TError,UpdateLearningSyllabusMaterialMutationVariables, TContext> => {
+
+const mutationKey = getUpdateLearningSyllabusMaterialMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLearningSyllabusMaterial>>, UpdateLearningSyllabusMaterialMutationVariables> = (props) => {
+          const {materialId,data} = props ?? {};
+
+          return  updateLearningSyllabusMaterial(materialId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLearningSyllabusMaterialMutationResult = NonNullable<Awaited<ReturnType<typeof updateLearningSyllabusMaterial>>>
+    export type UpdateLearningSyllabusMaterialMutationBody = BodyType<LearningSyllabusMaterialUpdate>
+    export type UpdateLearningSyllabusMaterialMutationError = ErrorType<void>
+    export type UpdateLearningSyllabusMaterialMutationVariables = {materialId: string;data: BodyType<LearningSyllabusMaterialUpdate>}
+
+    /**
+ * @summary Update a syllabus material link
+ */
+export const useUpdateLearningSyllabusMaterial = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLearningSyllabusMaterial>>, TError,UpdateLearningSyllabusMaterialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateLearningSyllabusMaterial>>,
+        TError,
+        UpdateLearningSyllabusMaterialMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateLearningSyllabusMaterialMutationOptions(options), queryClient);
+    }
+
+export const getDeleteLearningSyllabusMaterialUrl = (materialId: string,) => {
+
+
+
+
+  return `/api/learning/syllabus/materials/${materialId}`
+}
+
+/**
+ * @summary Remove a syllabus material link
+ */
+export const deleteLearningSyllabusMaterial = async (materialId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteLearningSyllabusMaterialUrl(materialId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteLearningSyllabusMaterialMutationKey = () => ['deleteLearningSyllabusMaterial'] as const;
+
+export const getDeleteLearningSyllabusMaterialMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLearningSyllabusMaterial>>, TError,DeleteLearningSyllabusMaterialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteLearningSyllabusMaterial>>, TError,DeleteLearningSyllabusMaterialMutationVariables, TContext> => {
+
+const mutationKey = getDeleteLearningSyllabusMaterialMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteLearningSyllabusMaterial>>, DeleteLearningSyllabusMaterialMutationVariables> = (props) => {
+          const {materialId} = props ?? {};
+
+          return  deleteLearningSyllabusMaterial(materialId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteLearningSyllabusMaterialMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLearningSyllabusMaterial>>>
+
+    export type DeleteLearningSyllabusMaterialMutationError = ErrorType<void>
+    export type DeleteLearningSyllabusMaterialMutationVariables = {materialId: string}
+
+    /**
+ * @summary Remove a syllabus material link
+ */
+export const useDeleteLearningSyllabusMaterial = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLearningSyllabusMaterial>>, TError,DeleteLearningSyllabusMaterialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteLearningSyllabusMaterial>>,
+        TError,
+        DeleteLearningSyllabusMaterialMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteLearningSyllabusMaterialMutationOptions(options), queryClient);
     }
 
 export const getUpdateLearningAssignmentUrl = (assignmentId: string,) => {

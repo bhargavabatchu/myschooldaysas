@@ -12,13 +12,14 @@ import {
 } from '@workspace/api-client-react';
 import type { LearningAssignment, LearningExam, LearningMark, LearningSubmission, SectionSummary } from '@workspace/api-client-react';
 import { LearningOperations } from './learning-operations';
+import { LearningSyllabus } from './learning-syllabus';
 import {
   BookOpenCheck, CalendarDays, Check, ClipboardList, Clock3, FileText,
   GraduationCap, MessageSquareText, Plus, Save, Send, Settings2, UsersRound, X,
 } from 'lucide-react';
 
 type Props = { roles: string[]; initialTab?: Tab };
-type Tab = 'assignments' | 'exams' | 'terms' | 'catalog' | 'reports';
+type Tab = 'syllabus' | 'assignments' | 'exams' | 'terms' | 'catalog' | 'reports';
 const canManage = (roles: string[]) => roles.some(role => ['teacher', 'class_teacher', 'hod', 'org_admin', 'campus_admin', 'super_admin'].includes(role));
 const canAdminister = (roles: string[]) => roles.some(role => ['org_admin', 'campus_admin', 'super_admin'].includes(role));
 type AssignmentSection = Pick<SectionSummary, 'id' | 'classId' | 'className' | 'name'>;
@@ -78,6 +79,9 @@ export function LearningPage({ roles, initialTab = 'assignments' }: Props) {
   const [showTermForm, setShowTermForm] = useState(false);
   const [notice, setNotice] = useState('');
   const failure = addAssignment.error || editAssignment.error || addExam.error || addTerm.error || updateScale.error;
+  const tabs: Tab[] = ['syllabus', 'assignments', 'exams'];
+  if (administrator) tabs.push('terms', 'catalog');
+  tabs.push('reports');
 
   return <div className="space-y-6">
     <header className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
@@ -92,7 +96,7 @@ export function LearningPage({ roles, initialTab = 'assignments' }: Props) {
     </header>
     <div className="surface flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
       <nav aria-label="Learning sections" className="flex gap-1 overflow-x-auto">
-        {(['assignments', 'exams', ...(administrator ? ['terms', 'catalog'] : []), 'reports'] as Tab[]).map(item => <button key={item} onClick={() => { setTab(item); setActiveAssignment(null); setActiveExam(null); }} aria-pressed={tab === item} className={`rounded-lg px-4 py-2.5 text-xs font-bold capitalize transition ${tab === item ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]'}`}>{item === 'exams' ? 'Assessments & results' : item === 'catalog' ? 'Subjects & teachers' : item === 'reports' ? 'Report cards' : item}</button>)}
+        {tabs.map(item => <button key={item} onClick={() => { setTab(item); setActiveAssignment(null); setActiveExam(null); }} aria-pressed={tab === item} className={`rounded-lg px-4 py-2.5 text-xs font-bold capitalize transition ${tab === item ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]'}`}>{item === 'exams' ? 'Assessments & results' : item === 'catalog' ? 'Subjects & teachers' : item === 'reports' ? 'Report cards' : item}</button>)}
       </nav>
       {manager && <label className="flex items-center gap-2 px-1 text-[11px] font-semibold text-[hsl(var(--muted-foreground))]"><UsersRound size={15}/><span className="sr-only">Filter by section</span><select className="field min-h-9 w-full py-1.5 text-xs sm:w-auto" value={resolvedSection} onChange={event => setSectionId(event.target.value)}><option value="">All assigned sections</option>{availableSections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label>}
     </div>
@@ -112,6 +116,7 @@ export function LearningPage({ roles, initialTab = 'assignments' }: Props) {
       ? <ExamDetail key={activeExam.id} exam={activeExam} manager={manager} onBack={() => setActiveExam(null)} onNotice={setNotice}/>
       : <ExamList exams={exams.data?.items ?? []} loading={exams.isLoading} error={exams.error} retry={() => exams.refetch()} manager={manager} onSelect={setActiveExam}/>)}
     {(tab === 'terms' && administrator) && <TermScalePanel terms={terms.data?.items ?? []} termsLoading={terms.isLoading} termsError={terms.error} retryTerms={() => terms.refetch()} bands={scale.data?.bands ?? []} scaleLoading={scale.isLoading} scaleError={scale.error} retryScale={() => scale.refetch()} onAddTerm={() => setShowTermForm(true)} onSaveScale={bands => updateScale.mutate({ data: { bands } }, { onSuccess: () => setNotice('Grade scale saved.') })} saving={updateScale.isPending}/>}
+    {tab === 'syllabus' && <LearningSyllabus canManage={manager} onNotice={setNotice}/>}
     {(tab === 'catalog' || tab === 'reports') && <LearningOperations roles={roles}/>}
   </div>;
 }

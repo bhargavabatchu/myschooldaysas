@@ -1279,6 +1279,123 @@ export interface LearningAssignmentInput {
   maxPoints: number;
 }
 
+export type LearningSyllabusMaterialKind = typeof LearningSyllabusMaterialKind[keyof typeof LearningSyllabusMaterialKind];
+
+
+export const LearningSyllabusMaterialKind = {
+  document: 'document',
+  video: 'video',
+  link: 'link',
+} as const;
+
+export interface LearningSyllabusMaterial {
+  id: string;
+  title: string;
+  kind: LearningSyllabusMaterialKind;
+  url: string;
+  description: string;
+  position: number;
+}
+
+export interface LearningSyllabusTopic {
+  id: string;
+  title: string;
+  description: string;
+  position: number;
+  materials: LearningSyllabusMaterial[];
+}
+
+export interface LearningSyllabusLesson {
+  id: string;
+  title: string;
+  description: string;
+  position: number;
+  topics: LearningSyllabusTopic[];
+}
+
+export interface LearningSyllabus {
+  /** @nullable */
+  syllabusId: string | null;
+  classId: string;
+  className: string;
+  subjectId: string;
+  subjectName: string;
+  lessons: LearningSyllabusLesson[];
+}
+
+export interface LearningSyllabusPage {
+  items: LearningSyllabus[];
+  total: number;
+}
+
+export interface LearningSyllabusLessonInput {
+  classId: string;
+  subjectId: string;
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title: string;
+  /** @maxLength 6000 */
+  description: string;
+}
+
+export interface LearningSyllabusLessonUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title?: string;
+  /** @maxLength 6000 */
+  description?: string;
+}
+
+export interface LearningSyllabusTopicInput {
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title: string;
+  /** @maxLength 6000 */
+  description: string;
+}
+
+export interface LearningSyllabusTopicUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title?: string;
+  /** @maxLength 6000 */
+  description?: string;
+}
+
+export interface LearningSyllabusMaterialInput {
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title: string;
+  kind: LearningSyllabusMaterialKind;
+  /** @maxLength 2048 */
+  url: string;
+  /** @maxLength 3000 */
+  description: string;
+}
+
+export interface LearningSyllabusMaterialUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title?: string;
+  kind?: LearningSyllabusMaterialKind;
+  /** @maxLength 2048 */
+  url?: string;
+  /** @maxLength 3000 */
+  description?: string;
+}
+
 export interface LearningAssignmentUpdate {
   /**
      * @minLength 1
@@ -2336,6 +2453,11 @@ export const GetLearningAssignmentsStatus = {
   published: 'published',
   closed: 'closed',
 } as const;
+
+export type GetLearningSyllabusParams = {
+classId?: string;
+subjectId?: string;
+};
 
 export type GetLearningExamsParams = {
 sectionId?: string;

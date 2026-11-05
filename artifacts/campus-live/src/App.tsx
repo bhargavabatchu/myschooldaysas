@@ -187,6 +187,7 @@ function ProtectedApp() {
         <Route path="/live/sessions" component={() => liveClassesEnabled ? <SessionsPage userRoles={user.roles} /> : <LiveClassesUnavailable />} />
         <Route path="/boards/templates" component={() => <TemplatesPage roles={user.roles} />} />
         <Route path="/learning/reports" component={() => <LearningPage roles={user.roles} initialTab="reports" />} />
+        <Route path="/learning/syllabus" component={() => <LearningPage roles={user.roles} initialTab="syllabus" />} />
         <Route path="/learning" component={() => <LearningPage roles={user.roles} />} />
         <Route path="/announcements" component={() => <AnnouncementsPage roles={user.roles} userId={user.id} />} />
         <Route path="/attendance" component={() => <AttendancePage roles={user.roles} />} />

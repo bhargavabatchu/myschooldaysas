@@ -19,3 +19,4 @@
 - [Campus Live fee concessions](campus-live-fee-concessions.md) — apply concessions after issue to one student's invoice; preserve captured payments and reduce only the unpaid balance.
 - [Campus Live academic years](campus-live-academic-years.md) — manage school years centrally; current-year changes update defaults and annual dashboard summaries, not student enrollments or invoices.
 - [Campus Live student attendance](campus-live-student-attendance.md) — students can view their own attendance history, but cannot record or edit marks.
+- [Campus Live syllabus scope](campus-live-syllabus-scope.md) — syllabus content is shared across a class's sections and uses document/video links.

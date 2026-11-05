@@ -2575,6 +2575,286 @@ export const CreateLearningAssignmentResponse = zod.object({
 
 
 /**
+ * @summary List syllabus content available to the caller
+ */
+export const GetLearningSyllabusQueryParams = zod.object({
+  "classId": zod.uuid().optional(),
+  "subjectId": zod.uuid().optional()
+})
+
+export const GetLearningSyllabusResponse = zod.object({
+  "items": zod.array(zod.object({
+  "syllabusId": zod.uuid().nullable(),
+  "classId": zod.uuid(),
+  "className": zod.string(),
+  "subjectId": zod.uuid(),
+  "subjectName": zod.string(),
+  "lessons": zod.array(zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "position": zod.int(),
+  "topics": zod.array(zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "position": zod.int(),
+  "materials": zod.array(zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "kind": zod.enum(['document', 'video', 'link']),
+  "url": zod.url(),
+  "description": zod.string(),
+  "position": zod.int()
+}))
+}))
+}))
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Add a lesson to a class and subject syllabus
+ */
+export const createLearningSyllabusLessonBodyTitleMax = 180;
+
+export const createLearningSyllabusLessonBodyDescriptionMax = 6000;
+
+
+
+export const CreateLearningSyllabusLessonBody = zod.object({
+  "classId": zod.uuid(),
+  "subjectId": zod.uuid(),
+  "title": zod.string().min(1).max(createLearningSyllabusLessonBodyTitleMax),
+  "description": zod.string().max(createLearningSyllabusLessonBodyDescriptionMax)
+})
+
+export const CreateLearningSyllabusLessonResponse = zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "position": zod.int(),
+  "topics": zod.array(zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "position": zod.int(),
+  "materials": zod.array(zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "kind": zod.enum(['document', 'video', 'link']),
+  "url": zod.url(),
+  "description": zod.string(),
+  "position": zod.int()
+}))
+}))
+})
+
+
+/**
+ * @summary Update a syllabus lesson
+ */
+export const UpdateLearningSyllabusLessonParams = zod.object({
+  "lessonId": zod.uuid()
+})
+
+export const updateLearningSyllabusLessonBodyTitleMax = 180;
+
+export const updateLearningSyllabusLessonBodyDescriptionMax = 6000;
+
+
+
+export const UpdateLearningSyllabusLessonBody = zod.object({
+  "title": zod.string().min(1).max(updateLearningSyllabusLessonBodyTitleMax).optional(),
+  "description": zod.string().max(updateLearningSyllabusLessonBodyDescriptionMax).optional()
+})
+
+export const UpdateLearningSyllabusLessonResponse = zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "position": zod.int(),
+  "topics": zod.array(zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "position": zod.int(),
+  "materials": zod.array(zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "kind": zod.enum(['document', 'video', 'link']),
+  "url": zod.url(),
+  "description": zod.string(),
+  "position": zod.int()
+}))
+}))
+})
+
+
+/**
+ * @summary Remove a lesson and its topics and materials
+ */
+export const DeleteLearningSyllabusLessonParams = zod.object({
+  "lessonId": zod.uuid()
+})
+
+export const DeleteLearningSyllabusLessonResponse = zod.void()
+
+
+/**
+ * @summary Add a topic to a syllabus lesson
+ */
+export const CreateLearningSyllabusTopicParams = zod.object({
+  "lessonId": zod.uuid()
+})
+
+export const createLearningSyllabusTopicBodyTitleMax = 180;
+
+export const createLearningSyllabusTopicBodyDescriptionMax = 6000;
+
+
+
+export const CreateLearningSyllabusTopicBody = zod.object({
+  "title": zod.string().min(1).max(createLearningSyllabusTopicBodyTitleMax),
+  "description": zod.string().max(createLearningSyllabusTopicBodyDescriptionMax)
+})
+
+export const CreateLearningSyllabusTopicResponse = zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "position": zod.int(),
+  "materials": zod.array(zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "kind": zod.enum(['document', 'video', 'link']),
+  "url": zod.url(),
+  "description": zod.string(),
+  "position": zod.int()
+}))
+})
+
+
+/**
+ * @summary Update a syllabus topic
+ */
+export const UpdateLearningSyllabusTopicParams = zod.object({
+  "topicId": zod.uuid()
+})
+
+export const updateLearningSyllabusTopicBodyTitleMax = 180;
+
+export const updateLearningSyllabusTopicBodyDescriptionMax = 6000;
+
+
+
+export const UpdateLearningSyllabusTopicBody = zod.object({
+  "title": zod.string().min(1).max(updateLearningSyllabusTopicBodyTitleMax).optional(),
+  "description": zod.string().max(updateLearningSyllabusTopicBodyDescriptionMax).optional()
+})
+
+export const UpdateLearningSyllabusTopicResponse = zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "position": zod.int(),
+  "materials": zod.array(zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "kind": zod.enum(['document', 'video', 'link']),
+  "url": zod.url(),
+  "description": zod.string(),
+  "position": zod.int()
+}))
+})
+
+
+/**
+ * @summary Remove a topic and its materials
+ */
+export const DeleteLearningSyllabusTopicParams = zod.object({
+  "topicId": zod.uuid()
+})
+
+export const DeleteLearningSyllabusTopicResponse = zod.void()
+
+
+/**
+ * @summary Add a document, video or link to a syllabus topic
+ */
+export const CreateLearningSyllabusMaterialParams = zod.object({
+  "topicId": zod.uuid()
+})
+
+export const createLearningSyllabusMaterialBodyTitleMax = 180;
+
+export const createLearningSyllabusMaterialBodyUrlMax = 2048;
+
+export const createLearningSyllabusMaterialBodyDescriptionMax = 3000;
+
+
+
+export const CreateLearningSyllabusMaterialBody = zod.object({
+  "title": zod.string().min(1).max(createLearningSyllabusMaterialBodyTitleMax),
+  "kind": zod.enum(['document', 'video', 'link']),
+  "url": zod.url().max(createLearningSyllabusMaterialBodyUrlMax),
+  "description": zod.string().max(createLearningSyllabusMaterialBodyDescriptionMax)
+})
+
+export const CreateLearningSyllabusMaterialResponse = zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "kind": zod.enum(['document', 'video', 'link']),
+  "url": zod.url(),
+  "description": zod.string(),
+  "position": zod.int()
+})
+
+
+/**
+ * @summary Update a syllabus material link
+ */
+export const UpdateLearningSyllabusMaterialParams = zod.object({
+  "materialId": zod.uuid()
+})
+
+export const updateLearningSyllabusMaterialBodyTitleMax = 180;
+
+export const updateLearningSyllabusMaterialBodyUrlMax = 2048;
+
+export const updateLearningSyllabusMaterialBodyDescriptionMax = 3000;
+
+
+
+export const UpdateLearningSyllabusMaterialBody = zod.object({
+  "title": zod.string().min(1).max(updateLearningSyllabusMaterialBodyTitleMax).optional(),
+  "kind": zod.enum(['document', 'video', 'link']).optional(),
+  "url": zod.url().max(updateLearningSyllabusMaterialBodyUrlMax).optional(),
+  "description": zod.string().max(updateLearningSyllabusMaterialBodyDescriptionMax).optional()
+})
+
+export const UpdateLearningSyllabusMaterialResponse = zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "kind": zod.enum(['document', 'video', 'link']),
+  "url": zod.url(),
+  "description": zod.string(),
+  "position": zod.int()
+})
+
+
+/**
+ * @summary Remove a syllabus material link
+ */
+export const DeleteLearningSyllabusMaterialParams = zod.object({
+  "materialId": zod.uuid()
+})
+
+export const DeleteLearningSyllabusMaterialResponse = zod.void()
+
+
+/**
  * @summary Edit a draft or change assignment publication status
  */
 export const UpdateLearningAssignmentParams = zod.object({

@@ -1728,6 +1728,169 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LearningAssignment" }
+  /learning/syllabus:
+    get:
+      operationId: getLearningSyllabus
+      tags: [learning]
+      summary: List syllabus content available to the caller
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: classId, schema: { type: string, format: uuid } }
+        - { in: query, name: subjectId, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Class and subject syllabus catalog
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningSyllabusPage" }
+  /learning/syllabus/lessons:
+    post:
+      operationId: createLearningSyllabusLesson
+      tags: [learning]
+      summary: Add a lesson to a class and subject syllabus
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningSyllabusLessonInput" }
+      responses:
+        "201":
+          description: Lesson created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningSyllabusLesson" }
+        "403": { description: Caller cannot manage this class subject }
+  /learning/syllabus/lessons/{lessonId}:
+    put:
+      operationId: updateLearningSyllabusLesson
+      tags: [learning]
+      summary: Update a syllabus lesson
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: lessonId, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningSyllabusLessonUpdate" }
+      responses:
+        "200":
+          description: Lesson updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningSyllabusLesson" }
+        "404": { description: Lesson not found }
+    delete:
+      operationId: deleteLearningSyllabusLesson
+      tags: [learning]
+      summary: Remove a lesson and its topics and materials
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: lessonId, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Lesson removed }
+        "404": { description: Lesson not found }
+  /learning/syllabus/lessons/{lessonId}/topics:
+    post:
+      operationId: createLearningSyllabusTopic
+      tags: [learning]
+      summary: Add a topic to a syllabus lesson
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: lessonId, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningSyllabusTopicInput" }
+      responses:
+        "201":
+          description: Topic created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningSyllabusTopic" }
+        "404": { description: Lesson not found }
+  /learning/syllabus/topics/{topicId}:
+    put:
+      operationId: updateLearningSyllabusTopic
+      tags: [learning]
+      summary: Update a syllabus topic
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: topicId, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningSyllabusTopicUpdate" }
+      responses:
+        "200":
+          description: Topic updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningSyllabusTopic" }
+        "404": { description: Topic not found }
+    delete:
+      operationId: deleteLearningSyllabusTopic
+      tags: [learning]
+      summary: Remove a topic and its materials
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: topicId, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Topic removed }
+        "404": { description: Topic not found }
+  /learning/syllabus/topics/{topicId}/materials:
+    post:
+      operationId: createLearningSyllabusMaterial
+      tags: [learning]
+      summary: Add a document, video or link to a syllabus topic
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: topicId, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningSyllabusMaterialInput" }
+      responses:
+        "201":
+          description: Material created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningSyllabusMaterial" }
+        "404": { description: Topic not found }
+  /learning/syllabus/materials/{materialId}:
+    put:
+      operationId: updateLearningSyllabusMaterial
+      tags: [learning]
+      summary: Update a syllabus material link
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: materialId, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningSyllabusMaterialUpdate" }
+      responses:
+        "200":
+          description: Material updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LearningSyllabusMaterial" }
+        "404": { description: Material not found }
+    delete:
+      operationId: deleteLearningSyllabusMaterial
+      tags: [learning]
+      summary: Remove a syllabus material link
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: materialId, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Material removed }
+        "404": { description: Material not found }
   /learning/assignments/{assignmentId}:
     put:
       operationId: updateLearningAssignment
@@ -3227,6 +3390,100 @@ components:
         instructions: { type: string, maxLength: 12000 }
         dueAt: { type: string, format: date-time }
         maxPoints: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+    LearningSyllabusMaterialKind:
+      type: string
+      enum: [document, video, link]
+    LearningSyllabusMaterial:
+      type: object
+      required: [id, title, kind, url, description, position]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        kind: { $ref: "#/components/schemas/LearningSyllabusMaterialKind" }
+        url: { type: string, format: uri }
+        description: { type: string }
+        position: { type: integer }
+    LearningSyllabusTopic:
+      type: object
+      required: [id, title, description, position, materials]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        position: { type: integer }
+        materials:
+          type: array
+          items: { $ref: "#/components/schemas/LearningSyllabusMaterial" }
+    LearningSyllabusLesson:
+      type: object
+      required: [id, title, description, position, topics]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        position: { type: integer }
+        topics:
+          type: array
+          items: { $ref: "#/components/schemas/LearningSyllabusTopic" }
+    LearningSyllabus:
+      type: object
+      required: [syllabusId, classId, className, subjectId, subjectName, lessons]
+      properties:
+        syllabusId: { type: string, format: uuid, nullable: true }
+        classId: { type: string, format: uuid }
+        className: { type: string }
+        subjectId: { type: string, format: uuid }
+        subjectName: { type: string }
+        lessons:
+          type: array
+          items: { $ref: "#/components/schemas/LearningSyllabusLesson" }
+    LearningSyllabusPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LearningSyllabus" }
+        total: { type: integer }
+    LearningSyllabusLessonInput:
+      type: object
+      required: [classId, subjectId, title, description]
+      properties:
+        classId: { type: string, format: uuid }
+        subjectId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 180 }
+        description: { type: string, maxLength: 6000 }
+    LearningSyllabusLessonUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 180 }
+        description: { type: string, maxLength: 6000 }
+    LearningSyllabusTopicInput:
+      type: object
+      required: [title, description]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 180 }
+        description: { type: string, maxLength: 6000 }
+    LearningSyllabusTopicUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 180 }
+        description: { type: string, maxLength: 6000 }
+    LearningSyllabusMaterialInput:
+      type: object
+      required: [title, kind, url, description]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 180 }
+        kind: { $ref: "#/components/schemas/LearningSyllabusMaterialKind" }
+        url: { type: string, format: uri, maxLength: 2048 }
+        description: { type: string, maxLength: 3000 }
+    LearningSyllabusMaterialUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 180 }
+        kind: { $ref: "#/components/schemas/LearningSyllabusMaterialKind" }
+        url: { type: string, format: uri, maxLength: 2048 }
+        description: { type: string, maxLength: 3000 }
     LearningAssignmentUpdate:
       type: object
       properties:

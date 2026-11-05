@@ -54,6 +54,7 @@ board:002|services/board/migrations/002_realtime.sql
 live:002|services/live/migrations/002_classroom.sql
 learning:001|services/learning/migrations/001_learning.sql
 learning:002|services/learning/migrations/002_report_cards.sql
+learning:003|services/learning/migrations/003_syllabus.sql
 fees:001|services/fees/migrations/001_fees.sql
 fees:002|services/fees/migrations/002_fee_concessions.sql
 fees:003|services/fees/migrations/003_partial_manual_payments.sql
