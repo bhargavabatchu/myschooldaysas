@@ -16,7 +16,8 @@ test("core-only release hides live actions and explains direct classroom links",
   await expect(page.getByRole("heading", { name: /Good to see you/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Live classes", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Explore live classes" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Explore learning" })).toBeVisible();
+  await expect(page.locator(".dashboard-welcome-actions")).toHaveCount(0);
+  await expect(page.locator(".dashboard-welcome-copy > p")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Open timetable" })).toBeVisible();
   await page.goto("/live/sessions");
   await expect(page.getByRole("heading", { name: "Live classes are coming later" })).toBeVisible();

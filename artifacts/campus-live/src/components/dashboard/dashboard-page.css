@@ -20,9 +20,7 @@
 
 .dashboard-welcome {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 22px;
+  align-items: center;
   margin-bottom: 25px;
 }
 
@@ -805,26 +803,15 @@
 
 .dashboard-welcome {
   position: relative;
-  min-height: 144px;
-  align-items: center;
+  min-height: 108px;
   margin: -2px 0 20px;
-  padding: 22px 25px;
+  padding: 18px 25px;
   border: 1px solid hsl(var(--border));
   border-radius: 13px;
   background:
     radial-gradient(ellipse at 90% 12%, rgba(184, 155, 94, .15), transparent 32%),
     linear-gradient(112deg, hsl(var(--card)) 0%, hsl(var(--secondary) / .4) 100%);
   box-shadow: 0 8px 24px rgba(55, 58, 42, .035);
-}
-
-.dashboard-welcome::after {
-  position: absolute;
-  top: 0;
-  right: 27%;
-  width: 1px;
-  height: 100%;
-  background: linear-gradient(transparent, hsl(var(--border)), transparent);
-  content: "";
 }
 
 .dashboard-welcome-copy { position: relative; z-index: 1; }
@@ -1109,16 +1096,13 @@
 @keyframes dashboard-schedule-shimmer { to { background-position: -200% 0; } }
 
 @media (max-width: 1050px) {
-  .dashboard-welcome::after { right: 32%; }
   .dashboard-admin-insights { grid-template-columns: minmax(220px, .82fr) minmax(0, 1.7fr); }
   .dashboard-panels { grid-template-columns: minmax(0, 1fr); }
   .admin-quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 767px) {
   .dashboard-welcome { min-height: 0; align-items: flex-start; margin: 0 0 14px; padding: 18px; }
-  .dashboard-welcome::after { display: none; }
   .dashboard-welcome h1 { font-size: 26px; }
-  .dashboard-welcome-actions { justify-content: flex-start; }
   .dashboard-admin-insights { grid-template-columns: 1fr; }
   .dashboard-insight-attendance { padding: 12px 14px; }
   .dashboard-insight-fees { padding: 14px; }

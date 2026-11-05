@@ -510,11 +510,6 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
       <div className="dashboard-welcome-copy">
         <div className="dashboard-eyebrow"><span aria-hidden="true"/>ST JOSEPH’S · SCHOOL DAY</div>
         <h1 id="dashboard-welcome-title">Good to see you{data?.userName ? <>, <em>{data.userName.split(' ')[0]}</em></> : null}.</h1>
-        <p>A considered view of the work moving through your school today.</p>
-      </div>
-      <div className="dashboard-welcome-actions">
-        <Link href="/boards/templates" className="dashboard-secondary-link"><Library size={15}/> Smartboards</Link>
-        {liveClassesEnabled ? <Link href="/live/sessions" className="dashboard-primary-link">Explore live classes <ArrowRight size={16}/></Link> : <Link href="/learning" className="dashboard-primary-link">Explore learning <ArrowRight size={16}/></Link>}
       </div>
     </section>
     <QueryState loading={overview.isLoading} error={overview.error} empty={!data} retry={() => overview.refetch()}>

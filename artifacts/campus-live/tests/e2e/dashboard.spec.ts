@@ -164,7 +164,7 @@ test("administrator dashboard data, navigation, and theme controls fit desktop a
   await themeButton.click();
   await expect(page.locator("html")).not.toHaveClass(/dark/);
 
-  await page.getByRole("link", { name: /Explore live classes/ }).click();
+  await page.getByTestId("link-nav-live-classes").click();
   await expect(page).toHaveURL(/\/live\/sessions$/);
   await page.getByTestId("link-nav-overview").click();
   await page.getByRole("link", { name: /Browse smartboards/ }).click();
@@ -197,7 +197,8 @@ test("administrator dashboard data, navigation, and theme controls fit desktop a
   await expect(page.getByTestId("button-theme")).toBeVisible();
 
   await page.getByTestId("link-nav-overview").click();
-  await page.getByRole("link", { name: /Explore live classes/ }).click();
+  await page.getByTestId("button-open-navigation").click();
+  await page.getByTestId("link-nav-live-classes").click();
   await expect(page).toHaveURL(/\/live\/sessions$/);
   await page.getByTestId("button-open-navigation").click();
   await page.getByTestId("link-nav-overview").click();
