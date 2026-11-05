@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'wouter';
 import {
   ArrowRight,
+  Activity,
   Bell,
   BookOpen,
   CalendarDays,
@@ -16,7 +17,12 @@ import {
   Radio,
 } from 'lucide-react';
 import {
+  useGetAnnouncements,
+  useGetCalendar,
+  useGetLearningReportCards,
+  useGetMyFeeInvoices,
   useGetMyLearningAssignments,
+  useGetMySchoolAttendance,
   useGetSections,
   useGetTimetable,
 } from '@workspace/api-client-react';
@@ -30,6 +36,8 @@ type LocalClock = {
   weekday: number;
   minutes: number;
   dateLabel: string;
+  dateKey: string;
+  nowMs: number;
   greeting: string;
 };
 
@@ -50,31 +58,79 @@ function formatTime(value: string): string {
 function formatDueDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Date not set';
-  return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' }).format(date);
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'Asia/Kolkata',
+  }).format(date);
+}
+
+function addCalendarDays(dateKey: string, amount: number): string {
+  const date = new Date(`${dateKey}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatRupees(paise: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 2,
+  }).format(paise / 100);
 }
 
 function initials(name: string): string {
   return name.trim().split(/\s+/).slice(0, 2).map(part => part[0] ?? '').join('').toUpperCase() || 'S';
 }
 
-export function StudentMobileDashboard({ userName }: StudentMobileDashboardProps) {
+export function StudentDashboard({ userName }: StudentMobileDashboardProps) {
   const sections = useGetSections();
   const timetable = useGetTimetable();
   const assignments = useGetMyLearningAssignments();
+  const attendance = useGetMySchoolAttendance();
+  const invoices = useGetMyFeeInvoices();
+  const reportCards = useGetLearningReportCards(undefined);
+  const announcements = useGetAnnouncements({ unread: true });
   const [clock, setClock] = useState<LocalClock | null>(null);
+  const calendarParams = useMemo(() => clock
+    ? { from: clock.dateKey, to: addCalendarDays(clock.dateKey, 60) }
+    : { from: '2000-01-01', to: '2000-01-02' }, [clock?.dateKey]);
+  const calendar = useGetCalendar(calendarParams, { query: { enabled: clock !== null } });
 
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
-      const hour = now.getHours();
+      const dateParts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(now);
+      const part = (type: string) => dateParts.find(item => item.type === type)?.value ?? '';
+      const dateKey = `${part('year')}-${part('month')}-${part('day')}`;
+      const timeParts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }).formatToParts(now);
+      const timePart = (type: string) => Number(timeParts.find(item => item.type === type)?.value ?? 0);
+      const hour = timePart('hour');
+      const weekdayName = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        timeZone: 'Asia/Kolkata',
+      }).format(now);
       setClock({
-        weekday: now.getDay(),
-        minutes: hour * 60 + now.getMinutes(),
+        weekday: weekdayNames.indexOf(weekdayName),
+        minutes: hour * 60 + timePart('minute'),
         dateLabel: new Intl.DateTimeFormat('en-IN', {
           weekday: 'long',
           day: 'numeric',
           month: 'long',
+          timeZone: 'Asia/Kolkata',
         }).format(now),
+        dateKey,
+        nowMs: now.getTime(),
         greeting: hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening',
       });
     };
@@ -96,6 +152,18 @@ export function StudentMobileDashboard({ userName }: StudentMobileDashboardProps
   const assignmentProgress = publishedAssignments.length
     ? Math.round((submittedAssignments / publishedAssignments.length) * 100)
     : null;
+  const outstandingInvoices = (invoices.data?.items ?? []).filter(invoice => invoice.status !== 'void' && invoice.balancePaise > 0);
+  const outstandingBalancePaise = outstandingInvoices.reduce((total, invoice) => total + invoice.balancePaise, 0);
+  const overdueInvoices = clock
+    ? outstandingInvoices.filter(invoice => invoice.dueDate < clock.dateKey)
+    : [];
+  const latestReportCard = [...(reportCards.data?.items ?? [])]
+    .filter(card => card.published)
+    .sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))[0];
+  const unreadAnnouncements = (announcements.data?.items ?? []).filter(item => !item.readAt);
+  const nextCalendarEvent = (calendar.data?.items ?? [])
+    .filter(event => event.endDate >= (clock?.dateKey ?? ''))
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
 
   const todaySlots = useMemo(() => {
     if (clock === null) return [];
@@ -114,10 +182,68 @@ export function StudentMobileDashboard({ userName }: StudentMobileDashboardProps
     .filter(item => !item.mySubmission)
     .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
     .slice(0, 2);
+  const pendingAssignmentCount = publishedAssignments.filter(item => !item.mySubmission).length;
+  const overdueAssignmentCount = clock
+    ? publishedAssignments.filter(item => !item.mySubmission && item.dueAt.slice(0, 10) < clock.dateKey).length
+    : 0;
+
+  const attendanceSummary = attendance.data?.summary;
+  const attendanceValue = attendance.isLoading
+    ? 'Loading'
+    : attendance.isError
+      ? 'Unavailable'
+      : attendanceSummary?.attendancePercent === null || attendanceSummary?.attendancePercent === undefined
+        ? 'Not recorded'
+        : `${Math.round(attendanceSummary.attendancePercent)}%`;
+  const attendanceDetail = attendance.isError
+    ? 'Open attendance to retry'
+    : attendanceSummary?.countedDays
+      ? `${attendanceSummary.presentDays} present of ${attendanceSummary.countedDays} marked days`
+      : 'No attendance has been recorded yet';
+  const assignmentValue = assignments.isLoading
+    ? 'Loading'
+    : assignments.isError
+      ? 'Unavailable'
+      : String(pendingAssignmentCount);
+  const assignmentDetail = assignments.isError
+    ? 'Open learning to retry'
+    : overdueAssignmentCount
+      ? `${overdueAssignmentCount} overdue · ${pendingAssignmentCount} pending`
+      : pendingAssignmentCount
+        ? 'Pending work to complete'
+        : 'You’re caught up';
+  const resultsValue = reportCards.isLoading
+    ? 'Loading'
+    : reportCards.isError
+      ? 'Unavailable'
+      : latestReportCard?.overallPercent !== null && latestReportCard?.overallPercent !== undefined
+        ? `${Math.round(latestReportCard.overallPercent)}%`
+        : latestReportCard?.overallGrade ?? (latestReportCard ? 'Published' : 'Not published');
+  const resultsDetail = reportCards.isError
+    ? 'Open results to retry'
+    : latestReportCard
+      ? `${latestReportCard.termName}${latestReportCard.overallGrade ? ` · Grade ${latestReportCard.overallGrade}` : ''}`
+      : 'Published results will appear here';
+  const feesValue = invoices.isLoading
+    ? 'Loading'
+    : invoices.isError
+      ? 'Unavailable'
+      : outstandingBalancePaise > 0
+        ? formatRupees(outstandingBalancePaise)
+        : 'All clear';
+  const feesDetail = invoices.isError
+    ? 'Open fees to retry'
+    : overdueInvoices.length
+      ? `${overdueInvoices.length} overdue invoice${overdueInvoices.length === 1 ? '' : 's'}`
+      : outstandingBalancePaise > 0
+        ? `${outstandingInvoices.length} balance${outstandingInvoices.length === 1 ? '' : 's'} due`
+        : invoices.data?.items.length
+          ? 'No balance due'
+          : 'No invoices yet';
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-5 pb-3" data-testid="student-mobile-dashboard">
-      <header className="flex items-center justify-between gap-3">
+    <div className="mx-auto w-full max-w-6xl space-y-5 pb-3 md:space-y-6" data-testid="student-overview-dashboard">
+      <header className="flex items-center justify-between gap-3 md:hidden">
         <div className="flex min-w-0 items-center gap-3">
           <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
             <GraduationCap size={22} strokeWidth={1.8} />
@@ -136,7 +262,7 @@ export function StudentMobileDashboard({ userName }: StudentMobileDashboardProps
         </Link>
       </header>
 
-      <section className="flex items-center gap-3" aria-label="Student welcome">
+      <section className="flex items-center gap-3 md:rounded-2xl md:border md:border-[hsl(var(--border))] md:bg-[hsl(var(--card))] md:p-5" aria-label="Student welcome">
         <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[hsl(var(--card))] bg-[hsl(var(--brand-mint))] text-sm font-extrabold text-[hsl(var(--brand-mint-ink))] shadow-sm">
           {initials(studentName)}
         </div>
@@ -144,7 +270,7 @@ export function StudentMobileDashboard({ userName }: StudentMobileDashboardProps
           <p className="m-0 text-[10px] font-bold uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]">
             {clock?.dateLabel ?? 'Your school day'}
           </p>
-          <h1 className="display m-0 mt-1 truncate text-[21px] font-extrabold leading-tight tracking-[-.04em]">
+          <h1 className="display m-0 mt-1 truncate text-[21px] font-extrabold leading-tight tracking-[-.04em] md:text-[28px]">
             {clock?.greeting ?? 'Welcome'}, {firstName}.
           </h1>
           <p className="m-0 mt-1 truncate text-[11px] text-[hsl(var(--muted-foreground))]">
@@ -154,7 +280,7 @@ export function StudentMobileDashboard({ userName }: StudentMobileDashboardProps
       </section>
 
       <section
-        className="relative overflow-hidden rounded-[20px] bg-[hsl(var(--brand-forest))] p-5 text-[hsl(var(--brand-inverse))] shadow-sm"
+        className="relative overflow-hidden rounded-[20px] bg-[hsl(var(--brand-forest))] p-5 text-[hsl(var(--brand-inverse))] shadow-sm md:p-6"
         aria-label="Assignment progress"
       >
         <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full border border-white/10" />
@@ -205,7 +331,42 @@ export function StudentMobileDashboard({ userName }: StudentMobileDashboardProps
         </div>
       </section>
 
-      <section aria-label="Quick access">
+      <section className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3" aria-label="Your school snapshot" data-testid="student-insight-cards">
+        <Link href="/attendance" className="surface flex min-h-[112px] items-start gap-3 p-3.5 transition hover:border-[hsl(var(--primary)/.35)] md:p-4" aria-label={`Attendance: ${attendanceValue}. ${attendanceDetail}`}>
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-mint))] text-[hsl(var(--brand-mint-ink))]"><CalendarDays size={17}/></span>
+          <span className="min-w-0">
+            <span className="block text-[9px] font-bold uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]">Attendance</span>
+            <span className={`mt-1 block truncate font-extrabold tracking-tight ${attendanceValue.length > 8 ? 'text-[13px]' : 'text-[21px]'}`} data-testid="student-attendance-value">{attendanceValue}</span>
+            <span className="mt-1 block text-[9px] leading-relaxed text-[hsl(var(--muted-foreground))]">{attendanceDetail}</span>
+          </span>
+        </Link>
+        <Link href="/learning" className="surface flex min-h-[112px] items-start gap-3 p-3.5 transition hover:border-[hsl(var(--primary)/.35)] md:p-4" aria-label={`Assignments: ${assignmentValue}. ${assignmentDetail}`}>
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><FileText size={17}/></span>
+          <span className="min-w-0">
+            <span className="block text-[9px] font-bold uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]">Assignments</span>
+            <span className={`mt-1 block truncate font-extrabold tracking-tight ${assignmentValue.length > 8 ? 'text-[13px]' : 'text-[21px]'}`} data-testid="student-assignment-value">{assignmentValue}</span>
+            <span className="mt-1 block text-[9px] leading-relaxed text-[hsl(var(--muted-foreground))]">{assignmentDetail}</span>
+          </span>
+        </Link>
+        <Link href="/learning/reports" className="surface flex min-h-[112px] items-start gap-3 p-3.5 transition hover:border-[hsl(var(--primary)/.35)] md:p-4" aria-label={`Latest result: ${resultsValue}. ${resultsDetail}`}>
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--accent)/.16)] text-[hsl(var(--foreground))]"><GraduationCap size={17}/></span>
+          <span className="min-w-0">
+            <span className="block text-[9px] font-bold uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]">Latest result</span>
+            <span className={`mt-1 block truncate font-extrabold tracking-tight ${resultsValue.length > 8 ? 'text-[13px]' : 'text-[21px]'}`} data-testid="student-results-value">{resultsValue}</span>
+            <span className="mt-1 block truncate text-[9px] leading-relaxed text-[hsl(var(--muted-foreground))]">{resultsDetail}</span>
+          </span>
+        </Link>
+        <Link href="/fees" className="surface flex min-h-[112px] items-start gap-3 p-3.5 transition hover:border-[hsl(var(--primary)/.35)] md:p-4" aria-label={`Fee balance: ${feesValue}. ${feesDetail}`}>
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--accent)/.16)] text-[hsl(var(--foreground))]"><CreditCard size={17}/></span>
+          <span className="min-w-0">
+            <span className="block text-[9px] font-bold uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]">Fee balance</span>
+            <span className={`mt-1 block truncate font-extrabold tracking-tight ${feesValue.length > 8 ? 'text-[13px]' : 'text-[21px]'}`} data-testid="student-fees-value">{feesValue}</span>
+            <span className="mt-1 block text-[9px] leading-relaxed text-[hsl(var(--muted-foreground))]">{feesDetail}</span>
+          </span>
+        </Link>
+      </section>
+
+      <section className="md:hidden" aria-label="Quick access">
         <div className="grid grid-cols-4 gap-2">
           {[
             { label: 'Timetable', href: '/timetable', icon: CalendarDays, tone: 'bg-[hsl(var(--brand-mint))] text-[hsl(var(--brand-mint-ink))]' },
@@ -225,7 +386,7 @@ export function StudentMobileDashboard({ userName }: StudentMobileDashboardProps
         </div>
       </section>
 
-      <section aria-label="Fees and receipts">
+      <section className="md:hidden" aria-label="Fees and receipts">
         <Link href="/fees" className="surface flex items-center gap-3 p-3.5 transition active:scale-[.99]">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]">
             <CreditCard size={18} strokeWidth={1.9} />
@@ -238,6 +399,8 @@ export function StudentMobileDashboard({ userName }: StudentMobileDashboardProps
         </Link>
       </section>
 
+      <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
+        <div className="space-y-5">
       <section aria-labelledby="student-today-title">
         <div className="mb-3 flex items-end justify-between gap-3">
           <div>
@@ -273,7 +436,7 @@ export function StudentMobileDashboard({ userName }: StudentMobileDashboardProps
                 <article key={slot.id} className="surface flex items-center gap-3 p-3">
                   <div className="w-[52px] shrink-0 text-center">
                     <p className="m-0 text-[12px] font-extrabold tabular-nums">{formatTime(slot.startTime)}</p>
-                    <p className="m-0 mt-1 text-[8px] font-bold uppercase tracking-[.1em] text-[hsl(var(--muted-foreground))]">{slot.endTime}</p>
+                    <p className="m-0 mt-1 text-[8px] font-bold uppercase tracking-[.1em] text-[hsl(var(--muted-foreground))]">{formatTime(slot.endTime)}</p>
                   </div>
                   <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-[hsl(var(--brand-mint))] text-[hsl(var(--brand-mint-ink))]">
                     <BookOpen size={17} strokeWidth={1.8} />
@@ -340,6 +503,90 @@ export function StudentMobileDashboard({ userName }: StudentMobileDashboardProps
           </div>
         )}
       </section>
+        </div>
+
+        <div className="space-y-5">
+          <section className="surface p-4 md:p-5" aria-labelledby="student-calendar-title">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><Activity size={17}/></span>
+                <div>
+                  <p className="m-0 text-[9px] font-bold uppercase tracking-[.16em] text-[hsl(var(--primary))]">Coming up</p>
+                  <h2 id="student-calendar-title" className="display m-0 mt-1 text-[16px] font-extrabold">School calendar</h2>
+                </div>
+              </div>
+              <Link href="/calendar" className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-[hsl(var(--primary))]">
+                Full calendar <ArrowRight size={13}/>
+              </Link>
+            </div>
+            {calendar.isLoading ? (
+              <div className="skeleton h-[74px]" aria-label="Loading school calendar"/>
+            ) : calendar.isError ? (
+              <div role="alert" className="rounded-xl border border-[hsl(var(--border))] p-3 text-[10px] text-[hsl(var(--destructive))]">
+                <p className="m-0">Calendar events could not be loaded.</p>
+                <button type="button" className="mt-2 font-bold underline underline-offset-2" onClick={() => calendar.refetch()}>Try again</button>
+              </div>
+            ) : nextCalendarEvent ? (
+              <Link href="/calendar" className="flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] p-3 transition hover:border-[hsl(var(--primary)/.35)]">
+                <span className="min-w-[52px] rounded-lg bg-[hsl(var(--accent)/.16)] px-2 py-2 text-center text-[10px] font-extrabold text-[hsl(var(--foreground))]">
+                  {formatDueDate(nextCalendarEvent.startDate)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[11px] font-bold">{nextCalendarEvent.title}</span>
+                  <span className="mt-1 block truncate text-[9px] text-[hsl(var(--muted-foreground))]">
+                    {nextCalendarEvent.kind.replaceAll('_', ' ')}{nextCalendarEvent.scopeName ? ` · ${nextCalendarEvent.scopeName}` : ''}
+                  </span>
+                </span>
+                <ChevronRight size={15} className="shrink-0 text-[hsl(var(--muted-foreground))]"/>
+              </Link>
+            ) : (
+              <div className="rounded-xl border border-dashed border-[hsl(var(--border))] p-4 text-center text-[10px] text-[hsl(var(--muted-foreground))]">
+                No school dates are scheduled in the next two months.
+              </div>
+            )}
+          </section>
+
+          <section className="surface p-4 md:p-5" aria-labelledby="student-updates-title">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-mint))] text-[hsl(var(--brand-mint-ink))]"><Bell size={17}/></span>
+                <div>
+                  <p className="m-0 text-[9px] font-bold uppercase tracking-[.16em] text-[hsl(var(--primary))]">For you</p>
+                  <h2 id="student-updates-title" className="display m-0 mt-1 text-[16px] font-extrabold">Unread announcements</h2>
+                </div>
+              </div>
+              <Link href="/announcements" className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-[hsl(var(--primary))]">
+                All updates <ArrowRight size={13}/>
+              </Link>
+            </div>
+            {announcements.isLoading ? (
+              <div className="skeleton h-[74px]" aria-label="Loading announcements"/>
+            ) : announcements.isError ? (
+              <div role="alert" className="rounded-xl border border-[hsl(var(--border))] p-3 text-[10px] text-[hsl(var(--destructive))]">
+                <p className="m-0">Announcements could not be loaded.</p>
+                <button type="button" className="mt-2 font-bold underline underline-offset-2" onClick={() => announcements.refetch()}>Try again</button>
+              </div>
+            ) : unreadAnnouncements.length ? (
+              <div className="space-y-2">
+                {unreadAnnouncements.slice(0, 3).map(item => (
+                  <Link key={item.id} href="/announcements" className="flex items-start gap-3 rounded-xl border border-[hsl(var(--border))] p-3 transition hover:border-[hsl(var(--primary)/.35)]">
+                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[hsl(var(--primary))]" aria-hidden="true"/>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[11px] font-bold">{item.title}</span>
+                      <span className="mt-1 block text-[9px] text-[hsl(var(--muted-foreground))]">{formatDueDate(item.publishedAt)}</span>
+                    </span>
+                    <ChevronRight size={15} className="mt-1 shrink-0 text-[hsl(var(--muted-foreground))]"/>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-[hsl(var(--border))] p-4 text-center text-[10px] text-[hsl(var(--muted-foreground))]">
+                You’re up to date. New announcements will appear here.
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 }

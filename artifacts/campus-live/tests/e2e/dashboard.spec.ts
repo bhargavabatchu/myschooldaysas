@@ -12,7 +12,7 @@ async function signIn(page: Page, email: string) {
   await page.getByTestId("input-password").fill(seededPassword);
   await page.getByTestId("button-submit-login").click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole("heading", { name: /Good to see you/ })).toBeVisible();
+  await expect(page.locator("h1").first()).toBeVisible();
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
@@ -226,6 +226,21 @@ test("teacher navigation stays role-aware and theme control remains reachable on
 
 test("student accounts cannot open the student directory", async ({ page }) => {
   await signIn(page, "student1@demo.edu");
+  await expect(page.getByTestId("student-overview-dashboard")).toBeVisible();
+  await expect(page.getByTestId("student-insight-cards")).toBeVisible();
+  await expect(page.getByTestId("student-attendance-value")).toBeVisible();
+  await expect(page.getByTestId("student-assignment-value")).toBeVisible();
+  await expect(page.getByTestId("student-results-value")).toBeVisible();
+  await expect(page.getByTestId("student-fees-value")).toBeVisible();
+  await expect(page.locator(".dashboard-metric")).toHaveCount(0);
+  await expect(page.getByText("Across the school", { exact: true })).toHaveCount(0);
+  await page.setViewportSize(mobile);
+  await expectNoHorizontalOverflow(page);
+  const insightColumns = await page.getByTestId("student-insight-cards").evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns.split(" ").length,
+  );
+  expect(insightColumns).toBe(2);
+
   await expect(page.getByTestId("link-nav-students")).toHaveCount(0);
   await expect(page.getByTestId("dashboard-admin-actions")).toHaveCount(0);
 

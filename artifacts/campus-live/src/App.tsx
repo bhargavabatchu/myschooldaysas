@@ -53,7 +53,7 @@ import { AnnouncementsPage } from '@/components/announcements/announcements-page
 import { PLATFORM_NAME, SCHOOL_NAME } from '@/lib/branding';
 import { liveClassesEnabled } from '@/lib/features';
 import { PwaInstallButton } from '@/components/pwa/pwa-install-button';
-import { StudentMobileDashboard, StudentMobileNavigation } from '@/components/dashboard/student-mobile-dashboard';
+import { StudentDashboard, StudentMobileNavigation } from '@/components/dashboard/student-mobile-dashboard';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
@@ -462,9 +462,9 @@ function QueryState({ loading, error, empty, retry, children }: { loading: boole
 
 function DashboardPage({ roles, userName }: { roles: string[]; userName: string }) {
   const [activityExpanded, setActivityExpanded] = useState(false);
-  const overview = useGetDashboardOverview();
-  const data = overview.data;
   const isStudent = roles.includes('student');
+  const overview = useGetDashboardOverview({ query: { enabled: !isStudent } });
+  const data = overview.data;
   const adminInsights = data?.adminInsights;
   const collectionPercent = adminInsights?.fees.collectionPercentThisYear ?? null;
   const academicYear = adminInsights?.fees.academicYear ?? '';
@@ -502,9 +502,10 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
   const formatRupees = (paise: number) => new Intl.NumberFormat('en-IN', {
     style: 'currency', currency: 'INR', maximumFractionDigits: 2,
   }).format(paise / 100);
+  if (isStudent) {
+    return <div className="dashboard-page"><StudentDashboard userName={userName}/></div>;
+  }
   return <div className="dashboard-page">
-    {isStudent && <div className="md:hidden"><StudentMobileDashboard userName={data?.userName ?? userName} /></div>}
-    <div className={isStudent ? 'hidden md:block' : ''}>
     <section className="dashboard-welcome" aria-labelledby="dashboard-welcome-title">
       <div className="dashboard-welcome-copy">
         <div className="dashboard-eyebrow"><span aria-hidden="true"/>ST JOSEPH’S · SCHOOL DAY</div>
@@ -664,7 +665,6 @@ function DashboardPage({ roles, userName }: { roles: string[]; userName: string 
         <footer className="dashboard-footer"><BookOpen size={14}/><span>Learning, belonging, becoming.</span><span className="dashboard-footer-rule"/><span>{SCHOOL_NAME.toUpperCase()}</span></footer>
       </div>}
     </QueryState>
-    </div>
   </div>;
 }
 function InlineEmpty({ text }: { text: string }) { return <div className="rounded-xl border border-dashed border-[hsl(var(--border))] p-5 text-center text-xs text-[hsl(var(--muted-foreground))]">{text}</div>; }
