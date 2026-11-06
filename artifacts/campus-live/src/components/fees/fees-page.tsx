@@ -8,11 +8,13 @@ import {
   getGetMyFeeInvoicesQueryKey,
   getGetFeeCollectionsQueryKey,
   getGetDashboardOverviewQueryKey,
+  getGetLearningTermsQueryKey,
   useGenerateFeeInvoices,
   useGetFeeInvoices,
   useGetFeeReceipt,
   useGetMyFeeInvoices,
   useGetAcademicYears,
+  useGetLearningTerms,
   useGetSections,
   usePayFeeInvoice,
   type FeeInvoice,
@@ -31,6 +33,42 @@ const dateText = (value?: string | Date | null) => value
   ? value instanceof Date ? value.toISOString().slice(0, 10) : value.slice(0, 10)
   : "—";
 const fieldClass = "field w-full";
+const monthFormatter = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
+const termDateFormatter = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+const dateAtUtc = (value: string) => new Date(`${value.slice(0, 10)}T00:00:00Z`);
+
+function academicYearBounds(value: string) {
+  const startYear = Number(value.match(/^(\d{4})/)?.[1]);
+  if (!Number.isInteger(startYear)) return null;
+  return {
+    start: `${startYear}-04-01`,
+    end: `${startYear + 1}-03-31`,
+  };
+}
+
+function monthlyPeriods(academicYear: string) {
+  const bounds = academicYearBounds(academicYear);
+  if (!bounds) return [];
+  const startYear = Number(bounds.start.slice(0, 4));
+  return Array.from({ length: 12 }, (_, index) => {
+    const monthIndex = (3 + index) % 12;
+    const year = startYear + (monthIndex < 3 ? 1 : 0);
+    const date = new Date(Date.UTC(year, monthIndex, 1));
+    return {
+      value: `${year}-${String(monthIndex + 1).padStart(2, "0")}`,
+      label: monthFormatter.format(date),
+    };
+  });
+}
+
+function termRange(term: { startsOn: string; endsOn: string }) {
+  return `${termDateFormatter.format(dateAtUtc(term.startsOn))} – ${termDateFormatter.format(dateAtUtc(term.endsOn))}`;
+}
 const paymentMethodText = (method: string) => ({
   mock: "Online test",
   razorpay: "Razorpay",
@@ -75,6 +113,9 @@ export function FeesPage({ roles }: FeesPageProps) {
   const queryClient = useQueryClient();
   const sections = useGetSections(undefined, { query: { enabled: isAdmin } });
   const academicYears = useGetAcademicYears({ query: { enabled: isAdmin } });
+  const learningTerms = useGetLearningTerms({
+    query: { enabled: isAdmin, queryKey: getGetLearningTermsQueryKey() },
+  });
   const sectionItems = sections.data?.items ?? [];
   const classItems = Array.from(new Map(
     sectionItems.map((section) => [section.classId, { id: section.classId, name: section.className }]),
@@ -88,6 +129,7 @@ export function FeesPage({ roles }: FeesPageProps) {
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [academicYear, setAcademicYear] = useState("");
+  const [billingFrequency, setBillingFrequency] = useState<"" | "monthly" | "term" | "annual">("");
   const [period, setPeriod] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -107,6 +149,18 @@ export function FeesPage({ roles }: FeesPageProps) {
   const selectedAcademicYear = availableAcademicYears.includes(academicYear)
     ? academicYear
     : currentAcademicYear || availableAcademicYears[0] || "";
+  const selectedYearBounds = academicYearBounds(selectedAcademicYear);
+  const monthlyPeriodOptions = monthlyPeriods(selectedAcademicYear);
+  const matchingTerms = (learningTerms.data?.items ?? []).filter((term) =>
+    selectedYearBounds && term.startsOn.slice(0, 10) <= selectedYearBounds.end && term.endsOn.slice(0, 10) >= selectedYearBounds.start,
+  );
+  const periodOptions = billingFrequency === "monthly"
+    ? monthlyPeriodOptions
+    : billingFrequency === "term"
+      ? matchingTerms.map((term) => ({ value: term.name, label: `${term.name} · ${termRange(term)}` }))
+      : billingFrequency === "annual" && selectedAcademicYear
+        ? [{ value: `Annual ${selectedAcademicYear}`, label: `Annual ${selectedAcademicYear}` }]
+        : [];
   const targetLabel = targetMode === "school"
     ? "the entire school"
     : targetMode === "class"
@@ -151,6 +205,18 @@ export function FeesPage({ roles }: FeesPageProps) {
     }
     if (!selectedAcademicYear) {
       setNotice("Set up an academic year from the Academic calendar first.");
+      return;
+    }
+    if (!billingFrequency) {
+      setNotice("Choose a billing frequency before issuing invoices.");
+      return;
+    }
+    if (billingFrequency === "term" && !matchingTerms.length) {
+      setNotice("No learning terms overlap this academic year. Add terms under Learning before issuing term invoices.");
+      return;
+    }
+    if (!period || !periodOptions.some((option) => option.value === period)) {
+      setNotice("Choose a billing period before issuing invoices.");
       return;
     }
     const target = targetMode === "school"
@@ -222,7 +288,10 @@ export function FeesPage({ roles }: FeesPageProps) {
                 label="Academic year"
                 items={academicYearItems}
                 value={selectedAcademicYear}
-                onChange={setAcademicYear}
+                onChange={(value) => {
+                  setAcademicYear(value);
+                  setPeriod("");
+                }}
                 disabled={targetSectionCount === 0 || academicYears.isLoading || generate.isPending || availableAcademicYears.length === 0}
               />
               {availableAcademicYears.length > 0 && (
@@ -240,8 +309,59 @@ export function FeesPage({ roles }: FeesPageProps) {
               )}
             </div>
             <label className="block text-sm font-semibold">
+              Billing frequency
+              <select
+                className={`${fieldClass} mt-2`}
+                value={billingFrequency}
+                onChange={(event) => {
+                  setBillingFrequency(event.target.value as typeof billingFrequency);
+                  setPeriod("");
+                  setNotice("");
+                }}
+                required
+                disabled={generate.isPending || !selectedAcademicYear}
+              >
+                <option value="">Choose frequency</option>
+                <option value="monthly">Monthly</option>
+                <option value="term">Term-wise</option>
+                <option value="annual">Annual</option>
+              </select>
+              <span className="mt-1 block text-xs font-normal text-[hsl(var(--muted-foreground))]">
+                Choose how this fee is billed for {selectedAcademicYear || "the selected year"}.
+              </span>
+            </label>
+            <label className="block text-sm font-semibold">
               Billing period
-              <input className={`${fieldClass} mt-2`} value={period} onChange={(event) => setPeriod(event.target.value)} placeholder="Term 1 or 2026-10" maxLength={40} required />
+              <select
+                className={`${fieldClass} mt-2`}
+                value={period}
+                onChange={(event) => setPeriod(event.target.value)}
+                required
+                disabled={!billingFrequency || generate.isPending || (billingFrequency === "term" && (learningTerms.isLoading || matchingTerms.length === 0))}
+              >
+                <option value="">
+                  {!billingFrequency ? "Choose a frequency first" : "Choose a period"}
+                </option>
+                {periodOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              {billingFrequency === "monthly" && (
+                <span className="mt-1 block text-xs font-normal text-[hsl(var(--muted-foreground))]">
+                  Monthly periods run April through March and use YYYY-MM on each invoice.
+                </span>
+              )}
+              {billingFrequency === "term" && learningTerms.isLoading && (
+                <span className="mt-1 block text-xs font-normal text-[hsl(var(--muted-foreground))]" role="status">Loading configured learning terms…</span>
+              )}
+              {billingFrequency === "term" && learningTerms.isError && (
+                <span className="mt-1 block text-xs font-normal text-red-700" role="alert">Learning terms could not be loaded. Refresh and try again.</span>
+              )}
+              {billingFrequency === "term" && !learningTerms.isLoading && !learningTerms.isError && matchingTerms.length === 0 && (
+                <span className="mt-1 block text-xs font-normal text-[hsl(var(--muted-foreground))]" role="status">
+                  No terms overlap {selectedAcademicYear}. Add terms under Learning before issuing term invoices.
+                </span>
+              )}
             </label>
             <label className="block text-sm font-semibold">
               Description
@@ -256,7 +376,7 @@ export function FeesPage({ roles }: FeesPageProps) {
               <input className={`${fieldClass} mt-2`} type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} required />
             </label>
             <div className="md:col-span-2 flex flex-wrap items-center gap-3">
-              <button className="btn btn-primary" type="submit" disabled={generate.isPending || targetSectionCount === 0 || !selectedAcademicYear}>
+              <button className="btn btn-primary" type="submit" disabled={generate.isPending || targetSectionCount === 0 || !selectedAcademicYear || !billingFrequency || !period || (billingFrequency === "term" && (learningTerms.isLoading || learningTerms.isError || matchingTerms.length === 0))}>
                 {generate.isPending
                   ? "Issuing…"
                   : targetMode === "school"
