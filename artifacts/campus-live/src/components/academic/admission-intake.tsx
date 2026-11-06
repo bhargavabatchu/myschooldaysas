@@ -99,6 +99,17 @@ function parseAdmissionCsv(text: string): AdmissionRow[] {
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : "The request could not be completed.";
 
+function isNameMatchConfirmationRequired(error: unknown, depth = 0): boolean {
+  if (depth > 3) return false;
+  if (typeof error === "string") return error.includes("NAME_MATCH_CONFIRMATION_REQUIRED");
+  if (!error || typeof error !== "object") return false;
+  const record = error as Record<string, unknown>;
+  return [record.code, record.message].some((value) =>
+    typeof value === "string" && value.includes("NAME_MATCH_CONFIRMATION_REQUIRED"),
+  ) || isNameMatchConfirmationRequired(record.data, depth + 1)
+    || isNameMatchConfirmationRequired(record.response, depth + 1);
+}
+
 export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
   const queryClient = useQueryClient();
   const academicYears = useGetAcademicYears();
@@ -122,6 +133,7 @@ export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
   });
   const [csvText, setCsvText] = useState("");
   const [csvError, setCsvError] = useState("");
+  const [nameMatchesConfirmed, setNameMatchesConfirmed] = useState(false);
   const [credentials, setCredentials] = useState<Array<{
     id: string;
     name: string;
@@ -153,6 +165,7 @@ export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
     create.reset();
     setCredentials(null);
     setCsvError("");
+    setNameMatchesConfirmed(false);
   };
 
   const admissionRows = (): AdmissionRow[] => {
@@ -200,10 +213,13 @@ export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
 
   function confirmAdmissions() {
     if (!preview.data?.valid) return;
+    const hasNameMatches = preview.data.nameMatches.length > 0;
+    if (hasNameMatches && !nameMatchesConfirmed) return;
     create.mutate({
       data: {
         sectionId: preview.data.sectionId,
         academicYear: preview.data.academicYear,
+        ...(hasNameMatches && nameMatchesConfirmed ? { confirmNameMatches: true } : {}),
         rows: preview.data.items.map((item) => ({
           name: item.name,
           email: item.email,
@@ -332,7 +348,7 @@ export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
             {" · "}
             {preview.data.seatsAvailable == null ? "unlimited seats" : `${preview.data.seatsAvailable} seat(s) available`}
           </div>
-          {preview.data.valid && <button type="button" className="btn btn-primary min-h-8 px-3 text-xs" disabled={create.isPending} onClick={confirmAdmissions}>
+          {preview.data.valid && <button type="button" className="btn btn-primary min-h-8 px-3 text-xs" disabled={create.isPending || (!!preview.data.nameMatches.length && !nameMatchesConfirmed)} onClick={confirmAdmissions}>
             {create.isPending ? "Creating accounts…" : "Confirm and create"}
           </button>}
         </div>
@@ -345,9 +361,57 @@ export function AdmissionIntake({ sections }: { sections: SectionSummary[] }) {
         {!!preview.data.errors.length && <ul className="mb-0 mt-2 space-y-1 text-xs text-[hsl(var(--destructive))]">
           {preview.data.errors.map((issue, index) => <li key={`${issue.row}-${issue.field}-${index}`}>Row {issue.row} · {issue.field}: {issue.message}</li>)}
         </ul>}
+        {!!preview.data.nameMatches.length && <div className="mt-4 rounded-lg border border-amber-700/25 bg-amber-500/[.08] p-3" role="alert" aria-labelledby="name-match-warning-title">
+          <div className="flex items-start gap-2">
+            <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-[hsl(var(--accent))]" aria-hidden="true" />
+            <div className="min-w-0">
+              <h3 id="name-match-warning-title" className="m-0 text-xs font-bold">Check these possible name matches</h3>
+              <p className="mb-0 mt-1 text-xs leading-relaxed text-[hsl(var(--muted-foreground))]">
+                Names match existing records or another row in this batch. This is a warning, not a duplicate identity error. Review each match before creating accounts.
+              </p>
+            </div>
+          </div>
+          <ul className="mb-0 mt-3 space-y-3">
+            {preview.data.nameMatches.map((match, matchIndex) => <li key={`${match.row}-${matchIndex}`} className="rounded-md border border-amber-700/15 bg-[hsl(var(--card))] p-3">
+              <p className="m-0 text-xs font-bold">Submitted row {match.row}: {match.submittedName}</p>
+              <ul className="mb-0 mt-2 space-y-2">
+                {match.matches.map((record, recordIndex) => <li key={`${record.source}-${record.matchingRow ?? record.admissionNo ?? record.name}-${recordIndex}`} className="text-xs leading-relaxed text-[hsl(var(--muted-foreground))]">
+                  <span className="font-semibold text-[hsl(var(--foreground))]">{record.name}</span>
+                  {record.admissionNo ? ` · Admission no. ${record.admissionNo}` : ""}
+                  {record.className || record.sectionName
+                    ? ` · ${[record.className, record.sectionName].filter(Boolean).join(" · ")}`
+                    : ""}
+                  {record.academicYear ? ` · ${record.academicYear}` : ""}
+                  {record.source === "same_batch" && record.matchingRow != null
+                    ? ` · Earlier CSV row ${record.matchingRow}`
+                    : ""}
+                </li>)}
+              </ul>
+            </li>)}
+          </ul>
+          <label className="mt-3 flex cursor-pointer items-start gap-2 border-t border-amber-700/15 pt-3 text-xs font-semibold leading-relaxed">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[hsl(var(--primary))]"
+              checked={nameMatchesConfirmed}
+              onChange={(event) => setNameMatchesConfirmed(event.target.checked)}
+              aria-describedby="name-match-confirmation-help"
+            />
+            <span>
+              I checked these matches and confirm these are different students.
+              <span id="name-match-confirmation-help" className="mt-0.5 block font-normal text-[hsl(var(--muted-foreground))]">
+                Confirm and create will stay unavailable until you check this box.
+              </span>
+            </span>
+          </label>
+        </div>}
       </div>}
 
-      {create.isError && <p role="alert" className="mb-0 mt-3 text-xs text-[hsl(var(--destructive))]">{errorMessage(create.error)} Please preview the batch again before retrying.</p>}
+      {create.isError && <p role="alert" className="mb-0 mt-3 text-xs text-[hsl(var(--destructive))]">
+        {isNameMatchConfirmationRequired(create.error)
+          ? "Student names changed or new matches were found after preview. Preview admissions again and inspect the updated matches before confirming."
+          : `${errorMessage(create.error)} Please preview the batch again before retrying.`}
+      </p>}
       {credentials && <div className="mt-4 rounded-lg border border-[hsl(var(--border))] p-3">
         <p className="mb-2 text-xs font-bold">Accounts created. Copy these temporary passwords now; they will not be shown again.</p>
         <div className="overflow-x-auto">

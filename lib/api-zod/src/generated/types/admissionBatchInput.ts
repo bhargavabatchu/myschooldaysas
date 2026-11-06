@@ -14,6 +14,7 @@ export interface AdmissionBatchInput {
      * @maxLength 24
      */
   academicYear: string;
+  confirmNameMatches?: boolean;
   /**
      * @minItems 1
      * @maxItems 20

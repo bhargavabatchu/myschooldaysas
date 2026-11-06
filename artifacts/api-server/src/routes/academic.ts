@@ -44,6 +44,7 @@ import { createRouteRegistrar } from "../lib/fastify-routes";
 import { hashPassword, requireAuth, type CampusRole } from "../lib/auth";
 import { canManageAcademicSetup, sectionHasCapacity } from "../lib/academic-scheduling-policy";
 import { generateTemporaryPassword } from "../lib/identity-security";
+import { findAdmissionNameMatches } from "../lib/student-admission-policy";
 import { hasForeignKeyReferences } from "../lib/foreign-key-usage";
 import { addDefaultSectionSubjects } from "../lib/section-subjects";
 
@@ -299,6 +300,57 @@ async function inspectAdmissions(
     }
   }
 
+  const normalizedNames = [...new Set(items.map((item) => item.name.trim().replace(/\s+/g, " ").toLowerCase()).filter(Boolean))];
+  const existingNames = normalizedNames.length
+    ? await client.query<{
+      name: string;
+      admission_no: string | null;
+      class_name: string | null;
+      section_name: string | null;
+      academic_year: string | null;
+    }>(
+      `SELECT student.name, enrollment.admission_no, enrollment.class_name,
+              enrollment.section_name, enrollment.academic_year
+         FROM identity.users student
+         LEFT JOIN LATERAL (
+           SELECT e.admission_no, e.academic_year, school_class.name AS class_name,
+                  section.name AS section_name
+             FROM academic.enrollments e
+             JOIN academic.sections section
+               ON section.org_id = e.org_id AND section.id = e.section_id
+             JOIN academic.classes school_class
+               ON school_class.org_id = section.org_id AND school_class.id = section.class_id
+            WHERE e.org_id = student.org_id AND e.student_user_id = student.id
+            ORDER BY (e.status = 'active') DESC, e.academic_year DESC, e.created_at DESC, e.id DESC
+            LIMIT 1
+         ) enrollment ON true
+        WHERE student.org_id = $1
+          AND EXISTS (
+            SELECT 1 FROM identity.user_roles role
+             WHERE role.org_id = student.org_id AND role.user_id = student.id AND role.role = 'student'
+          )
+          AND regexp_replace(lower(btrim(student.name)), '[[:space:]]+', ' ', 'g') = ANY($2::text[])
+        ORDER BY student.name, student.id`,
+      [orgId, normalizedNames],
+    )
+    : { rows: [] as Array<{
+      name: string;
+      admission_no: string | null;
+      class_name: string | null;
+      section_name: string | null;
+      academic_year: string | null;
+    }> };
+  const nameMatches = findAdmissionNameMatches(
+    items.map((item) => ({ row: item.row, name: item.name })),
+    existingNames.rows.map((student) => ({
+      name: student.name,
+      admissionNo: student.admission_no,
+      className: student.class_name,
+      sectionName: student.section_name,
+      academicYear: student.academic_year,
+    })),
+  );
+
   const occupancy = await client.query<{ count: number }>(
     `SELECT COUNT(*)::int AS count
        FROM academic.enrollments
@@ -319,6 +371,7 @@ async function inspectAdmissions(
     seatsAvailable,
     items,
     errors,
+    nameMatches,
     valid: errors.length === 0,
   };
 }
@@ -2552,6 +2605,7 @@ router.post("/academic/admissions/preview", requireAuth, async (req, res, next) 
       valid: inspection.valid,
       items: inspection.items,
       errors: inspection.errors,
+      nameMatches: inspection.nameMatches,
     });
   } catch (error) {
     next(error);
@@ -2580,6 +2634,12 @@ router.post("/academic/admissions", requireAuth, async (req, res, next) => {
         error: { code: "CONFLICT", message: "Resolve the admission preview errors and try again.", details: preliminary.errors },
       });
     }
+    if (preliminary.nameMatches.length && !parsed.data.confirmNameMatches) {
+      return void res.status(409).json(errorBody(
+        "NAME_MATCH_CONFIRMATION_REQUIRED",
+        "Review the same-name student matches and confirm they are different students before creating accounts.",
+      ));
+    }
 
     const preparedRows = preliminary.items.map(({
       name, email, admissionNo, dateOfBirth, gender, phone, address, bloodGroup,
@@ -2604,6 +2664,9 @@ router.post("/academic/admissions", requireAuth, async (req, res, next) => {
       );
       if (!current) return { kind: "section_not_found" as const };
       if (!current.valid) return { kind: "invalid" as const, errors: current.errors };
+      if (current.nameMatches.length && !parsed.data.confirmNameMatches) {
+        return { kind: "name_match_confirmation_required" as const, nameMatches: current.nameMatches };
+      }
 
       const created = [];
       for (const [index, item] of current.items.entries()) {
@@ -2660,6 +2723,15 @@ router.post("/academic/admissions", requireAuth, async (req, res, next) => {
     if (result.kind === "invalid") {
       return void res.status(409).json({
         error: { code: "CONFLICT", message: "The section or student data changed after preview. Review the errors and try again.", details: result.errors },
+      });
+    }
+    if (result.kind === "name_match_confirmation_required") {
+      return void res.status(409).json({
+        error: {
+          code: "NAME_MATCH_CONFIRMATION_REQUIRED",
+          message: "A student with this name appeared after the preview. Preview admissions again and review the match.",
+          details: result.nameMatches,
+        },
       });
     }
     res.status(201).json({ items: result.items, total: result.items.length });

@@ -1335,7 +1335,7 @@ paths:
         "400": { description: Invalid request }
         "403": { description: Administrator role required }
         "404": { description: Section not found }
-        "409": { description: Duplicate student data or section capacity exceeded }
+        "409": { description: "Duplicate email or admission number, an unconfirmed same-name match, or section capacity exceeded" }
   /academic/enrollments/{enrollmentId}:
     patch:
       operationId: updateEnrollmentYear
@@ -3141,6 +3141,7 @@ components:
       properties:
         sectionId: { type: string, format: uuid }
         academicYear: { type: string, minLength: 4, maxLength: 24 }
+        confirmNameMatches: { type: boolean, default: false }
         rows:
           type: array
           minItems: 1
@@ -3185,9 +3186,29 @@ components:
         row: { type: integer, minimum: 1 }
         field: { type: string }
         message: { type: string }
+    AdmissionNameMatchDetail:
+      type: object
+      required: [source, name, admissionNo, className, sectionName, academicYear, matchingRow]
+      properties:
+        source: { type: string, enum: [existing_student, same_batch] }
+        name: { type: string }
+        admissionNo: { type: [string, "null"] }
+        className: { type: [string, "null"] }
+        sectionName: { type: [string, "null"] }
+        academicYear: { type: [string, "null"] }
+        matchingRow: { type: [integer, "null"], minimum: 1 }
+    AdmissionNameMatch:
+      type: object
+      required: [row, submittedName, matches]
+      properties:
+        row: { type: integer, minimum: 1 }
+        submittedName: { type: string }
+        matches:
+          type: array
+          items: { $ref: "#/components/schemas/AdmissionNameMatchDetail" }
     AdmissionPreview:
       type: object
-      required: [sectionId, sectionName, academicYear, capacity, activeEnrollmentCount, seatsAvailable, valid, items, errors]
+      required: [sectionId, sectionName, academicYear, capacity, activeEnrollmentCount, seatsAvailable, valid, items, errors, nameMatches]
       properties:
         sectionId: { type: string, format: uuid }
         sectionName: { type: string }
@@ -3202,6 +3223,9 @@ components:
         errors:
           type: array
           items: { $ref: "#/components/schemas/AdmissionRowError" }
+        nameMatches:
+          type: array
+          items: { $ref: "#/components/schemas/AdmissionNameMatch" }
     CreatedAdmission:
       type: object
       required: [id, name, email, admissionNo, sectionId, sectionName, academicYear, temporaryPassword, temporaryPasswordExpiresAt]

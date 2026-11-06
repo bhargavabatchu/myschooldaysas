@@ -1802,6 +1802,7 @@ export const CommitEnrollmentPromotionResponse = zod.object({
 export const previewStudentAdmissionsBodyAcademicYearMin = 4;
 export const previewStudentAdmissionsBodyAcademicYearMax = 24;
 
+export const previewStudentAdmissionsBodyConfirmNameMatchesDefault = false;
 export const previewStudentAdmissionsBodyRowsItemNameMax = 120;
 
 export const previewStudentAdmissionsBodyRowsItemEmailMax = 254;
@@ -1832,6 +1833,7 @@ export const previewStudentAdmissionsBodyRowsMax = 20;
 export const PreviewStudentAdmissionsBody = zod.object({
   "sectionId": zod.uuid(),
   "academicYear": zod.string().min(previewStudentAdmissionsBodyAcademicYearMin).max(previewStudentAdmissionsBodyAcademicYearMax),
+  "confirmNameMatches": zod.boolean().default(previewStudentAdmissionsBodyConfirmNameMatchesDefault),
   "rows": zod.array(zod.object({
   "name": zod.string().min(1).max(previewStudentAdmissionsBodyRowsItemNameMax),
   "email": zod.email().max(previewStudentAdmissionsBodyRowsItemEmailMax),
@@ -1850,6 +1852,8 @@ export const PreviewStudentAdmissionsBody = zod.object({
 
 
 export const previewStudentAdmissionsResponseItemsItemDateOfBirthRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
 
 
 
@@ -1880,6 +1884,19 @@ export const PreviewStudentAdmissionsResponse = zod.object({
   "row": zod.int().min(1),
   "field": zod.string(),
   "message": zod.string()
+})),
+  "nameMatches": zod.array(zod.object({
+  "row": zod.int().min(1),
+  "submittedName": zod.string(),
+  "matches": zod.array(zod.object({
+  "source": zod.enum(['existing_student', 'same_batch']),
+  "name": zod.string(),
+  "admissionNo": zod.string().nullable(),
+  "className": zod.string().nullable(),
+  "sectionName": zod.string().nullable(),
+  "academicYear": zod.string().nullable(),
+  "matchingRow": zod.int().min(1).nullable()
+}))
 }))
 })
 
@@ -1890,6 +1907,7 @@ export const PreviewStudentAdmissionsResponse = zod.object({
 export const createStudentAdmissionsBodyAcademicYearMin = 4;
 export const createStudentAdmissionsBodyAcademicYearMax = 24;
 
+export const createStudentAdmissionsBodyConfirmNameMatchesDefault = false;
 export const createStudentAdmissionsBodyRowsItemNameMax = 120;
 
 export const createStudentAdmissionsBodyRowsItemEmailMax = 254;
@@ -1920,6 +1938,7 @@ export const createStudentAdmissionsBodyRowsMax = 20;
 export const CreateStudentAdmissionsBody = zod.object({
   "sectionId": zod.uuid(),
   "academicYear": zod.string().min(createStudentAdmissionsBodyAcademicYearMin).max(createStudentAdmissionsBodyAcademicYearMax),
+  "confirmNameMatches": zod.boolean().default(createStudentAdmissionsBodyConfirmNameMatchesDefault),
   "rows": zod.array(zod.object({
   "name": zod.string().min(1).max(createStudentAdmissionsBodyRowsItemNameMax),
   "email": zod.email().max(createStudentAdmissionsBodyRowsItemEmailMax),

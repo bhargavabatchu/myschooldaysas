@@ -5,6 +5,7 @@
  * Campus Live API contract
  * OpenAPI spec version: 0.1.0
  */
+import type { AdmissionNameMatch } from './admissionNameMatch';
 import type { AdmissionPreviewRow } from './admissionPreviewRow';
 import type { AdmissionRowError } from './admissionRowError';
 
@@ -20,4 +21,5 @@ export interface AdmissionPreview {
   valid: boolean;
   items: AdmissionPreviewRow[];
   errors: AdmissionRowError[];
+  nameMatches: AdmissionNameMatch[];
 }

@@ -9,6 +9,7 @@
 - [Campus Live school admin delegation](campus-live-school-admin-delegation.md) — org admins may create same-school org admins, but this flow must never grant platform super-admin access.
 - [Campus Live class setup](campus-live-class-setup.md) — create a first section; delete unused classes/sections and archive used ones to preserve history.
 - [Campus Live student withdrawal](campus-live-student-withdrawal.md) — close a student's enrollment and preserve the account and academic records; treat sign-in disabling as a separate decision.
+- [Campus Live student identity checks](campus-live-student-identity-checks.md) — block duplicate school email/admission numbers; require explicit review for exact same-name matches.
 - [Campus Live database isolation](campus-live-database-isolation.md) — development uses only its restricted database URL; never fall back to the production URL.
 - [Local container health checks](local-container-healthchecks.md) — an OCI health-check exec failure can mark reachable Postgres/Redis containers unhealthy; confirm with host probes before restarting.
 - [PostgreSQL array result types](postgres-policy-role-arrays.md) — verify node-postgres array values; prefer JSON aggregation for JavaScript lists.

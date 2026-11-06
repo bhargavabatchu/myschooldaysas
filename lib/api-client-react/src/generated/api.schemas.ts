@@ -799,6 +799,7 @@ export interface AdmissionBatchInput {
      * @maxLength 24
      */
   academicYear: string;
+  confirmNameMatches?: boolean;
   /**
      * @minItems 1
      * @maxItems 20
@@ -842,6 +843,39 @@ export interface AdmissionRowError {
   message: string;
 }
 
+export type AdmissionNameMatchDetailSource = typeof AdmissionNameMatchDetailSource[keyof typeof AdmissionNameMatchDetailSource];
+
+
+export const AdmissionNameMatchDetailSource = {
+  existing_student: 'existing_student',
+  same_batch: 'same_batch',
+} as const;
+
+export interface AdmissionNameMatchDetail {
+  source: AdmissionNameMatchDetailSource;
+  name: string;
+  /** @nullable */
+  admissionNo: string | null;
+  /** @nullable */
+  className: string | null;
+  /** @nullable */
+  sectionName: string | null;
+  /** @nullable */
+  academicYear: string | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  matchingRow: number | null;
+}
+
+export interface AdmissionNameMatch {
+  /** @minimum 1 */
+  row: number;
+  submittedName: string;
+  matches: AdmissionNameMatchDetail[];
+}
+
 export interface AdmissionPreview {
   sectionId: string;
   sectionName: string;
@@ -854,6 +888,7 @@ export interface AdmissionPreview {
   valid: boolean;
   items: AdmissionPreviewRow[];
   errors: AdmissionRowError[];
+  nameMatches: AdmissionNameMatch[];
 }
 
 export interface CreatedAdmission {
