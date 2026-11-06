@@ -5,8 +5,8 @@ export const modules: ModuleMap = {
   "./components/mockups/admin-dashboard-refinement/Refined.tsx": () => import("../components/mockups/admin-dashboard-refinement/Refined.tsx"),
   "./components/mockups/dashboard-redesign/Current.tsx": () => import("../components/mockups/dashboard-redesign/Current.tsx"),
   "./components/mockups/dashboard-redesign/Premium.tsx": () => import("../components/mockups/dashboard-redesign/Premium.tsx"),
+  "./components/mockups/student-dashboard-redesign/StudentMobile.tsx": () => import("../components/mockups/student-dashboard-redesign/StudentMobile.tsx"),
   "./components/mockups/login-redesign/Current.tsx": () => import("../components/mockups/login-redesign/Current.tsx"),
   "./components/mockups/login-redesign/Premium.tsx": () => import("../components/mockups/login-redesign/Premium.tsx"),
-  "./components/mockups/student-dashboard-redesign/StudentMobile.tsx": () => import("../components/mockups/student-dashboard-redesign/StudentMobile.tsx"),
   "./components/mockups/templates/OrangePortraitEventPoster-xzPdDq/DeepOrangePoster.tsx": () => import("../components/mockups/templates/OrangePortraitEventPoster-xzPdDq/DeepOrangePoster.tsx")
 };

@@ -116,7 +116,7 @@ export function FeeCollectionReport() {
             />
           </label>
           <label className="fee-filter-field">
-            <span>Class</span>
+            <span>Class filter</span>
             <select
               className="field"
               value={classId}
@@ -134,7 +134,7 @@ export function FeeCollectionReport() {
             </select>
           </label>
           <label className="fee-filter-field">
-            <span>Section</span>
+            <span>Section filter</span>
             <select
               className="field"
               value={sectionId}
@@ -144,11 +144,14 @@ export function FeeCollectionReport() {
               }}
               disabled={!classId || sections.isLoading || sections.isError}
             >
-              <option value="">{classId ? "All sections" : "Choose a class"}</option>
+              <option value="">{classId ? "All sections" : "Choose a class first"}</option>
               {(sections.data?.items ?? []).map((item) => (
                 <option key={item.id} value={item.id}>{item.name}</option>
               ))}
             </select>
+            <span className="fee-filter-help">
+              {classId ? "Optional: narrow results to one section." : "Select a class to enable section filtering."}
+            </span>
           </label>
           <label className="fee-filter-field">
             <span>Payment channel</span>
