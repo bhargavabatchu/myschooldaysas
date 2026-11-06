@@ -93,7 +93,9 @@ export function FeeCollectionReport() {
         <div className="fee-report-heading">
           <p className="fee-report-kicker"><span aria-hidden="true" /> Daily ledger</p>
           <h2 id="fee-collection-report-title">Collection insights</h2>
-          <p className="fee-report-description">Payments recorded on the date the school received them.</p>
+            <p className="fee-report-description">
+              Payments recorded on the selected date. Use the filters below to narrow by class, section, or payment channel.
+            </p>
         </div>
         <div className="fee-report-controls">
           <label className="fee-date-field">

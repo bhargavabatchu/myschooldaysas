@@ -1,16 +1,17 @@
 .fee-collection-report {
-  overflow: hidden;
+  overflow: visible;
   border-radius: 14px;
   box-shadow: 0 9px 28px rgba(48, 53, 39, .045);
 }
 
 .fee-report-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 16px;
   padding: 23px 25px 21px;
   border-bottom: 1px solid hsl(var(--border));
+  border-radius: 14px 14px 0 0;
   background:
     radial-gradient(ellipse at 91% 0%, hsl(var(--accent) / .11), transparent 35%),
     linear-gradient(112deg, hsl(var(--card)), hsl(var(--secondary) / .42));
@@ -48,6 +49,7 @@
 }
 
 .fee-report-description {
+  max-width: 62ch;
   margin: 5px 0 0;
   color: hsl(var(--muted-foreground));
   font-size: 12px;
@@ -55,12 +57,11 @@
 }
 
 .fee-report-controls {
-  display: flex;
-  flex-wrap: wrap;
-  flex: 0 0 auto;
-  align-items: flex-end;
-  justify-content: flex-end;
-  gap: 8px;
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  align-items: end;
+  gap: 10px;
 }
 
 .fee-date-field,
@@ -75,7 +76,7 @@
 
 .fee-date-field .field,
 .fee-filter-field .field {
-  width: 175px;
+  width: 100%;
   min-height: 40px;
   border-radius: 8px;
   padding: 8px 10px;
@@ -83,7 +84,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.fee-filter-field .field { width: 145px; }
 .fee-filter-field .field:disabled { cursor: not-allowed; opacity: .65; }
 .fee-filter-error {
   display: flex;
@@ -98,6 +98,7 @@
 .fee-filter-error .btn { min-height: 32px; font-size: 10px; }
 
 .fee-refresh-button {
+  justify-self: start;
   min-height: 40px;
   border-radius: 8px;
   padding: 0 12px;
@@ -400,7 +401,7 @@
 
 @media (max-width: 640px) {
   .fee-collection-report { border-radius: 11px; }
-  .fee-report-header { align-items: stretch; flex-direction: column; gap: 16px; padding: 19px 17px 17px; }
+  .fee-report-header { gap: 14px; padding: 19px 17px 17px; border-radius: 11px 11px 0 0; }
   .fee-report-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fee-date-field, .fee-filter-field { min-width: 0; }
   .fee-date-field .field, .fee-filter-field .field { width: 100%; }
