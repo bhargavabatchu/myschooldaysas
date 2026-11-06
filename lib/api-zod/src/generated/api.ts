@@ -3677,6 +3677,9 @@ export const getFeeCollectionsQueryOffsetMin = 0;
 
 export const GetFeeCollectionsQueryParams = zod.object({
   "date": zod.date().optional(),
+  "classId": zod.uuid().optional(),
+  "sectionId": zod.uuid().optional(),
+  "channel": zod.enum(['cash', 'online', 'cheque', 'other', 'test']).optional(),
   "limit": zod.coerce.number().int().min(1).max(getFeeCollectionsQueryLimitMax).default(getFeeCollectionsQueryLimitDefault),
   "offset": zod.coerce.number().int().min(getFeeCollectionsQueryOffsetMin).default(getFeeCollectionsQueryOffsetDefault)
 })
@@ -3705,6 +3708,30 @@ export const getFeeCollectionsResponseSummaryTestPaiseMin = 0;
 
 export const getFeeCollectionsResponseSummaryTestCountMin = 0;
 
+export const getFeeCollectionsResponseWholeDaySummaryTotalPaiseMin = 0;
+
+export const getFeeCollectionsResponseWholeDaySummaryPaymentCountMin = 0;
+
+export const getFeeCollectionsResponseWholeDaySummaryCashPaiseMin = 0;
+
+export const getFeeCollectionsResponseWholeDaySummaryCashCountMin = 0;
+
+export const getFeeCollectionsResponseWholeDaySummaryOnlinePaiseMin = 0;
+
+export const getFeeCollectionsResponseWholeDaySummaryOnlineCountMin = 0;
+
+export const getFeeCollectionsResponseWholeDaySummaryChequePaiseMin = 0;
+
+export const getFeeCollectionsResponseWholeDaySummaryChequeCountMin = 0;
+
+export const getFeeCollectionsResponseWholeDaySummaryOtherPaiseMin = 0;
+
+export const getFeeCollectionsResponseWholeDaySummaryOtherCountMin = 0;
+
+export const getFeeCollectionsResponseWholeDaySummaryTestPaiseMin = 0;
+
+export const getFeeCollectionsResponseWholeDaySummaryTestCountMin = 0;
+
 
 export const getFeeCollectionsResponseTotalMin = 0;
 
@@ -3729,6 +3756,20 @@ export const GetFeeCollectionsResponse = zod.object({
   "otherCount": zod.int().min(getFeeCollectionsResponseSummaryOtherCountMin),
   "testPaise": zod.int().min(getFeeCollectionsResponseSummaryTestPaiseMin),
   "testCount": zod.int().min(getFeeCollectionsResponseSummaryTestCountMin)
+}),
+  "wholeDaySummary": zod.object({
+  "totalPaise": zod.int().min(getFeeCollectionsResponseWholeDaySummaryTotalPaiseMin),
+  "paymentCount": zod.int().min(getFeeCollectionsResponseWholeDaySummaryPaymentCountMin),
+  "cashPaise": zod.int().min(getFeeCollectionsResponseWholeDaySummaryCashPaiseMin),
+  "cashCount": zod.int().min(getFeeCollectionsResponseWholeDaySummaryCashCountMin),
+  "onlinePaise": zod.int().min(getFeeCollectionsResponseWholeDaySummaryOnlinePaiseMin),
+  "onlineCount": zod.int().min(getFeeCollectionsResponseWholeDaySummaryOnlineCountMin),
+  "chequePaise": zod.int().min(getFeeCollectionsResponseWholeDaySummaryChequePaiseMin),
+  "chequeCount": zod.int().min(getFeeCollectionsResponseWholeDaySummaryChequeCountMin),
+  "otherPaise": zod.int().min(getFeeCollectionsResponseWholeDaySummaryOtherPaiseMin),
+  "otherCount": zod.int().min(getFeeCollectionsResponseWholeDaySummaryOtherCountMin),
+  "testPaise": zod.int().min(getFeeCollectionsResponseWholeDaySummaryTestPaiseMin),
+  "testCount": zod.int().min(getFeeCollectionsResponseWholeDaySummaryTestCountMin)
 }),
   "payments": zod.array(zod.object({
   "id": zod.uuid(),

@@ -135,6 +135,7 @@ export * from './getClasses200';
 export * from './getClassesParams';
 export * from './getConsents200';
 export * from './getDashboardOverviewParams';
+export * from './getFeeCollectionsChannel';
 export * from './getFeeCollectionsParams';
 export * from './getFeeInvoicesParams';
 export * from './getGuardianLinksParams';

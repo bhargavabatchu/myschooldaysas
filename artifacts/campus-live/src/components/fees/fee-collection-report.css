@@ -56,20 +56,25 @@
 
 .fee-report-controls {
   display: flex;
+  flex-wrap: wrap;
   flex: 0 0 auto;
   align-items: flex-end;
+  justify-content: flex-end;
   gap: 8px;
 }
 
-.fee-date-field {
+.fee-date-field,
+.fee-filter-field {
   display: grid;
+  min-width: 125px;
   gap: 5px;
   color: hsl(var(--foreground));
   font-size: 10px;
   font-weight: 700;
 }
 
-.fee-date-field .field {
+.fee-date-field .field,
+.fee-filter-field .field {
   width: 175px;
   min-height: 40px;
   border-radius: 8px;
@@ -77,6 +82,20 @@
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+
+.fee-filter-field .field { width: 145px; }
+.fee-filter-field .field:disabled { cursor: not-allowed; opacity: .65; }
+.fee-filter-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 24px;
+  border-bottom: 1px solid hsl(var(--border));
+  color: hsl(var(--destructive));
+  font-size: 11px;
+}
+.fee-filter-error .btn { min-height: 32px; font-size: 10px; }
 
 .fee-refresh-button {
   min-height: 40px;
@@ -162,6 +181,13 @@
   color: hsl(var(--muted-foreground));
   font-size: 10px;
   font-variant-numeric: tabular-nums;
+}
+
+.fee-summary-context {
+  margin: 12px 0 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 10px;
+  line-height: 1.5;
 }
 
 .fee-test-note {
@@ -375,9 +401,11 @@
 @media (max-width: 640px) {
   .fee-collection-report { border-radius: 11px; }
   .fee-report-header { align-items: stretch; flex-direction: column; gap: 16px; padding: 19px 17px 17px; }
-  .fee-report-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-  .fee-date-field .field { width: 100%; }
+  .fee-report-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fee-date-field, .fee-filter-field { min-width: 0; }
+  .fee-date-field .field, .fee-filter-field .field { width: 100%; }
   .fee-refresh-button { align-self: end; }
+  .fee-filter-error { align-items: flex-start; flex-direction: column; padding: 12px 17px; }
   .fee-report-body, .fee-report-loading { padding: 16px; }
   .fee-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .fee-summary-card { min-height: 91px; padding: 11px 11px 9px; }
@@ -445,7 +473,6 @@
 @media (max-width: 360px) {
   .fee-summary-card { padding-inline: 9px; }
   .fee-summary-amount { font-size: 16px; }
-  .fee-date-field { min-width: 0; }
   .fee-report-controls { gap: 6px; }
   .fee-refresh-button { gap: 5px; padding-inline: 9px; }
   .fee-mobile-details > div { grid-template-columns: 84px minmax(0, 1fr); }

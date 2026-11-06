@@ -5,9 +5,13 @@
  * Campus Live API contract
  * OpenAPI spec version: 0.1.0
  */
+import type { GetFeeCollectionsChannel } from './getFeeCollectionsChannel';
 
 export type GetFeeCollectionsParams = {
 date?: Date;
+classId?: string;
+sectionId?: string;
+channel?: GetFeeCollectionsChannel;
 /**
  * @minimum 1
  * @maximum 100

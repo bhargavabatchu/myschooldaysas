@@ -1947,6 +1947,7 @@ export interface FeeCollectionPayment {
 export interface FeeCollectionReport {
   date: string;
   summary: FeeCollectionSummary;
+  wholeDaySummary: FeeCollectionSummary;
   payments: FeeCollectionPayment[];
   /** @minimum 0 */
   total: number;
@@ -2655,6 +2656,9 @@ termId?: string;
 
 export type GetFeeCollectionsParams = {
 date?: string;
+classId?: string;
+sectionId?: string;
+channel?: GetFeeCollectionsChannel;
 /**
  * @minimum 1
  * @maximum 100
@@ -2665,6 +2669,17 @@ limit?: number;
  */
 offset?: number;
 };
+
+export type GetFeeCollectionsChannel = typeof GetFeeCollectionsChannel[keyof typeof GetFeeCollectionsChannel];
+
+
+export const GetFeeCollectionsChannel = {
+  cash: 'cash',
+  online: 'online',
+  cheque: 'cheque',
+  other: 'other',
+  test: 'test',
+} as const;
 
 export type GetFeeInvoicesParams = {
 /**

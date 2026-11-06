@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { Link } from "wouter";
-import { useGetFeeCollections } from "@workspace/api-client-react";
+import {
+  useGetClasses,
+  useGetFeeCollections,
+  useGetSections,
+  type GetFeeCollectionsChannel,
+} from "@workspace/api-client-react";
 import "./fee-collection-report.css";
 
 const money = (paise: number) => new Intl.NumberFormat("en-IN", {
@@ -43,13 +48,35 @@ const channelLabel: Record<string, string> = {
 
 export function FeeCollectionReport() {
   const [date, setDate] = useState(schoolDateToday);
+  const [classId, setClassId] = useState("");
+  const [sectionId, setSectionId] = useState("");
+  const [channel, setChannel] = useState<GetFeeCollectionsChannel | "">("");
   const [offset, setOffset] = useState(0);
+  const classes = useGetClasses({ includeArchived: true });
+  const sectionParams = { classId: classId || undefined, includeArchived: true };
+  const sections = useGetSections(sectionParams, {
+    query: { enabled: Boolean(classId) },
+  });
   const report = useGetFeeCollections(
-    { date, limit: pageSize, offset },
+    {
+      date,
+      classId: classId || undefined,
+      sectionId: sectionId || undefined,
+      channel: channel || undefined,
+      limit: pageSize,
+      offset,
+    },
     { query: { refetchOnWindowFocus: false } },
   );
   const data = report.data;
   const summary = data?.summary;
+  const wholeDaySummary = data?.wholeDaySummary;
+  const hasFilters = Boolean(classId || sectionId || channel);
+  const activeFilters = [
+    classId ? classes.data?.items.find((item) => item.id === classId)?.name ?? "Selected class" : null,
+    sectionId ? sections.data?.items.find((item) => item.id === sectionId)?.name ?? "Selected section" : null,
+    channel ? channelLabel[channel] : null,
+  ].filter(Boolean);
   const cards = summary ? [
     { label: "Total received", amount: summary.totalPaise, count: summary.paymentCount, tone: "total" },
     { label: "Cash", amount: summary.cashPaise, count: summary.cashCount, tone: "cash" },
@@ -79,9 +106,65 @@ export function FeeCollectionReport() {
               onChange={(event) => {
                 if (!event.target.value) return;
                 setDate(event.target.value);
+                setClassId("");
+                setSectionId("");
+                setChannel("");
                 setOffset(0);
               }}
             />
+          </label>
+          <label className="fee-filter-field">
+            <span>Class</span>
+            <select
+              className="field"
+              value={classId}
+              onChange={(event) => {
+                setClassId(event.target.value);
+                setSectionId("");
+                setOffset(0);
+              }}
+              disabled={classes.isLoading || classes.isError}
+            >
+              <option value="">All classes</option>
+              {(classes.data?.items ?? []).map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="fee-filter-field">
+            <span>Section</span>
+            <select
+              className="field"
+              value={sectionId}
+              onChange={(event) => {
+                setSectionId(event.target.value);
+                setOffset(0);
+              }}
+              disabled={!classId || sections.isLoading || sections.isError}
+            >
+              <option value="">{classId ? "All sections" : "Choose a class"}</option>
+              {(sections.data?.items ?? []).map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="fee-filter-field">
+            <span>Payment channel</span>
+            <select
+              className="field"
+              value={channel}
+              onChange={(event) => {
+                setChannel(event.target.value as GetFeeCollectionsChannel | "");
+                setOffset(0);
+              }}
+            >
+              <option value="">All channels</option>
+              <option value="cash">Cash</option>
+              <option value="online">Digital / online</option>
+              <option value="cheque">Cheque</option>
+              <option value="other">Other</option>
+              <option value="test">Test payment</option>
+            </select>
           </label>
           <button className="btn btn-muted fee-refresh-button" type="button" onClick={() => void report.refetch()} disabled={report.isFetching}>
             <span aria-hidden="true" className={report.isFetching ? "fee-refresh-mark is-refreshing" : "fee-refresh-mark"}>↻</span>
@@ -89,6 +172,22 @@ export function FeeCollectionReport() {
           </button>
         </div>
       </header>
+
+      {(classes.isError || (classId && sections.isError)) && (
+        <div className="fee-filter-error" role="alert">
+          <span>Class and section filter options could not be loaded.</span>
+          <button
+            className="btn btn-muted"
+            type="button"
+            onClick={() => {
+              if (classes.isError) void classes.refetch();
+              if (classId && sections.isError) void sections.refetch();
+            }}
+          >
+            Retry filters
+          </button>
+        </div>
+      )}
 
       {report.isError ? (
         <div className="fee-report-state fee-report-error" role="alert">
@@ -117,6 +216,12 @@ export function FeeCollectionReport() {
             ))}
           </div>
 
+          <p className="fee-summary-context" role="status">
+            {hasFilters
+              ? <>Filtered totals for {activeFilters.join(" · ")}. Whole day: {money(wholeDaySummary!.totalPaise)} across {wholeDaySummary!.paymentCount} payment{wholeDaySummary!.paymentCount === 1 ? "" : "s"}.</>
+              : <>Whole-day totals for {data.date}.</>}
+          </p>
+
           {summary.testPaise > 0 && (
             <p className="fee-test-note">
               {money(summary.testPaise)} from {summary.testCount} mock/test payment{summary.testCount === 1 ? "" : "s"} is shown separately and is not included in digital / online totals.
@@ -128,7 +233,7 @@ export function FeeCollectionReport() {
               <p className="fee-report-kicker"><span aria-hidden="true" /> Transaction register</p>
               <h3>Payment details</h3>
               <p className="fee-payment-meta">
-                {data.date} <span aria-hidden="true">·</span> {data.total} payment{data.total === 1 ? "" : "s"}
+                {data.date} <span aria-hidden="true">·</span> {data.total} {hasFilters ? "matching " : ""}payment{data.total === 1 ? "" : "s"}
               </p>
             </div>
             {data.total > pageSize && (
@@ -140,7 +245,7 @@ export function FeeCollectionReport() {
             <div className="fee-report-empty" role="status">
               <span className="fee-empty-mark" aria-hidden="true">—</span>
               <strong>No payments recorded</strong>
-              <span>There are no collection entries for this date.</span>
+              <span>{hasFilters ? "No payments match the selected filters." : "There are no collection entries for this date."}</span>
             </div>
           ) : (
             <>

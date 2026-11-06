@@ -7,4 +7,4 @@ Daily collections are grouped by the date the school received the payment, not t
 
 **Why:** the user wants daily cash-versus-online visibility, and demo/mock payments must not be mistaken for actual collections.
 
-**How to apply:** show a dated transaction ledger with receipt and collector details, keep test payments identifiable, and only expose school-wide collection reporting to school administrators.
+**How to apply:** show a dated transaction ledger with receipt and collector details, keep test payments identifiable, and only expose school-wide collection reporting to school administrators. When class, section, or channel filters are active, apply them to both the ledger and its summary, and label whole-day totals separately.

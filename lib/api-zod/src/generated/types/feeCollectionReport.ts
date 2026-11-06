@@ -11,6 +11,7 @@ import type { FeeCollectionSummary } from './feeCollectionSummary';
 export interface FeeCollectionReport {
   date: Date;
   summary: FeeCollectionSummary;
+  wholeDaySummary: FeeCollectionSummary;
   payments: FeeCollectionPayment[];
   /** @minimum 0 */
   total: number;

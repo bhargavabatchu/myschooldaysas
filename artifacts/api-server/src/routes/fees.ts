@@ -146,6 +146,9 @@ const routes: FastifyPluginAsync = async (fastify) => {
 
     const query = z.object({
       date: z.string().optional(),
+      classId: z.string().uuid().optional(),
+      sectionId: z.string().uuid().optional(),
+      channel: z.enum(["cash", "online", "cheque", "other", "test"]).optional(),
       limit: z.coerce.number().int().min(1).max(100).default(25),
       offset: z.coerce.number().int().min(0).max(100000).default(0),
     }).safeParse(req.query);
@@ -163,20 +166,65 @@ const routes: FastifyPluginAsync = async (fastify) => {
           [query.data.date ?? null],
         );
         const reportDate = reportDateResult.rows[0]!.report_date;
+        const filterValues: unknown[] = [user.orgId, reportDate];
+        const filterClauses = [
+          "payment.org_id = $1",
+          "payment.status = 'captured'",
+          "payment.received_on = $2::date",
+        ];
+        if (query.data.classId) {
+          filterValues.push(query.data.classId);
+          filterClauses.push(`section.class_id = $${filterValues.length}::uuid`);
+        }
+        if (query.data.sectionId) {
+          filterValues.push(query.data.sectionId);
+          filterClauses.push(`invoice.section_id = $${filterValues.length}::uuid`);
+        }
+        if (query.data.channel) {
+          filterValues.push(query.data.channel);
+          filterClauses.push(`CASE
+            WHEN payment.gateway = 'mock' THEN 'test'
+            WHEN payment.gateway = 'razorpay' OR payment.payment_method IN ('upi', 'bank_transfer') THEN 'online'
+            WHEN payment.payment_method = 'cash' THEN 'cash'
+            WHEN payment.payment_method = 'cheque' THEN 'cheque'
+            ELSE 'other'
+          END = $${filterValues.length}`);
+        }
+        const baseCollectionSql = `FROM fees.payments payment
+          JOIN fees.invoices invoice
+            ON invoice.org_id = payment.org_id AND invoice.id = payment.invoice_id
+          JOIN academic.sections section
+            ON section.org_id = invoice.org_id AND section.id = invoice.section_id`;
+        const totalsSql = `SELECT payment.gateway, payment.payment_method,
+                  COUNT(*)::int AS payment_count,
+                  COALESCE(SUM(payment.amount_paise), 0)::text AS amount_paise
+             ${baseCollectionSql}
+            WHERE ${filterClauses.join(" AND ")}
+            GROUP BY payment.gateway, payment.payment_method`;
         const totals = await client.query<{
           gateway: string;
           payment_method: string | null;
           payment_count: number;
           amount_paise: string;
-        }>(
-          `SELECT gateway, payment_method, COUNT(*)::int AS payment_count,
-                  COALESCE(SUM(amount_paise), 0)::text AS amount_paise
-             FROM fees.payments
-            WHERE org_id = $1 AND status = 'captured' AND received_on = $2::date
-            GROUP BY gateway, payment_method`,
-          [user.orgId, reportDate],
-        );
+        }>(totalsSql, filterValues);
         const summary = summarizeFeeCollections(totals.rows);
+        let wholeDaySummary = summary;
+        if (query.data.classId || query.data.sectionId || query.data.channel) {
+          const wholeDayTotals = await client.query<{
+            gateway: string;
+            payment_method: string | null;
+            payment_count: number;
+            amount_paise: string;
+          }>(
+            `SELECT gateway, payment_method, COUNT(*)::int AS payment_count,
+                    COALESCE(SUM(amount_paise), 0)::text AS amount_paise
+               FROM fees.payments
+              WHERE org_id = $1 AND status = 'captured' AND received_on = $2::date
+              GROUP BY gateway, payment_method`,
+            [user.orgId, reportDate],
+          );
+          wholeDaySummary = summarizeFeeCollections(wholeDayTotals.rows);
+        }
         const payments = await client.query<{
           id: string;
           receipt_number: string;
@@ -199,26 +247,22 @@ const routes: FastifyPluginAsync = async (fastify) => {
                   payment.payment_reference, payment.gateway,
                   to_char(payment.received_on, 'YYYY-MM-DD') AS received_on,
                   CASE WHEN payment.gateway = 'manual' THEN collector.name ELSE NULL END AS collector_name
-             FROM fees.payments payment
-             JOIN fees.invoices invoice
-               ON invoice.org_id = payment.org_id AND invoice.id = payment.invoice_id
+             ${baseCollectionSql}
              JOIN identity.users student
                ON student.org_id = invoice.org_id AND student.id = invoice.student_user_id
-             JOIN academic.sections section
-               ON section.org_id = invoice.org_id AND section.id = invoice.section_id
              JOIN academic.classes school_class
                ON school_class.org_id = section.org_id AND school_class.id = section.class_id
              LEFT JOIN identity.users collector
                ON collector.org_id = payment.org_id AND collector.id = payment.received_by
-            WHERE payment.org_id = $1 AND payment.status = 'captured'
-              AND payment.received_on = $2::date
+             WHERE ${filterClauses.join(" AND ")}
             ORDER BY payment.captured_at DESC, payment.id DESC
-            LIMIT $3 OFFSET $4`,
-          [user.orgId, reportDate, query.data.limit, query.data.offset],
+             LIMIT $${filterValues.length + 1} OFFSET $${filterValues.length + 2}`,
+          [...filterValues, query.data.limit, query.data.offset],
         );
         return {
           date: reportDate,
           summary,
+          wholeDaySummary,
           payments: payments.rows.map((payment) => ({
             id: payment.id,
             receiptNumber: payment.receipt_number,

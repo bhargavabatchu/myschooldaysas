@@ -2332,6 +2332,20 @@ paths:
           required: false
           schema: { type: string, format: date }
         - in: query
+          name: classId
+          required: false
+          schema: { type: string, format: uuid }
+        - in: query
+          name: sectionId
+          required: false
+          schema: { type: string, format: uuid }
+        - in: query
+          name: channel
+          required: false
+          schema:
+            type: string
+            enum: [cash, online, cheque, other, test]
+        - in: query
           name: limit
           required: false
           schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
@@ -4058,10 +4072,11 @@ components:
         collectorName: { type: string, nullable: true }
     FeeCollectionReport:
       type: object
-      required: [date, summary, payments, total, limit, offset]
+      required: [date, summary, wholeDaySummary, payments, total, limit, offset]
       properties:
         date: { type: string, format: date }
         summary: { $ref: "#/components/schemas/FeeCollectionSummary" }
+        wholeDaySummary: { $ref: "#/components/schemas/FeeCollectionSummary" }
         payments:
           type: array
           items: { $ref: "#/components/schemas/FeeCollectionPayment" }
