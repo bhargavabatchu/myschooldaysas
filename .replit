@@ -28,3 +28,6 @@ NEXT_PUBLIC_ENABLE_LIVE_CLASSES = "false"
 NEXT_PUBLIC_ENABLE_ONLINE_PAYMENTS = "false"
 
 [userenv.shared]
+
+[objectStorage]
+defaultBucketID = "replit-objstore-6c6952fe-02e0-401c-9667-4452e1ec97bf"

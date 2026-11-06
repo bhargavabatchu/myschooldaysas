@@ -7,6 +7,13 @@ export type HighlightPhoto = {
   contentType: "image/jpeg" | "image/png" | "image/webp";
 };
 
+export function normalizeStoredHighlightPhoto(value: unknown): Buffer | null {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  if (Buffer.isBuffer(candidate)) return candidate;
+  if (candidate instanceof Uint8Array) return Buffer.from(candidate);
+  return null;
+}
+
 export function parseHighlightPhotoDataUrl(value: string): HighlightPhoto | null {
   const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
   if (!match || !allowedMimeTypes.has(match[1])) return null;

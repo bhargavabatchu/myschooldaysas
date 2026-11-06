@@ -9,7 +9,7 @@ import {
 import { withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
 import { requireAuth, type CampusRole } from "../lib/auth";
-import { parseHighlightPhotoDataUrl } from "../lib/highlight-photo.ts";
+import { normalizeStoredHighlightPhoto, parseHighlightPhotoDataUrl } from "../lib/highlight-photo.ts";
 
 const adminRoles: CampusRole[] = ["super_admin", "org_admin", "campus_admin"];
 const errorBody = (code: string, message: string) => ({ error: { code, message } });
@@ -275,11 +275,13 @@ const routes: FastifyPluginAsync = async (fastify) => {
       if (!media?.object_name || !media.content_type) return void res.status(404).json(errorBody("NOT_FOUND", "Photo not found or not available to this account."));
       const downloaded = await new ObjectStorageClient().downloadAsBytes(media.object_name);
       if (!downloaded.ok) return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "This photo is temporarily unavailable."));
+      const photoBytes = normalizeStoredHighlightPhoto(downloaded.value);
+      if (!photoBytes) return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "This photo is temporarily unavailable."));
       res
         .type(media.content_type)
         .header("Cache-Control", "private, no-store")
         .header("Vary", "Authorization")
-        .send(downloaded.value);
+        .send(photoBytes);
     } catch (error) {
       if (isStorageConfiguredError(error)) {
         return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "Photo storage is not ready. Check the school's App Storage setup."));
