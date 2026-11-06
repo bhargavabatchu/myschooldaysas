@@ -27,6 +27,7 @@ import {
   useGetTimetable,
 } from '@workspace/api-client-react';
 import { PLATFORM_NAME, SCHOOL_NAME } from '@/lib/branding';
+import { LatestSchoolHighlights } from '@/components/highlights/highlights-page';
 
 type StudentMobileDashboardProps = {
   userName: string;
@@ -367,12 +368,13 @@ export function StudentDashboard({ userName }: StudentMobileDashboardProps) {
       </section>
 
       <section className="md:hidden" aria-label="Quick access">
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-5 gap-2">
           {[
             { label: 'Timetable', href: '/timetable', icon: CalendarDays, tone: 'bg-[hsl(var(--brand-mint))] text-[hsl(var(--brand-mint-ink))]' },
             { label: 'Learning', href: '/learning', icon: BookOpen, tone: 'bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]' },
             { label: 'Results', href: '/learning/reports', icon: FileText, tone: 'bg-[hsl(var(--accent)/.16)] text-[hsl(var(--foreground))]' },
             { label: 'Updates', href: '/announcements', icon: Radio, tone: 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]' },
+            { label: 'Highlights', href: '/highlights', icon: Activity, tone: 'bg-[hsl(var(--brand-mint))] text-[hsl(var(--brand-mint-ink))]' },
           ].map(({ label, href, icon: Icon, tone }) => (
             <Link
               key={href}
@@ -506,6 +508,7 @@ export function StudentDashboard({ userName }: StudentMobileDashboardProps) {
         </div>
 
         <div className="space-y-5">
+          <LatestSchoolHighlights />
           <section className="surface p-4 md:p-5" aria-labelledby="student-calendar-title">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">

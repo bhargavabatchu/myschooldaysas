@@ -331,6 +331,55 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Announcement" }
         "403": { description: User cannot publish to the selected audience }
+  /highlights:
+    get:
+      operationId: getSchoolHighlights
+      tags: [school]
+      summary: List school highlights visible to the signed-in user
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 30, default: 12 } }
+      responses:
+        "200":
+          description: Visible school highlights
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolHighlightPage" }
+    post:
+      operationId: createSchoolHighlight
+      tags: [school]
+      summary: Publish a school highlight
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SchoolHighlightInput" }
+      responses:
+        "201":
+          description: Published school highlight
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SchoolHighlight" }
+        "403": { description: Only school administrators can publish highlights }
+        "503": { description: Photo storage is unavailable }
+  /highlights/{highlightId}/photo:
+    get:
+      operationId: getSchoolHighlightPhoto
+      tags: [school]
+      summary: Retrieve a photo for a visible school highlight
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: highlightId, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Private photo for an authorized audience
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+            image/webp: { schema: { type: string, format: binary } }
+        "404": { description: Photo not found or not visible }
+        "503": { description: Photo storage is unavailable }
   /announcements/{announcementId}/read:
     post:
       operationId: markAnnouncementRead
@@ -4239,4 +4288,53 @@ components:
       required: [total]
       properties:
         total: { type: integer }
+    SchoolHighlightAudience:
+      type: string
+      enum: [school, class, section]
+    SchoolHighlightCategory:
+      type: string
+      enum: [achievement, event, school_news]
+    SchoolHighlight:
+      type: object
+      required: [id, title, body, category, audience, audienceId, audienceName, publishedAt, expiresAt, createdBy, authorName, photoUrl, photoAlt]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        body: { type: string }
+        category: { $ref: "#/components/schemas/SchoolHighlightCategory" }
+        audience: { $ref: "#/components/schemas/SchoolHighlightAudience" }
+        audienceId: { type: string, format: uuid, nullable: true }
+        audienceName: { type: string, nullable: true }
+        publishedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        createdBy: { type: string, format: uuid }
+        authorName: { type: string }
+        photoUrl: { type: string, nullable: true }
+        photoAlt: { type: string, nullable: true }
+    SchoolHighlightPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/SchoolHighlight" }
+        total: { type: integer }
+    SchoolHighlightInput:
+      type: object
+      required: [title, body, category, audience]
+      properties:
+        title: { type: string, minLength: 3, maxLength: 160 }
+        body: { type: string, minLength: 1, maxLength: 3000 }
+        category: { $ref: "#/components/schemas/SchoolHighlightCategory" }
+        audience: { $ref: "#/components/schemas/SchoolHighlightAudience" }
+        audienceId: { type: string, format: uuid }
+        expiresAt: { type: string, format: date-time }
+        photoDataUrl: { type: string, maxLength: 800000 }
+        photoAlt: { type: string, minLength: 3, maxLength: 180 }
+        photoConsentConfirmed: { type: boolean }
+    SchoolHighlightParams:
+      type: object
+      required: [highlightId]
+      properties:
+        highlightId: { type: string, format: uuid }
 

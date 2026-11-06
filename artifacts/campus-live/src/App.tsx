@@ -54,6 +54,7 @@ import { PLATFORM_NAME, SCHOOL_NAME } from '@/lib/branding';
 import { liveClassesEnabled } from '@/lib/features';
 import { PwaInstallButton } from '@/components/pwa/pwa-install-button';
 import { StudentDashboard, StudentMobileNavigation } from '@/components/dashboard/student-mobile-dashboard';
+import { HighlightsPage } from '@/components/highlights/highlights-page';
 
 const queryClient = new QueryClient();
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
@@ -209,6 +210,7 @@ function ProtectedApp() {
         <Route path="/learning/syllabus" component={() => <LearningPage roles={user.roles} initialTab="syllabus" />} />
         <Route path="/learning" component={() => <LearningPage roles={user.roles} />} />
         <Route path="/announcements" component={() => <AnnouncementsPage roles={user.roles} userId={user.id} />} />
+        <Route path="/highlights" component={() => <HighlightsPage roles={user.roles} />} />
         <Route path="/attendance" component={() => <AttendancePage roles={user.roles} />} />
         <Route path="/calendar" component={() => <AcademicCalendarPage roles={user.roles} />} />
         <Route path="/timetable" component={() => <TimetablePage canManage={user.roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role))} />} />
@@ -253,6 +255,7 @@ function AppShell({
     { label: 'Smartboards', href: '/boards/templates', icon: Library },
     { label: 'Learning', href: '/learning', icon: GraduationCap },
     { label: 'Announcements', href: '/announcements', icon: Radio },
+    { label: 'Highlights', href: '/highlights', icon: Activity },
     { label: 'Attendance', href: '/attendance', icon: CalendarCheck },
     { label: 'Timetable', href: '/timetable', icon: CalendarCheck },
     { label: 'Academic calendar', href: '/calendar', icon: CalendarDays },

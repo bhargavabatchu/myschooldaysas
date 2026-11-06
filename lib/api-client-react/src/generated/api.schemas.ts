@@ -2304,6 +2304,79 @@ export interface AnnouncementStats {
   total: number;
 }
 
+export type SchoolHighlightAudience = typeof SchoolHighlightAudience[keyof typeof SchoolHighlightAudience];
+
+
+export const SchoolHighlightAudience = {
+  school: 'school',
+  class: 'class',
+  section: 'section',
+} as const;
+
+export type SchoolHighlightCategory = typeof SchoolHighlightCategory[keyof typeof SchoolHighlightCategory];
+
+
+export const SchoolHighlightCategory = {
+  achievement: 'achievement',
+  event: 'event',
+  school_news: 'school_news',
+} as const;
+
+export interface SchoolHighlight {
+  id: string;
+  title: string;
+  body: string;
+  category: SchoolHighlightCategory;
+  audience: SchoolHighlightAudience;
+  /** @nullable */
+  audienceId: string | null;
+  /** @nullable */
+  audienceName: string | null;
+  publishedAt: string;
+  /** @nullable */
+  expiresAt: string | null;
+  createdBy: string;
+  authorName: string;
+  /** @nullable */
+  photoUrl: string | null;
+  /** @nullable */
+  photoAlt: string | null;
+}
+
+export interface SchoolHighlightPage {
+  items: SchoolHighlight[];
+  total: number;
+}
+
+export interface SchoolHighlightInput {
+  /**
+     * @minLength 3
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 3000
+     */
+  body: string;
+  category: SchoolHighlightCategory;
+  audience: SchoolHighlightAudience;
+  audienceId?: string;
+  expiresAt?: string;
+  /** @maxLength 800000 */
+  photoDataUrl?: string;
+  /**
+     * @minLength 3
+     * @maxLength 180
+     */
+  photoAlt?: string;
+  photoConsentConfirmed?: boolean;
+}
+
+export interface SchoolHighlightParams {
+  highlightId: string;
+}
+
 export type GetAcademicTeacherAssignmentsParams = {
 sectionId?: string;
 };
@@ -2324,6 +2397,14 @@ date: string;
 
 export type GetAnnouncementsParams = {
 unread?: boolean;
+};
+
+export type GetSchoolHighlightsParams = {
+/**
+ * @minimum 1
+ * @maximum 30
+ */
+limit?: number;
 };
 
 export type GetSchoolAdminAccountsParams = {

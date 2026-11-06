@@ -4,6 +4,7 @@
 - [Campus Live MVP priority](campus-live-mvp-priority.md) — ship core acceptance journeys before polishing or extending features.
 - [Campus Live visual direction](campus-live-visual-direction.md) — carry the approved forest-green, warm-paper, muted-gold school identity from sign-in through the dashboard.
 - [Campus Live PWA privacy](campus-live-pwa-privacy.md) — keep installs online-only; never cache private school records for offline access.
+- [Campus Live school highlight photos](campus-live-school-highlight-photos.md) — keep school photos private in App Storage and serve them only after server-side audience checks.
 - [Campus Live remembered sessions](campus-live-remembered-sessions.md) — keep access tokens in memory; persist only rotating, CSRF-protected refresh sessions in HttpOnly cookies.
 - [Campus Live school admin delegation](campus-live-school-admin-delegation.md) — org admins may create same-school org admins, but this flow must never grant platform super-admin access.
 - [Campus Live class setup](campus-live-class-setup.md) — create a first section; delete unused classes/sections and archive used ones to preserve history.

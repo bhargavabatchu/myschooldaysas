@@ -467,6 +467,92 @@ export const CreateAnnouncementResponse = zod.object({
 
 
 /**
+ * @summary List school highlights visible to the signed-in user
+ */
+export const getSchoolHighlightsQueryLimitDefault = 12;
+export const getSchoolHighlightsQueryLimitMax = 30;
+
+
+
+export const GetSchoolHighlightsQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(getSchoolHighlightsQueryLimitMax).default(getSchoolHighlightsQueryLimitDefault)
+})
+
+export const GetSchoolHighlightsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "category": zod.enum(['achievement', 'event', 'school_news']),
+  "audience": zod.enum(['school', 'class', 'section']),
+  "audienceId": zod.uuid().nullable(),
+  "audienceName": zod.string().nullable(),
+  "publishedAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "createdBy": zod.uuid(),
+  "authorName": zod.string(),
+  "photoUrl": zod.string().nullable(),
+  "photoAlt": zod.string().nullable()
+})),
+  "total": zod.int()
+})
+
+
+/**
+ * @summary Publish a school highlight
+ */
+export const createSchoolHighlightBodyTitleMin = 3;
+export const createSchoolHighlightBodyTitleMax = 160;
+
+export const createSchoolHighlightBodyBodyMax = 3000;
+
+export const createSchoolHighlightBodyPhotoDataUrlMax = 800000;
+
+export const createSchoolHighlightBodyPhotoAltMin = 3;
+export const createSchoolHighlightBodyPhotoAltMax = 180;
+
+
+
+export const CreateSchoolHighlightBody = zod.object({
+  "title": zod.string().min(createSchoolHighlightBodyTitleMin).max(createSchoolHighlightBodyTitleMax),
+  "body": zod.string().min(1).max(createSchoolHighlightBodyBodyMax),
+  "category": zod.enum(['achievement', 'event', 'school_news']),
+  "audience": zod.enum(['school', 'class', 'section']),
+  "audienceId": zod.uuid().optional(),
+  "expiresAt": zod.coerce.date().optional(),
+  "photoDataUrl": zod.string().max(createSchoolHighlightBodyPhotoDataUrlMax).optional(),
+  "photoAlt": zod.string().min(createSchoolHighlightBodyPhotoAltMin).max(createSchoolHighlightBodyPhotoAltMax).optional(),
+  "photoConsentConfirmed": zod.boolean().optional()
+})
+
+export const CreateSchoolHighlightResponse = zod.object({
+  "id": zod.uuid(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "category": zod.enum(['achievement', 'event', 'school_news']),
+  "audience": zod.enum(['school', 'class', 'section']),
+  "audienceId": zod.uuid().nullable(),
+  "audienceName": zod.string().nullable(),
+  "publishedAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "createdBy": zod.uuid(),
+  "authorName": zod.string(),
+  "photoUrl": zod.string().nullable(),
+  "photoAlt": zod.string().nullable()
+})
+
+
+/**
+ * @summary Retrieve a photo for a visible school highlight
+ */
+export const GetSchoolHighlightPhotoParams = zod.object({
+  "highlightId": zod.uuid()
+})
+
+export const GetSchoolHighlightPhotoResponse = zod.unknown()
+
+
+/**
  * @summary Mark a visible announcement as read
  */
 export const MarkAnnouncementReadParams = zod.object({

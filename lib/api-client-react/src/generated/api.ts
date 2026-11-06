@@ -103,6 +103,7 @@ import type {
   GetLearningSyllabusParams,
   GetSchoolAdminAccountsParams,
   GetSchoolAttendanceParams,
+  GetSchoolHighlightsParams,
   GetSections200,
   GetSectionsParams,
   GetSessions200,
@@ -166,6 +167,9 @@ import type {
   SchoolAdminAccountPage,
   SchoolAttendanceInput,
   SchoolAttendancePage,
+  SchoolHighlight,
+  SchoolHighlightInput,
+  SchoolHighlightPage,
   SectionCapacityUpdateInput,
   SectionCreateInput,
   SectionSubjectPage,
@@ -2086,6 +2090,303 @@ export const useCreateAnnouncement = <TError = ErrorType<void>,
       > => {
       return useMutation(getCreateAnnouncementMutationOptions(options), queryClient);
     }
+
+export const getGetSchoolHighlightsUrl = (params?: GetSchoolHighlightsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/highlights?${stringifiedParams}` : `/api/highlights`
+}
+
+/**
+ * @summary List school highlights visible to the signed-in user
+ */
+export const getSchoolHighlights = async (params?: GetSchoolHighlightsParams, options?: Parameters<typeof customFetch>[1]): Promise<SchoolHighlightPage> => {
+
+  return customFetch<SchoolHighlightPage>(getGetSchoolHighlightsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolHighlightsQueryKey = (params?: GetSchoolHighlightsParams,) => {
+    return [
+    `/api/highlights`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchoolHighlightsQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolHighlights>>, TError = ErrorType<unknown>>(params?: GetSchoolHighlightsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolHighlights>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolHighlightsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolHighlights>>> = ({ signal }) => getSchoolHighlights(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolHighlights>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSchoolHighlightsQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolHighlights>>>
+export type GetSchoolHighlightsQueryError = ErrorType<unknown>
+
+
+export function useGetSchoolHighlights<TData = Awaited<ReturnType<typeof getSchoolHighlights>>, TError = ErrorType<unknown>>(
+ params: undefined |  GetSchoolHighlightsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolHighlights>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSchoolHighlights>>,
+          TError,
+          Awaited<ReturnType<typeof getSchoolHighlights>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSchoolHighlights<TData = Awaited<ReturnType<typeof getSchoolHighlights>>, TError = ErrorType<unknown>>(
+ params?: GetSchoolHighlightsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolHighlights>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSchoolHighlights>>,
+          TError,
+          Awaited<ReturnType<typeof getSchoolHighlights>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSchoolHighlights<TData = Awaited<ReturnType<typeof getSchoolHighlights>>, TError = ErrorType<unknown>>(
+ params?: GetSchoolHighlightsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolHighlights>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List school highlights visible to the signed-in user
+ */
+
+export function useGetSchoolHighlights<TData = Awaited<ReturnType<typeof getSchoolHighlights>>, TError = ErrorType<unknown>>(
+ params?: GetSchoolHighlightsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolHighlights>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSchoolHighlightsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateSchoolHighlightUrl = () => {
+
+
+
+
+  return `/api/highlights`
+}
+
+/**
+ * @summary Publish a school highlight
+ */
+export const createSchoolHighlight = async (schoolHighlightInput: SchoolHighlightInput, options?: Parameters<typeof customFetch>[1]): Promise<SchoolHighlight> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SchoolHighlight>(getCreateSchoolHighlightUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schoolHighlightInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSchoolHighlightMutationKey = () => ['createSchoolHighlight'] as const;
+
+export const getCreateSchoolHighlightMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolHighlight>>, TError,CreateSchoolHighlightMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSchoolHighlight>>, TError,CreateSchoolHighlightMutationVariables, TContext> => {
+
+const mutationKey = getCreateSchoolHighlightMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSchoolHighlight>>, CreateSchoolHighlightMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSchoolHighlight(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSchoolHighlightMutationResult = NonNullable<Awaited<ReturnType<typeof createSchoolHighlight>>>
+    export type CreateSchoolHighlightMutationBody = BodyType<SchoolHighlightInput>
+    export type CreateSchoolHighlightMutationError = ErrorType<void>
+    export type CreateSchoolHighlightMutationVariables = {data: BodyType<SchoolHighlightInput>}
+
+    /**
+ * @summary Publish a school highlight
+ */
+export const useCreateSchoolHighlight = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSchoolHighlight>>, TError,CreateSchoolHighlightMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createSchoolHighlight>>,
+        TError,
+        CreateSchoolHighlightMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSchoolHighlightMutationOptions(options), queryClient);
+    }
+
+export const getGetSchoolHighlightPhotoUrl = (highlightId: string,) => {
+
+
+
+
+  return `/api/highlights/${highlightId}/photo`
+}
+
+/**
+ * @summary Retrieve a photo for a visible school highlight
+ */
+export const getSchoolHighlightPhoto = async (highlightId: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetSchoolHighlightPhotoUrl(highlightId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchoolHighlightPhotoQueryKey = (highlightId: string,) => {
+    return [
+    `/api/highlights/${highlightId}/photo`
+    ] as const;
+    }
+
+
+export const getGetSchoolHighlightPhotoQueryOptions = <TData = Awaited<ReturnType<typeof getSchoolHighlightPhoto>>, TError = ErrorType<void>>(highlightId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolHighlightPhoto>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchoolHighlightPhotoQueryKey(highlightId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchoolHighlightPhoto>>> = ({ signal }) => getSchoolHighlightPhoto(highlightId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: highlightId !== null && highlightId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchoolHighlightPhoto>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSchoolHighlightPhotoQueryResult = NonNullable<Awaited<ReturnType<typeof getSchoolHighlightPhoto>>>
+export type GetSchoolHighlightPhotoQueryError = ErrorType<void>
+
+
+export function useGetSchoolHighlightPhoto<TData = Awaited<ReturnType<typeof getSchoolHighlightPhoto>>, TError = ErrorType<void>>(
+ highlightId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolHighlightPhoto>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSchoolHighlightPhoto>>,
+          TError,
+          Awaited<ReturnType<typeof getSchoolHighlightPhoto>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSchoolHighlightPhoto<TData = Awaited<ReturnType<typeof getSchoolHighlightPhoto>>, TError = ErrorType<void>>(
+ highlightId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolHighlightPhoto>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSchoolHighlightPhoto>>,
+          TError,
+          Awaited<ReturnType<typeof getSchoolHighlightPhoto>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSchoolHighlightPhoto<TData = Awaited<ReturnType<typeof getSchoolHighlightPhoto>>, TError = ErrorType<void>>(
+ highlightId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolHighlightPhoto>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Retrieve a photo for a visible school highlight
+ */
+
+export function useGetSchoolHighlightPhoto<TData = Awaited<ReturnType<typeof getSchoolHighlightPhoto>>, TError = ErrorType<void>>(
+ highlightId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchoolHighlightPhoto>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSchoolHighlightPhotoQueryOptions(highlightId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getMarkAnnouncementReadUrl = (announcementId: string,) => {
 

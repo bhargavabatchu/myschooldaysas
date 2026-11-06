@@ -17,6 +17,7 @@ import reportCardsRouter from "./report-cards";
 import feesRouter from "./fees";
 import admissionsRouter from "./admissions";
 import announcementsRouter from "./announcements";
+import highlightsRouter from "./highlights";
 import { installFeatureAvailability } from "../lib/feature-availability";
 
 const routes: FastifyPluginAsync = async (fastify) => {
@@ -39,6 +40,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(feesRouter);
   await fastify.register(admissionsRouter);
   await fastify.register(announcementsRouter);
+  await fastify.register(highlightsRouter);
 };
 
 export default routes;
