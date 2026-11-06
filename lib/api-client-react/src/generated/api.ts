@@ -76,6 +76,7 @@ import type {
   EnrollmentPromotionInput,
   EnrollmentTransferInput,
   EnrollmentYearUpdateInput,
+  FeeCollectionReport,
   FeeInvoice,
   FeeInvoiceConcessionHistory,
   FeeInvoiceConcessionInput,
@@ -95,6 +96,7 @@ import type {
   GetClassesParams,
   GetConsents200,
   GetDashboardOverviewParams,
+  GetFeeCollectionsParams,
   GetFeeInvoicesParams,
   GetGuardianLinksParams,
   GetLearningAssignmentsParams,
@@ -11013,6 +11015,114 @@ export function usePrintLearningReportCard<TData = Awaited<ReturnType<typeof pri
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getPrintLearningReportCardQueryOptions(reportCardId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFeeCollectionsUrl = (params?: GetFeeCollectionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/fees/collections?${stringifiedParams}` : `/api/fees/collections`
+}
+
+/**
+ * @summary View daily fee collection totals and receipts
+ */
+export const getFeeCollections = async (params?: GetFeeCollectionsParams, options?: Parameters<typeof customFetch>[1]): Promise<FeeCollectionReport> => {
+
+  return customFetch<FeeCollectionReport>(getGetFeeCollectionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFeeCollectionsQueryKey = (params?: GetFeeCollectionsParams,) => {
+    return [
+    `/api/fees/collections`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetFeeCollectionsQueryOptions = <TData = Awaited<ReturnType<typeof getFeeCollections>>, TError = ErrorType<void>>(params?: GetFeeCollectionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeCollections>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFeeCollectionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFeeCollections>>> = ({ signal }) => getFeeCollections(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFeeCollections>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFeeCollectionsQueryResult = NonNullable<Awaited<ReturnType<typeof getFeeCollections>>>
+export type GetFeeCollectionsQueryError = ErrorType<void>
+
+
+export function useGetFeeCollections<TData = Awaited<ReturnType<typeof getFeeCollections>>, TError = ErrorType<void>>(
+ params: undefined |  GetFeeCollectionsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeCollections>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeeCollections>>,
+          TError,
+          Awaited<ReturnType<typeof getFeeCollections>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFeeCollections<TData = Awaited<ReturnType<typeof getFeeCollections>>, TError = ErrorType<void>>(
+ params?: GetFeeCollectionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeCollections>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeeCollections>>,
+          TError,
+          Awaited<ReturnType<typeof getFeeCollections>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFeeCollections<TData = Awaited<ReturnType<typeof getFeeCollections>>, TError = ErrorType<void>>(
+ params?: GetFeeCollectionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeCollections>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary View daily fee collection totals and receipts
+ */
+
+export function useGetFeeCollections<TData = Awaited<ReturnType<typeof getFeeCollections>>, TError = ErrorType<void>>(
+ params?: GetFeeCollectionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeCollections>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFeeCollectionsQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

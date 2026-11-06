@@ -921,6 +921,13 @@
 .dashboard-collection-progress-copy strong { color: hsl(var(--primary)); font-family: var(--app-font-display); font-size: 12px; font-weight: 800; letter-spacing: -.03em; }
 .dashboard-collection-progress-track { height: 4px; overflow: hidden; border-radius: 999px; background: hsl(var(--muted)); }
 .dashboard-collection-progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, hsl(var(--primary)), #c8a765); transition: width .35s ease; }
+.dashboard-fee-day { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr) auto; align-items: center; gap: 12px; margin: 0 0 9px; padding: 10px 12px; border: 1px solid hsl(var(--border) / .7); border-radius: 8px; background: linear-gradient(105deg, hsl(var(--secondary) / .68), hsl(var(--card))); }
+.dashboard-fee-day-total, .dashboard-fee-day-breakdown { display: grid; min-width: 0; gap: 3px; }
+.dashboard-fee-day-total > span, .dashboard-fee-day-breakdown > span { color: var(--dashboard-muted); font-size: 10px; }
+.dashboard-fee-day-total > strong { overflow: hidden; color: hsl(var(--primary)); font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-fee-day-breakdown > span { display: flex; justify-content: space-between; gap: 5px; }
+.dashboard-fee-day-breakdown strong { overflow: hidden; color: hsl(var(--foreground)); font-weight: 700; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-fee-test-note { margin: -4px 0 8px; color: #80531f; font-size: 9px; }
 .dashboard-overdue-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; margin: 0; color: var(--dashboard-muted); font-size: 10px; }
 .dashboard-overdue-summary strong { color: #80531f; font-size: 10px; }
 .dashboard-trend { margin-top: 7px; }
@@ -932,7 +939,7 @@
 .dashboard-chart-dot { fill: hsl(var(--card)); stroke: hsl(var(--primary)); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
 .dashboard-trend-months { display: flex; justify-content: space-between; margin-top: -3px; color: var(--dashboard-muted); font-size: 9px; }
 .dashboard-trend-empty { margin: 10px 0 8px; color: var(--dashboard-muted); font-size: 10px; }
-.dashboard-insight-fees > .dashboard-insight-link { margin-top: 8px; }
+.dashboard-insight-fees > .dashboard-insight-link { min-height: 32px; margin-top: 8px; }
 
 .dashboard-panels { grid-template-columns: minmax(0, 1.35fr) minmax(285px, .85fr); gap: 12px; }
 .dashboard-panel { padding: 18px; border-radius: 10px; box-shadow: 0 4px 15px rgba(50, 57, 44, .025); }
@@ -1130,6 +1137,8 @@
   .dashboard-fee-totals { gap: 8px; }
   .dashboard-fee-totals span { font-size: 10px; }
   .dashboard-fee-totals strong { font-size: clamp(12px, 3.7vw, 14px); overflow-wrap: anywhere; }
+  .dashboard-fee-day { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+  .dashboard-fee-day > .dashboard-insight-link { grid-column: 1 / -1; justify-self: start; }
   .dashboard-calendar-preview-heading { align-items: flex-start; }
   .dashboard-calendar-event { grid-template-columns: minmax(62px, auto) minmax(0, 1fr); gap: 8px; padding: 9px; }
   .dashboard-metric-top { align-items: flex-start; }

@@ -4,6 +4,8 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getGetFeeInvoicesQueryKey,
+  getGetFeeCollectionsQueryKey,
+  getGetDashboardOverviewQueryKey,
   getGetMyFeeInvoicesQueryKey,
   recordManualFeePayment,
   type FeeInvoice,
@@ -46,6 +48,8 @@ export function FeePaymentRecorder({ invoice, onClose, onSaved }: FeePaymentReco
     onSuccess: async (payment) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getGetFeeInvoicesQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetFeeCollectionsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardOverviewQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getGetMyFeeInvoicesQueryKey() }),
       ]);
       onSaved(payment);

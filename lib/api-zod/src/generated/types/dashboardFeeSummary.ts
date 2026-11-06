@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { DashboardCollectionPoint } from './dashboardCollectionPoint';
+import type { FeeCollectionSummary } from './feeCollectionSummary';
 
 export interface DashboardFeeSummary {
   academicYear: string;
@@ -27,5 +28,6 @@ export interface DashboardFeeSummary {
   outstandingPaise: number;
   /** @minimum 0 */
   overdueInvoiceCount: number;
+  todayCollection: FeeCollectionSummary;
   collectionTrend: DashboardCollectionPoint[];
 }

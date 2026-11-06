@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
 import { requireAuth, type CampusRole } from "../lib/auth";
+import { summarizeFeeCollections } from "../lib/fee-collection-policy";
 
 const routes: FastifyPluginAsync = async (fastify) => {
 const router = createRouteRegistrar(fastify);
@@ -282,6 +283,21 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
         );
         const attendanceRow = attendance.rows[0];
         const feeRow = fees.rows[0];
+        const todayCollectionRows = await client.query<{
+          gateway: string;
+          payment_method: string | null;
+          payment_count: number;
+          amount_paise: string;
+        }>(
+          `SELECT gateway, payment_method, COUNT(*)::int AS payment_count,
+                  COALESCE(SUM(amount_paise), 0)::text AS amount_paise
+             FROM fees.payments
+            WHERE org_id = $1 AND status = 'captured'
+              AND received_on = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
+            GROUP BY gateway, payment_method`,
+          [user.orgId],
+        );
+        const todayCollection = summarizeFeeCollections(todayCollectionRows.rows);
         adminInsights = {
           attendanceToday: {
             attendanceDate: attendanceRow.attendance_date,
@@ -302,6 +318,7 @@ router.get("/dashboard/overview", requireAuth, async (req, res, next) => {
             collectedThisMonthPaise: Number(feeRow.collected_this_month_paise),
             outstandingPaise: Number(feeRow.outstanding_paise),
             overdueInvoiceCount: Number(feeRow.overdue_invoice_count),
+            todayCollection,
             collectionTrend: collectionTrend.rows.map((row: any) => ({
               month: row.month,
               collectedPaise: Number(row.collected_paise),

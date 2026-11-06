@@ -2320,6 +2320,33 @@ paths:
           content:
             text/html:
               schema: { type: string }
+  /fees/collections:
+    get:
+      operationId: getFeeCollections
+      tags: [fees]
+      summary: View daily fee collection totals and receipts
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: date
+          required: false
+          schema: { type: string, format: date }
+        - in: query
+          name: limit
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - in: query
+          name: offset
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Daily payment totals and paginated payment details
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeeCollectionReport" }
+        "400": { description: Invalid date or pagination values }
+        "403": { description: Administrator role required }
   /fees/invoices:
     get:
       operationId: getFeeInvoices
@@ -2749,6 +2776,7 @@ components:
         - collectedThisMonthPaise
         - outstandingPaise
         - overdueInvoiceCount
+        - todayCollection
         - collectionTrend
       properties:
         academicYear: { type: string }
@@ -2759,6 +2787,8 @@ components:
         collectedThisMonthPaise: { type: integer, minimum: 0 }
         outstandingPaise: { type: integer, minimum: 0 }
         overdueInvoiceCount: { type: integer, minimum: 0 }
+        todayCollection:
+          $ref: "#/components/schemas/FeeCollectionSummary"
         collectionTrend:
           type: array
           items: { $ref: "#/components/schemas/DashboardCollectionPoint" }
@@ -3992,6 +4022,52 @@ components:
       properties:
         subjectId: { type: string, format: uuid, nullable: true }
         remark: { type: string, minLength: 1, maxLength: 2000 }
+    FeeCollectionSummary:
+      type: object
+      required: [totalPaise, paymentCount, cashPaise, cashCount, onlinePaise, onlineCount, chequePaise, chequeCount, otherPaise, otherCount, testPaise, testCount]
+      properties:
+        totalPaise: { type: integer, minimum: 0 }
+        paymentCount: { type: integer, minimum: 0 }
+        cashPaise: { type: integer, minimum: 0 }
+        cashCount: { type: integer, minimum: 0 }
+        onlinePaise: { type: integer, minimum: 0 }
+        onlineCount: { type: integer, minimum: 0 }
+        chequePaise: { type: integer, minimum: 0 }
+        chequeCount: { type: integer, minimum: 0 }
+        otherPaise: { type: integer, minimum: 0 }
+        otherCount: { type: integer, minimum: 0 }
+        testPaise: { type: integer, minimum: 0 }
+        testCount: { type: integer, minimum: 0 }
+    FeeCollectionPayment:
+      type: object
+      required: [id, receiptNumber, invoiceNumber, studentName, description, className, sectionName, amountPaise, paymentMethod, channel, paymentReference, gateway, paymentDate, collectorName]
+      properties:
+        id: { type: string, format: uuid }
+        receiptNumber: { type: string }
+        invoiceNumber: { type: string }
+        studentName: { type: string }
+        description: { type: string }
+        className: { type: string }
+        sectionName: { type: string }
+        amountPaise: { type: integer, minimum: 1 }
+        paymentMethod: { type: string, enum: [mock, razorpay, cash, upi, bank_transfer, cheque, other] }
+        channel: { type: string, enum: [cash, online, cheque, other, test] }
+        paymentReference: { type: string, nullable: true }
+        gateway: { type: string, enum: [manual, razorpay, mock] }
+        paymentDate: { type: string, format: date }
+        collectorName: { type: string, nullable: true }
+    FeeCollectionReport:
+      type: object
+      required: [date, summary, payments, total, limit, offset]
+      properties:
+        date: { type: string, format: date }
+        summary: { $ref: "#/components/schemas/FeeCollectionSummary" }
+        payments:
+          type: array
+          items: { $ref: "#/components/schemas/FeeCollectionPayment" }
+        total: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        offset: { type: integer, minimum: 0 }
     FeeInvoiceStatus:
       type: string
       enum: [unpaid, paid, waived, void]

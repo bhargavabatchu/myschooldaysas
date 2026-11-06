@@ -18,6 +18,11 @@ import { calculateConcessionBalance } from "../lib/fee-concession-policy";
 import { canParentPayInvoice, isMockPaymentEnvironment } from "../lib/fee-payment-policy";
 import { canRecordManualFeePayment, evaluateManualFeePayment } from "../lib/manual-fee-payment-policy";
 import { buildMyFeeInvoiceQuery } from "../lib/fee-invoice-access";
+import {
+  classifyFeeCollectionChannel,
+  isValidFeeCollectionDate,
+  summarizeFeeCollections,
+} from "../lib/fee-collection-policy";
 
 const adminRoles: CampusRole[] = ["super_admin", "org_admin", "campus_admin"];
 const errorBody = (code: string, message: string) => ({ error: { code, message } });
@@ -131,6 +136,115 @@ function mapInvoice(row: InvoiceRow, canPay = false, includeConcessionReason = f
 
 const routes: FastifyPluginAsync = async (fastify) => {
   const router = createRouteRegistrar(fastify);
+
+  router.get("/fees/collections", requireAuth, async (req, res, next) => {
+    const user = req.campusUser;
+    if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+    if (!user.roles.some((role) => adminRoles.includes(role))) {
+      return void res.status(403).json(errorBody("FORBIDDEN", "Administrator role required."));
+    }
+
+    const query = z.object({
+      date: z.string().optional(),
+      limit: z.coerce.number().int().min(1).max(100).default(25),
+      offset: z.coerce.number().int().min(0).max(100000).default(0),
+    }).safeParse(req.query);
+    if (!query.success || (query.data.date !== undefined && !isValidFeeCollectionDate(query.data.date))) {
+      return void res.status(400).json(errorBody("INVALID_REQUEST", "Choose a valid collection date and page."));
+    }
+
+    try {
+      const report = await withOrg(user.orgId, async (client) => {
+        const reportDateResult = await client.query<{ report_date: string }>(
+          `SELECT to_char(
+                    COALESCE($1::date, (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date),
+                    'YYYY-MM-DD'
+                  ) AS report_date`,
+          [query.data.date ?? null],
+        );
+        const reportDate = reportDateResult.rows[0]!.report_date;
+        const totals = await client.query<{
+          gateway: string;
+          payment_method: string | null;
+          payment_count: number;
+          amount_paise: string;
+        }>(
+          `SELECT gateway, payment_method, COUNT(*)::int AS payment_count,
+                  COALESCE(SUM(amount_paise), 0)::text AS amount_paise
+             FROM fees.payments
+            WHERE org_id = $1 AND status = 'captured' AND received_on = $2::date
+            GROUP BY gateway, payment_method`,
+          [user.orgId, reportDate],
+        );
+        const summary = summarizeFeeCollections(totals.rows);
+        const payments = await client.query<{
+          id: string;
+          receipt_number: string;
+          invoice_number: string;
+          student_name: string;
+          description: string;
+          class_name: string;
+          section_name: string;
+          amount_paise: string;
+          payment_method: string | null;
+          payment_reference: string | null;
+          gateway: string;
+          received_on: string;
+          collector_name: string | null;
+        }>(
+          `SELECT payment.id, payment.receipt_number, invoice.invoice_number,
+                  student.name AS student_name, invoice.description,
+                  school_class.name AS class_name, section.name AS section_name,
+                  payment.amount_paise::text, payment.payment_method,
+                  payment.payment_reference, payment.gateway,
+                  to_char(payment.received_on, 'YYYY-MM-DD') AS received_on,
+                  CASE WHEN payment.gateway = 'manual' THEN collector.name ELSE NULL END AS collector_name
+             FROM fees.payments payment
+             JOIN fees.invoices invoice
+               ON invoice.org_id = payment.org_id AND invoice.id = payment.invoice_id
+             JOIN identity.users student
+               ON student.org_id = invoice.org_id AND student.id = invoice.student_user_id
+             JOIN academic.sections section
+               ON section.org_id = invoice.org_id AND section.id = invoice.section_id
+             JOIN academic.classes school_class
+               ON school_class.org_id = section.org_id AND school_class.id = section.class_id
+             LEFT JOIN identity.users collector
+               ON collector.org_id = payment.org_id AND collector.id = payment.received_by
+            WHERE payment.org_id = $1 AND payment.status = 'captured'
+              AND payment.received_on = $2::date
+            ORDER BY payment.captured_at DESC, payment.id DESC
+            LIMIT $3 OFFSET $4`,
+          [user.orgId, reportDate, query.data.limit, query.data.offset],
+        );
+        return {
+          date: reportDate,
+          summary,
+          payments: payments.rows.map((payment) => ({
+            id: payment.id,
+            receiptNumber: payment.receipt_number,
+            invoiceNumber: payment.invoice_number,
+            studentName: payment.student_name,
+            description: payment.description,
+            className: payment.class_name,
+            sectionName: payment.section_name,
+            amountPaise: Number(payment.amount_paise),
+            paymentMethod: payment.payment_method ?? payment.gateway,
+            channel: classifyFeeCollectionChannel(payment.gateway, payment.payment_method),
+            paymentReference: payment.payment_reference,
+            gateway: payment.gateway,
+            paymentDate: payment.received_on,
+            collectorName: payment.collector_name,
+          })),
+          total: summary.paymentCount,
+          limit: query.data.limit,
+          offset: query.data.offset,
+        };
+      });
+      res.json(report);
+    } catch (error) {
+      next(error);
+    }
+  });
 
   router.get("/fees/invoices", requireAuth, async (req, res, next) => {
     const user = req.campusUser;

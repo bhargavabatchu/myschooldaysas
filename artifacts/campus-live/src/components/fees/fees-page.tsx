@@ -6,6 +6,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetFeeInvoicesQueryKey,
   getGetMyFeeInvoicesQueryKey,
+  getGetFeeCollectionsQueryKey,
+  getGetDashboardOverviewQueryKey,
   useGenerateFeeInvoices,
   useGetFeeInvoices,
   useGetFeeReceipt,
@@ -20,6 +22,7 @@ import { onlinePaymentsEnabled } from "@/lib/features";
 import { AcademicYearSelect } from "@/components/academic/academic-year-select";
 import { FeeConcessionEditor } from "./fee-concession-editor";
 import { FeePaymentRecorder } from "./fee-payment-recorder";
+import { FeeCollectionReport } from "./fee-collection-report";
 import './school-work-pages.css';
 
 const adminRoles = ["super_admin", "org_admin", "campus_admin"];
@@ -128,7 +131,11 @@ export function FeesPage({ roles }: FeesPageProps) {
     mutation: {
       onSuccess: async (result) => {
         setNotice(`Payment complete. Receipt ${result.receiptNumber} is ready.`);
-        await queryClient.invalidateQueries({ queryKey: getGetMyFeeInvoicesQueryKey() });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetMyFeeInvoicesQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getGetFeeCollectionsQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getGetDashboardOverviewQueryKey() }),
+        ]);
       },
       onError: (error) => setNotice(error.message || "Payment could not be completed."),
     },
@@ -165,6 +172,8 @@ export function FeesPage({ roles }: FeesPageProps) {
             Issue invoices to every active student in the school, a class, or one section. Repeating the same period will not create duplicate invoices.
           </p>
         </header>
+
+        <FeeCollectionReport />
 
         <section className="surface fees-issue-panel p-5 md:p-6">
           <h2 className="display text-lg font-bold">Issue invoices by school, class, or section</h2>

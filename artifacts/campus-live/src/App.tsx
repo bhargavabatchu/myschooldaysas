@@ -611,6 +611,19 @@ function DashboardPage({ roles, userName, requestedAcademicYear }: { roles: stri
               <div className="dashboard-collection-progress-copy"><span>Collection rate</span><strong>{collectionPercent === null ? '—' : `${collectionPercent}%`}</strong></div>
               <div className="dashboard-collection-progress-track" role="progressbar" aria-label={collectionPercent === null ? 'No fee collection percentage available' : `${collectionPercent}% of net fees collected for ${academicYear}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={collectionPercent ?? 0}><span style={{ width: `${Math.max(0, Math.min(100, collectionPercent ?? 0))}%` }}/></div>
             </div>
+            <div className="dashboard-fee-day" data-testid="dashboard-fee-day">
+              <div className="dashboard-fee-day-total"><span>Collected today</span><strong>{formatRupees(adminInsights.fees.todayCollection.totalPaise)}</strong></div>
+              <div className="dashboard-fee-day-breakdown">
+                <span>Cash <strong>{formatRupees(adminInsights.fees.todayCollection.cashPaise)}</strong></span>
+                <span>Digital / online <strong>{formatRupees(adminInsights.fees.todayCollection.onlinePaise)}</strong></span>
+              </div>
+              <Link href="/fees#collections" className="dashboard-insight-link">Daily details <ArrowRight size={13}/></Link>
+            </div>
+            {adminInsights.fees.todayCollection.testPaise > 0 && (
+              <p className="dashboard-fee-test-note">
+                Includes {formatRupees(adminInsights.fees.todayCollection.testPaise)} in mock/test payments.
+              </p>
+            )}
             <div className="dashboard-overdue-summary"><span>Overdue invoices</span><strong>{adminInsights.fees.overdueInvoiceCount}</strong><Link href="/fees" className="dashboard-insight-link">Review fees <ArrowRight size={13}/></Link></div>
           </div>
         </section>}

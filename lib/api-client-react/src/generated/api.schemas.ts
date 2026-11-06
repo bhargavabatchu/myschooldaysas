@@ -260,6 +260,33 @@ export interface DashboardAttendanceSummary {
   attendancePercent: number | null;
 }
 
+export interface FeeCollectionSummary {
+  /** @minimum 0 */
+  totalPaise: number;
+  /** @minimum 0 */
+  paymentCount: number;
+  /** @minimum 0 */
+  cashPaise: number;
+  /** @minimum 0 */
+  cashCount: number;
+  /** @minimum 0 */
+  onlinePaise: number;
+  /** @minimum 0 */
+  onlineCount: number;
+  /** @minimum 0 */
+  chequePaise: number;
+  /** @minimum 0 */
+  chequeCount: number;
+  /** @minimum 0 */
+  otherPaise: number;
+  /** @minimum 0 */
+  otherCount: number;
+  /** @minimum 0 */
+  testPaise: number;
+  /** @minimum 0 */
+  testCount: number;
+}
+
 export interface DashboardCollectionPoint {
   /** @pattern ^\d{4}-\d{2}$ */
   month: string;
@@ -287,6 +314,7 @@ export interface DashboardFeeSummary {
   outstandingPaise: number;
   /** @minimum 0 */
   overdueInvoiceCount: number;
+  todayCollection: FeeCollectionSummary;
   collectionTrend: DashboardCollectionPoint[];
 }
 
@@ -1863,6 +1891,74 @@ export interface LearningReportCardRemarkInput {
   remark: string;
 }
 
+export type FeeCollectionPaymentPaymentMethod = typeof FeeCollectionPaymentPaymentMethod[keyof typeof FeeCollectionPaymentPaymentMethod];
+
+
+export const FeeCollectionPaymentPaymentMethod = {
+  mock: 'mock',
+  razorpay: 'razorpay',
+  cash: 'cash',
+  upi: 'upi',
+  bank_transfer: 'bank_transfer',
+  cheque: 'cheque',
+  other: 'other',
+} as const;
+
+export type FeeCollectionPaymentChannel = typeof FeeCollectionPaymentChannel[keyof typeof FeeCollectionPaymentChannel];
+
+
+export const FeeCollectionPaymentChannel = {
+  cash: 'cash',
+  online: 'online',
+  cheque: 'cheque',
+  other: 'other',
+  test: 'test',
+} as const;
+
+export type FeeCollectionPaymentGateway = typeof FeeCollectionPaymentGateway[keyof typeof FeeCollectionPaymentGateway];
+
+
+export const FeeCollectionPaymentGateway = {
+  manual: 'manual',
+  razorpay: 'razorpay',
+  mock: 'mock',
+} as const;
+
+export interface FeeCollectionPayment {
+  id: string;
+  receiptNumber: string;
+  invoiceNumber: string;
+  studentName: string;
+  description: string;
+  className: string;
+  sectionName: string;
+  /** @minimum 1 */
+  amountPaise: number;
+  paymentMethod: FeeCollectionPaymentPaymentMethod;
+  channel: FeeCollectionPaymentChannel;
+  /** @nullable */
+  paymentReference: string | null;
+  gateway: FeeCollectionPaymentGateway;
+  paymentDate: string;
+  /** @nullable */
+  collectorName: string | null;
+}
+
+export interface FeeCollectionReport {
+  date: string;
+  summary: FeeCollectionSummary;
+  payments: FeeCollectionPayment[];
+  /** @minimum 0 */
+  total: number;
+  /**
+     * @minimum 1
+     * @maximum 100
+     */
+  limit: number;
+  /** @minimum 0 */
+  offset: number;
+}
+
 export type FeeInvoiceStatus = typeof FeeInvoiceStatus[keyof typeof FeeInvoiceStatus];
 
 
@@ -2555,6 +2651,19 @@ sectionId?: string;
 export type GetLearningReportCardsParams = {
 sectionId?: string;
 termId?: string;
+};
+
+export type GetFeeCollectionsParams = {
+date?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
 };
 
 export type GetFeeInvoicesParams = {
