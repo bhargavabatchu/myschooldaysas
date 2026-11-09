@@ -17,4 +17,8 @@ export interface FeeInvoiceConcessionInput {
      * @maxLength 240
      */
   reason: string;
+  /** @maxLength 1000000 */
+  attachmentDataUrl?: string;
+  /** @maxLength 180 */
+  attachmentFileName?: string;
 }

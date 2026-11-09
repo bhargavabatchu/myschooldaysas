@@ -116,6 +116,8 @@ export * from './feeCollectionSummary';
 export * from './feeInvoice';
 export * from './feeInvoiceConcessionHistory';
 export * from './feeInvoiceConcessionHistoryItemsItem';
+export * from './feeInvoiceConcessionHistoryItemsItemAttachment';
+export * from './feeInvoiceConcessionHistoryItemsItemAttachmentContentType';
 export * from './feeInvoiceConcessionInput';
 export * from './feeInvoiceGenerateInput';
 export * from './feeInvoiceGenerateResult';

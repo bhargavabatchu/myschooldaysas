@@ -59,6 +59,7 @@ learning:003|services/learning/migrations/003_syllabus.sql
 fees:001|services/fees/migrations/001_fees.sql
 fees:002|services/fees/migrations/002_fee_concessions.sql
 fees:003|services/fees/migrations/003_partial_manual_payments.sql
+fees:004|services/fees/migrations/004_concession_attachments.sql
 academic:011|services/academic/migrations/011_academic_years.sql
 registry:001|services/registry/migrations/001_admissions.sql
 registry:002|services/registry/migrations/002_admission_followup_history.sql

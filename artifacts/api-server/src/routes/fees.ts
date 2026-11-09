@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
+import { Client as ObjectStorageClient } from "@replit/object-storage";
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import {
   GenerateFeeInvoicesBody,
+  GetFeeInvoiceConcessionAttachmentParams,
   GetFeeInvoicesQueryParams,
   GetFeeReceiptParams,
   PayFeeInvoiceParams,
@@ -19,6 +21,10 @@ import { canParentPayInvoice, isMockPaymentEnvironment } from "../lib/fee-paymen
 import { canRecordManualFeePayment, evaluateManualFeePayment } from "../lib/manual-fee-payment-policy";
 import { buildMyFeeInvoiceQuery } from "../lib/fee-invoice-access";
 import {
+  normalizeStoredFeeAttachment,
+  parseFeeConcessionAttachmentDataUrl,
+} from "../lib/fee-concession-attachment.ts";
+import {
   classifyFeeCollectionChannel,
   isValidFeeCollectionDate,
   summarizeFeeCollections,
@@ -26,6 +32,17 @@ import {
 
 const adminRoles: CampusRole[] = ["super_admin", "org_admin", "campus_admin"];
 const errorBody = (code: string, message: string) => ({ error: { code, message } });
+const concessionAttachmentExtension = {
+  "application/pdf": "pdf",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+} as const;
+
+function isStorageConfiguredError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /bucket|storage|replit|credential|permission/i.test(message);
+}
 
 type InvoiceRow = {
   id: string;
@@ -510,8 +527,41 @@ const routes: FastifyPluginAsync = async (fastify) => {
     if (reason.length < 3) {
       return void res.status(400).json(errorBody("INVALID_REQUEST", "The concession reason must contain at least 3 non-space characters."));
     }
+    const hasAttachmentData = typeof body.data.attachmentDataUrl === "string";
+    const hasAttachmentName = typeof body.data.attachmentFileName === "string";
+    if (hasAttachmentData !== hasAttachmentName) {
+      return void res.status(400).json(errorBody("INVALID_ATTACHMENT", "Choose a valid PDF or photo attachment."));
+    }
+    const attachment = hasAttachmentData
+      ? parseFeeConcessionAttachmentDataUrl(body.data.attachmentDataUrl!, body.data.attachmentFileName!)
+      : null;
+    if (hasAttachmentData && !attachment) {
+      return void res.status(400).json(errorBody("INVALID_ATTACHMENT", "Attach a PDF, JPEG, PNG, or WebP file smaller than 700 KB."));
+    }
 
+    let uploadedObjectName: string | null = null;
+    const discardUploadedAttachment = async () => {
+      if (!uploadedObjectName) return;
+      const objectName = uploadedObjectName;
+      uploadedObjectName = null;
+      await new ObjectStorageClient().delete(objectName).catch(() => undefined);
+    };
     try {
+      if (attachment) {
+        const extension = concessionAttachmentExtension[attachment.contentType];
+        uploadedObjectName = `fee-concessions/${user.orgId}/${params.data.invoiceId}/${randomUUID()}.${extension}`;
+        try {
+          const uploaded = await new ObjectStorageClient().uploadFromBytes(uploadedObjectName, attachment.bytes);
+          if (!uploaded.ok) {
+            await discardUploadedAttachment();
+            return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "The attachment could not be stored securely. Try again."));
+          }
+        } catch {
+          await discardUploadedAttachment();
+          return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "Private file storage is unavailable. Try again later."));
+        }
+      }
+
       const result = await withOrg(user.orgId, async (client) => {
         const invoiceResult = await client.query<InvoiceRow>(
           `SELECT i.id, i.student_user_id, student.name AS student_name, i.section_id,
@@ -547,24 +597,27 @@ const routes: FastifyPluginAsync = async (fastify) => {
 
         const previousConcessionPaise = Number(invoice.concession_paise);
         const concessionReason = body.data.concessionPaise === 0 ? null : reason;
-        if (
+        const concessionChanged =
           previousConcessionPaise === body.data.concessionPaise
-          && (invoice.concession_reason ?? null) === concessionReason
-        ) {
+          && (invoice.concession_reason ?? null) === concessionReason;
+        if (concessionChanged && !attachment) {
           return { kind: "ok" as const, invoice };
         }
-        const status = concessionBalance.status;
-        await client.query(
-          `UPDATE fees.invoices
-              SET concession_paise = $3, concession_reason = $4, status = $5
-            WHERE org_id = $1 AND id = $2`,
-          [user.orgId, invoice.id, body.data.concessionPaise, concessionReason, status],
-        );
+        const status = concessionChanged ? invoice.status : concessionBalance.status;
+        if (!concessionChanged) {
+          await client.query(
+            `UPDATE fees.invoices
+                SET concession_paise = $3, concession_reason = $4, status = $5
+              WHERE org_id = $1 AND id = $2`,
+            [user.orgId, invoice.id, body.data.concessionPaise, concessionReason, status],
+          );
+        }
         await client.query(
           `INSERT INTO fees.invoice_concession_audit
              (org_id, invoice_id, previous_concession_paise, new_concession_paise,
-              previous_reason, new_reason, reason, actor_user_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+              previous_reason, new_reason, reason, actor_user_id,
+              attachment_object_name, attachment_file_name, attachment_content_type, attachment_size_bytes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
           [
             user.orgId,
             invoice.id,
@@ -574,6 +627,10 @@ const routes: FastifyPluginAsync = async (fastify) => {
             concessionReason,
             reason,
             user.id,
+            uploadedObjectName,
+            attachment?.fileName ?? null,
+            attachment?.contentType ?? null,
+            attachment?.bytes.length ?? null,
           ],
         );
         return {
@@ -587,6 +644,12 @@ const routes: FastifyPluginAsync = async (fastify) => {
         };
       });
 
+      if (result.kind !== "ok") {
+        await discardUploadedAttachment();
+      } else {
+        // The audit row is committed; never remove its object if response mapping fails afterward.
+        uploadedObjectName = null;
+      }
       if (result.kind === "missing") return void res.status(404).json(errorBody("NOT_FOUND", "Invoice not found."));
       if (result.kind === "paid") return void res.status(409).json(errorBody("CONCESSION_AFTER_PAYMENT", "A concession cannot be changed after payment has been recorded."));
       if (result.kind === "void") return void res.status(409).json(errorBody("INVOICE_VOID", "A void invoice cannot be changed."));
@@ -595,6 +658,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
       }
       res.json(mapInvoice(result.invoice, false, true));
     } catch (error) {
+      await discardUploadedAttachment();
       next(error);
     }
   });
@@ -623,9 +687,13 @@ const routes: FastifyPluginAsync = async (fastify) => {
           reason: string;
           actor_name: string;
           created_at: Date | string;
+          attachment_file_name: string | null;
+          attachment_content_type: string | null;
+          attachment_size_bytes: number | null;
         }>(
           `SELECT audit.id, audit.previous_concession_paise, audit.new_concession_paise,
-                  audit.reason, actor.name AS actor_name, audit.created_at
+                  audit.reason, actor.name AS actor_name, audit.created_at,
+                  audit.attachment_file_name, audit.attachment_content_type, audit.attachment_size_bytes
              FROM fees.invoice_concession_audit audit
              JOIN identity.users actor
                ON actor.org_id = audit.org_id AND actor.id = audit.actor_user_id
@@ -640,12 +708,71 @@ const routes: FastifyPluginAsync = async (fastify) => {
           reason: entry.reason,
           actorName: entry.actor_name,
           createdAt: dateTimeValue(entry.created_at)!,
+          attachment: entry.attachment_file_name && entry.attachment_content_type && entry.attachment_size_bytes !== null
+            ? {
+              fileName: entry.attachment_file_name,
+              contentType: entry.attachment_content_type,
+              sizeBytes: entry.attachment_size_bytes,
+            }
+            : null,
         }));
       });
 
       if (result === null) return void res.status(404).json(errorBody("NOT_FOUND", "Invoice not found."));
       res.json({ items: result });
     } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get("/fees/invoices/:invoiceId/concession-history/:auditId/attachment", requireAuth, async (req, res, next) => {
+    const user = req.campusUser;
+    if (!user) return void res.status(401).json(errorBody("UNAUTHENTICATED", "Sign in to continue."));
+    if (!user.roles.some((role) => adminRoles.includes(role))) {
+      return void res.status(403).json(errorBody("FORBIDDEN", "Administrator role required."));
+    }
+    const params = GetFeeInvoiceConcessionAttachmentParams.safeParse(req.params);
+    if (!params.success) return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid invoice and concession record."));
+
+    try {
+      const attachment = await withOrg(user.orgId, async (client) => {
+        const result = await client.query<{
+          object_name: string;
+          file_name: string;
+          content_type: string;
+        }>(
+          `SELECT attachment_object_name AS object_name,
+                  attachment_file_name AS file_name,
+                  attachment_content_type AS content_type
+             FROM fees.invoice_concession_audit
+            WHERE org_id = $1 AND invoice_id = $2 AND id = $3
+              AND attachment_object_name IS NOT NULL`,
+          [user.orgId, params.data.invoiceId, params.data.auditId],
+        );
+        return result.rows[0] ?? null;
+      });
+      if (!attachment) return void res.status(404).json(errorBody("NOT_FOUND", "Concession attachment not found."));
+
+      const downloaded = await new ObjectStorageClient().downloadAsBytes(attachment.object_name);
+      if (!downloaded.ok) return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "The attachment is temporarily unavailable."));
+      const bytes = normalizeStoredFeeAttachment(downloaded.value);
+      if (!bytes) return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "The attachment is temporarily unavailable."));
+
+      const fallbackName = attachment.file_name.replace(/[^\x20-\x7e]|["\\;]/g, "_");
+      const encodedName = encodeURIComponent(attachment.file_name).replace(/['()*]/g, (character) =>
+        `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+      );
+      res
+        .type(attachment.content_type)
+        .header("Content-Disposition", `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`)
+        .header("Cache-Control", "private, no-store")
+        .header("Vary", "Authorization")
+        .header("X-Content-Type-Options", "nosniff")
+        .send(bytes);
+    } catch (error) {
+      if (isStorageConfiguredError(error)) {
+        return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "Private file storage is unavailable."));
+      }
       next(error);
     }
   });

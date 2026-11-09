@@ -11521,6 +11521,115 @@ export function useGetFeeInvoiceConcessionHistory<TData = Awaited<ReturnType<typ
 
 
 
+export const getGetFeeInvoiceConcessionAttachmentUrl = (invoiceId: string,
+    auditId: string,) => {
+
+
+
+
+  return `/api/fees/invoices/${invoiceId}/concession-history/${auditId}/attachment`
+}
+
+/**
+ * @summary Download a private supporting file for an invoice concession
+ */
+export const getFeeInvoiceConcessionAttachment = async (invoiceId: string,
+    auditId: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetFeeInvoiceConcessionAttachmentUrl(invoiceId,auditId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFeeInvoiceConcessionAttachmentQueryKey = (invoiceId: string,
+    auditId: string,) => {
+    return [
+    `/api/fees/invoices/${invoiceId}/concession-history/${auditId}/attachment`
+    ] as const;
+    }
+
+
+export const getGetFeeInvoiceConcessionAttachmentQueryOptions = <TData = Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>, TError = ErrorType<void>>(invoiceId: string,
+    auditId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFeeInvoiceConcessionAttachmentQueryKey(invoiceId,auditId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>> = ({ signal }) => getFeeInvoiceConcessionAttachment(invoiceId,auditId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: invoiceId !== null && invoiceId !== undefined && auditId !== null && auditId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFeeInvoiceConcessionAttachmentQueryResult = NonNullable<Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>>
+export type GetFeeInvoiceConcessionAttachmentQueryError = ErrorType<void>
+
+
+export function useGetFeeInvoiceConcessionAttachment<TData = Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>, TError = ErrorType<void>>(
+ invoiceId: string,
+    auditId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>,
+          TError,
+          Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFeeInvoiceConcessionAttachment<TData = Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>, TError = ErrorType<void>>(
+ invoiceId: string,
+    auditId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>,
+          TError,
+          Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFeeInvoiceConcessionAttachment<TData = Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>, TError = ErrorType<void>>(
+ invoiceId: string,
+    auditId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Download a private supporting file for an invoice concession
+ */
+
+export function useGetFeeInvoiceConcessionAttachment<TData = Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>, TError = ErrorType<void>>(
+ invoiceId: string,
+    auditId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeeInvoiceConcessionAttachment>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFeeInvoiceConcessionAttachmentQueryOptions(invoiceId,auditId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetMyFeeInvoicesUrl = () => {
 
 

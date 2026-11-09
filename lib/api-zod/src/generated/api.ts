@@ -4007,11 +4007,17 @@ export const updateFeeInvoiceConcessionBodyConcessionPaiseMax = 1000000000;
 export const updateFeeInvoiceConcessionBodyReasonMin = 3;
 export const updateFeeInvoiceConcessionBodyReasonMax = 240;
 
+export const updateFeeInvoiceConcessionBodyAttachmentDataUrlMax = 1000000;
+
+export const updateFeeInvoiceConcessionBodyAttachmentFileNameMax = 180;
+
 
 
 export const UpdateFeeInvoiceConcessionBody = zod.object({
   "concessionPaise": zod.int().min(updateFeeInvoiceConcessionBodyConcessionPaiseMin).max(updateFeeInvoiceConcessionBodyConcessionPaiseMax),
-  "reason": zod.string().min(updateFeeInvoiceConcessionBodyReasonMin).max(updateFeeInvoiceConcessionBodyReasonMax)
+  "reason": zod.string().min(updateFeeInvoiceConcessionBodyReasonMin).max(updateFeeInvoiceConcessionBodyReasonMax),
+  "attachmentDataUrl": zod.string().max(updateFeeInvoiceConcessionBodyAttachmentDataUrlMax).optional(),
+  "attachmentFileName": zod.string().max(updateFeeInvoiceConcessionBodyAttachmentFileNameMax).optional()
 })
 
 
@@ -4065,6 +4071,8 @@ export const getFeeInvoiceConcessionHistoryResponseItemsItemPreviousConcessionPa
 
 export const getFeeInvoiceConcessionHistoryResponseItemsItemNewConcessionPaiseMin = 0;
 
+export const getFeeInvoiceConcessionHistoryResponseItemsItemAttachmentSizeBytesMax = 716800;
+
 
 
 export const GetFeeInvoiceConcessionHistoryResponse = zod.object({
@@ -4074,9 +4082,25 @@ export const GetFeeInvoiceConcessionHistoryResponse = zod.object({
   "newConcessionPaise": zod.int().min(getFeeInvoiceConcessionHistoryResponseItemsItemNewConcessionPaiseMin),
   "reason": zod.string(),
   "actorName": zod.string(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "attachment": zod.object({
+  "fileName": zod.string(),
+  "contentType": zod.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  "sizeBytes": zod.int().min(1).max(getFeeInvoiceConcessionHistoryResponseItemsItemAttachmentSizeBytesMax)
+}).nullable()
 }))
 })
+
+
+/**
+ * @summary Download a private supporting file for an invoice concession
+ */
+export const GetFeeInvoiceConcessionAttachmentParams = zod.object({
+  "invoiceId": zod.uuid(),
+  "auditId": zod.uuid()
+})
+
+export const GetFeeInvoiceConcessionAttachmentResponse = zod.unknown()
 
 
 /**

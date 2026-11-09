@@ -5,6 +5,7 @@
  * Campus Live API contract
  * OpenAPI spec version: 0.1.0
  */
+import type { FeeInvoiceConcessionHistoryItemsItemAttachment } from './feeInvoiceConcessionHistoryItemsItemAttachment';
 
 export type FeeInvoiceConcessionHistoryItemsItem = {
   id: string;
@@ -15,4 +16,6 @@ export type FeeInvoiceConcessionHistoryItemsItem = {
   reason: string;
   actorName: string;
   createdAt: Date;
+  /** @nullable */
+  attachment: FeeInvoiceConcessionHistoryItemsItemAttachment;
 };

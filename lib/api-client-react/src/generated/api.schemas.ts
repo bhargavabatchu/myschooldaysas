@@ -2071,7 +2071,34 @@ export interface FeeInvoiceConcessionInput {
      * @maxLength 240
      */
   reason: string;
+  /** @maxLength 1000000 */
+  attachmentDataUrl?: string;
+  /** @maxLength 180 */
+  attachmentFileName?: string;
 }
+
+export type FeeInvoiceConcessionHistoryItemsItemAttachmentContentType = typeof FeeInvoiceConcessionHistoryItemsItemAttachmentContentType[keyof typeof FeeInvoiceConcessionHistoryItemsItemAttachmentContentType];
+
+
+export const FeeInvoiceConcessionHistoryItemsItemAttachmentContentType = {
+  'application/pdf': 'application/pdf',
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+/**
+ * @nullable
+ */
+export type FeeInvoiceConcessionHistoryItemsItemAttachment = {
+  fileName: string;
+  contentType: FeeInvoiceConcessionHistoryItemsItemAttachmentContentType;
+  /**
+     * @minimum 1
+     * @maximum 716800
+     */
+  sizeBytes: number;
+} | null;
 
 export type FeeInvoiceConcessionHistoryItemsItem = {
   id: string;
@@ -2082,6 +2109,8 @@ export type FeeInvoiceConcessionHistoryItemsItem = {
   reason: string;
   actorName: string;
   createdAt: string;
+  /** @nullable */
+  attachment: FeeInvoiceConcessionHistoryItemsItemAttachment;
 };
 
 export interface FeeInvoiceConcessionHistory {
