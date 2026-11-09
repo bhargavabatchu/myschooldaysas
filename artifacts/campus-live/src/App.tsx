@@ -208,7 +208,7 @@ function ProtectedApp() {
         <Route path="/admin/assistant" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <DashboardPage roles={user.roles} userName={user.name} requestedAcademicYear={selectedAcademicYear} /> : <NotFound/>} />
         <Route path="/live/sessions" component={() => liveClassesEnabled ? <SessionsPage userRoles={user.roles} /> : <LiveClassesUnavailable />} />
         <Route path="/boards/templates" component={() => <TemplatesPage roles={user.roles} />} />
-        <Route path="/results" component={() => <LearningPage roles={user.roles} area="results" initialTab="exams" />} />
+        <Route path="/results" component={() => <LearningPage roles={user.roles} area="results" initialTab="reports" />} />
         <Route path="/learning/reports" component={() => <LearningPage roles={user.roles} area="results" initialTab="reports" />} />
         <Route path="/learning/syllabus" component={() => <LearningPage roles={user.roles} initialTab="syllabus" />} />
         <Route path="/learning" component={() => <LearningPage roles={user.roles} />} />

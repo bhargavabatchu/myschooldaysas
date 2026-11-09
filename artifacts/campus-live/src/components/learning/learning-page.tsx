@@ -40,6 +40,7 @@ export function LearningPage({ roles, initialTab = 'assignments', area = 'learni
   const administrator = canAdminister(roles);
   const resultsArea = area === 'results';
   const [tab, setTab] = useState<Tab>(initialTab);
+  const activeTab: Tab = resultsArea ? 'reports' : tab;
   const [sectionId, setSectionId] = useState('');
   const [activeAssignment, setActiveAssignment] = useState<LearningAssignment | null>(null);
   const [activeExam, setActiveExam] = useState<LearningExam | null>(null);
@@ -52,14 +53,14 @@ export function LearningPage({ roles, initialTab = 'assignments', area = 'learni
     return all.filter(section => allowed.has(section.id));
   }, [sections.data, teacherAssignments.data, administrator]);
   const resolvedSection = availableSections.some(section => section.id === sectionId) ? sectionId : availableSections[0]?.id ?? '';
-  const sectionAssignments = useGetAcademicTeacherAssignments({ sectionId: resolvedSection }, { query: { enabled: resultsArea && manager && !!resolvedSection } });
+  const sectionAssignments = useGetAcademicTeacherAssignments({ sectionId: resolvedSection }, { query: { enabled: activeTab === 'exams' && manager && !!resolvedSection } });
   const allowedSubjectIds = useMemo(() => (sectionAssignments.data?.items ?? []).map(item => item.subjectId), [sectionAssignments.data]);
   const params = useMemo(() => manager && resolvedSection ? { sectionId: resolvedSection } : undefined, [manager, resolvedSection]);
-  const managedAssignments = useGetLearningAssignments(params, { query: { enabled: !resultsArea && manager } });
-  const myAssignments = useGetMyLearningAssignments({ query: { enabled: !resultsArea && !manager } });
-  const exams = useGetLearningExams(params, { query: { enabled: resultsArea && tab === 'exams' } });
-  const terms = useGetLearningTerms({ query: { enabled: tab === 'terms' && administrator } });
-  const scale = useGetLearningGradeScale({ query: { enabled: tab === 'terms' && administrator } });
+  const managedAssignments = useGetLearningAssignments(params, { query: { enabled: activeTab === 'assignments' && manager } });
+  const myAssignments = useGetMyLearningAssignments({ query: { enabled: activeTab === 'assignments' && !manager } });
+  const exams = useGetLearningExams(params, { query: { enabled: activeTab === 'exams' && manager } });
+  const terms = useGetLearningTerms({ query: { enabled: activeTab === 'terms' && administrator } });
+  const scale = useGetLearningGradeScale({ query: { enabled: activeTab === 'terms' && administrator } });
   const queryClient = useQueryClient();
   const assignments = manager ? managedAssignments.data?.items ?? [] : myAssignments.data?.items ?? [];
   const isLoading = manager ? managedAssignments.isLoading : myAssignments.isLoading;
@@ -81,46 +82,47 @@ export function LearningPage({ roles, initialTab = 'assignments', area = 'learni
   const [showTermForm, setShowTermForm] = useState(false);
   const [notice, setNotice] = useState('');
   const failure = addAssignment.error || editAssignment.error || addExam.error || addTerm.error || updateScale.error;
-  const tabs: Tab[] = resultsArea ? ['exams', 'reports'] : ['syllabus', 'assignments'];
+  const tabs: Tab[] = resultsArea ? ['reports'] : ['syllabus', 'assignments'];
+  if (!resultsArea && manager) tabs.push('exams');
   if (!resultsArea && administrator) tabs.push('terms', 'catalog');
 
   return <div className="space-y-6">
     <header className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
       <div><div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--primary))]"><span className="h-px w-7 bg-[hsl(var(--accent))]"/>{resultsArea ? 'Academic results' : 'Learning workspace'}</div>
-        <h1 className="display m-0 text-[32px] font-extrabold tracking-[-.045em] md:text-[38px]">{resultsArea ? 'Results & assessments' : 'Learning'}</h1>
+        <h1 className="display m-0 text-[32px] font-extrabold tracking-[-.045em] md:text-[38px]">{resultsArea ? 'Academic results' : 'Learning'}</h1>
         <p className="mb-0 mt-2 max-w-2xl text-[13px] text-[hsl(var(--muted-foreground))]">{resultsArea
-          ? manager ? 'Manage assessments and report cards for your classes.' : 'View assessments, feedback and report cards shared with you.'
-          : manager ? 'Keep class syllabuses and assignments in one place.' : 'Explore your syllabus and keep up with school assignments.'}</p>
+          ? manager ? 'Review and publish report cards for your classes.' : 'View academic report cards shared with you.'
+          : manager ? 'Keep class syllabuses, assignments, and assessments in one place.' : 'Explore your syllabus and keep up with school assignments.'}</p>
       </div>
       {manager && <div className="flex flex-wrap gap-2">
-        {!resultsArea && <button onClick={() => setShowAssignmentForm(true)} className="btn btn-primary"><Plus size={16}/>Assignment</button>}
-        {resultsArea && <button onClick={() => setShowExamForm(true)} className="btn btn-primary"><Plus size={16}/>Assessment</button>}
+        {!resultsArea && activeTab === 'assignments' && <button onClick={() => setShowAssignmentForm(true)} className="btn btn-primary"><Plus size={16}/>Assignment</button>}
+        {!resultsArea && activeTab === 'exams' && <button onClick={() => setShowExamForm(true)} className="btn btn-primary"><Plus size={16}/>Assessment</button>}
       </div>}
     </header>
-    <div className="surface flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
+    {!resultsArea && <div className="surface flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
       <nav aria-label="Learning sections" className="flex gap-1 overflow-x-auto">
-        {tabs.map(item => <button key={item} onClick={() => { setTab(item); setActiveAssignment(null); setActiveExam(null); }} aria-pressed={tab === item} className={`rounded-lg px-4 py-2.5 text-xs font-bold capitalize transition ${tab === item ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]'}`}>{item === 'exams' ? 'Assessments & results' : item === 'catalog' ? 'Subjects & teachers' : item === 'reports' ? 'Report cards' : item}</button>)}
+        {tabs.map(item => <button key={item} onClick={() => { setTab(item); setActiveAssignment(null); setActiveExam(null); }} aria-pressed={activeTab === item} className={`rounded-lg px-4 py-2.5 text-xs font-bold capitalize transition ${activeTab === item ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]'}`}>{item === 'exams' ? 'Assessments' : item === 'catalog' ? 'Subjects & teachers' : item === 'reports' ? 'Report cards' : item}</button>)}
       </nav>
-      {manager && resultsArea && tab === 'exams' && <label className="flex items-center gap-2 px-1 text-[11px] font-semibold text-[hsl(var(--muted-foreground))]"><UsersRound size={15}/><span className="sr-only">Filter by section</span><select className="field min-h-9 w-full py-1.5 text-xs sm:w-auto" value={resolvedSection} onChange={event => setSectionId(event.target.value)}><option value="">All assigned sections</option>{availableSections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label>}
-    </div>
+      {manager && activeTab === 'exams' && <label className="flex items-center gap-2 px-1 text-[11px] font-semibold text-[hsl(var(--muted-foreground))]"><UsersRound size={15}/><span className="sr-only">Filter by section</span><select className="field min-h-9 w-full py-1.5 text-xs sm:w-auto" value={resolvedSection} onChange={event => setSectionId(event.target.value)}><option value="">All assigned sections</option>{availableSections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label>}
+    </div>}
     {notice && <div role="status" className="rounded-xl border border-[hsl(var(--status-good)/.3)] bg-[hsl(var(--status-good-bg))] px-4 py-3 text-sm text-[hsl(var(--brand-mint-ink))]">{notice}</div>}
     {failure && <div role="alert" className="rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.08)] px-4 py-3 text-sm text-[hsl(var(--destructive))]">{errorMessage(failure)}</div>}
-    {showAssignmentForm && <AssignmentForm sections={availableSections} saving={busy} onCancel={() => setShowAssignmentForm(false)} onSave={data => addAssignment.mutate({ data }, { onSuccess: () => { setShowAssignmentForm(false); setNotice('Assignment created.'); } })}/>}
-    {editingAssignment && <AssignmentForm sections={availableSections} initial={editingAssignment} saving={busy} onCancel={() => setEditingAssignment(null)} onSave={data => {
+    {activeTab === 'assignments' && showAssignmentForm && <AssignmentForm sections={availableSections} saving={busy} onCancel={() => setShowAssignmentForm(false)} onSave={data => addAssignment.mutate({ data }, { onSuccess: () => { setShowAssignmentForm(false); setNotice('Assignment created.'); } })}/>}
+    {activeTab === 'assignments' && editingAssignment && <AssignmentForm sections={availableSections} initial={editingAssignment} saving={busy} onCancel={() => setEditingAssignment(null)} onSave={data => {
       const update = { title: data.title, instructions: data.instructions, dueAt: data.dueAt, maxPoints: data.maxPoints };
       editAssignment.mutate({ assignmentId: editingAssignment.id, data: update }, { onSuccess: () => { setEditingAssignment(null); invalidateAssignments(); setNotice('Assignment updated.'); } });
     }}/>}
-    {showExamForm && <ExamForm sections={availableSections} subjectIds={allowedSubjectIds} saving={busy} onCancel={() => setShowExamForm(false)} onSave={data => addExam.mutate({ data }, { onSuccess: () => { setShowExamForm(false); setNotice('Assessment created.'); } })}/>}
-    {showTermForm && <TermForm saving={busy} onCancel={() => setShowTermForm(false)} onSave={data => addTerm.mutate({ data }, { onSuccess: () => { setShowTermForm(false); setNotice('Academic term created.'); } })}/>}
-    {tab === 'assignments' && (activeAssignment
+    {activeTab === 'exams' && showExamForm && <ExamForm sections={availableSections} subjectIds={allowedSubjectIds} saving={busy} onCancel={() => setShowExamForm(false)} onSave={data => addExam.mutate({ data }, { onSuccess: () => { setShowExamForm(false); setNotice('Assessment created.'); } })}/>}
+    {activeTab === 'terms' && showTermForm && <TermForm saving={busy} onCancel={() => setShowTermForm(false)} onSave={data => addTerm.mutate({ data }, { onSuccess: () => { setShowTermForm(false); setNotice('Academic term created.'); } })}/>}
+    {activeTab === 'assignments' && (activeAssignment
        ? <AssignmentDetail key={activeAssignment.id} assignment={activeAssignment} manager={manager} canSubmit={roles.includes('student')} onBack={() => setActiveAssignment(null)} onRefresh={invalidateAssignments} onNotice={setNotice}/>
       : <AssignmentList items={assignments} loading={isLoading} error={loadError} manager={manager} retry={() => manager ? managedAssignments.refetch() : myAssignments.refetch()} onSelect={setActiveAssignment} onEdit={setEditingAssignment} onStatus={(item, status) => editAssignment.mutate({ assignmentId: item.id, data: { status } }, { onSuccess: () => setNotice(`Assignment ${status}.`) })} saving={editAssignment.isPending}/> )}
-    {tab === 'exams' && (activeExam
+    {activeTab === 'exams' && (activeExam
       ? <ExamDetail key={activeExam.id} exam={activeExam} manager={manager} onBack={() => setActiveExam(null)} onNotice={setNotice}/>
       : <ExamList exams={exams.data?.items ?? []} loading={exams.isLoading} error={exams.error} retry={() => exams.refetch()} manager={manager} onSelect={setActiveExam}/>)}
-    {(tab === 'terms' && administrator) && <TermScalePanel terms={terms.data?.items ?? []} termsLoading={terms.isLoading} termsError={terms.error} retryTerms={() => terms.refetch()} bands={scale.data?.bands ?? []} scaleLoading={scale.isLoading} scaleError={scale.error} retryScale={() => scale.refetch()} onAddTerm={() => setShowTermForm(true)} onSaveScale={bands => updateScale.mutate({ data: { bands } }, { onSuccess: () => setNotice('Grade scale saved.') })} saving={updateScale.isPending}/>}
-    {tab === 'syllabus' && <LearningSyllabus canManage={manager} studentView={roles.includes('student') && !manager} onNotice={setNotice}/>}
-    {(tab === 'catalog' || tab === 'reports') && <LearningOperations key={tab} roles={roles} panel={tab}/>}
+    {(activeTab === 'terms' && administrator) && <TermScalePanel terms={terms.data?.items ?? []} termsLoading={terms.isLoading} termsError={terms.error} retryTerms={() => terms.refetch()} bands={scale.data?.bands ?? []} scaleLoading={scale.isLoading} scaleError={scale.error} retryScale={() => scale.refetch()} onAddTerm={() => setShowTermForm(true)} onSaveScale={bands => updateScale.mutate({ data: { bands } }, { onSuccess: () => setNotice('Grade scale saved.') })} saving={updateScale.isPending}/>}
+    {activeTab === 'syllabus' && <LearningSyllabus canManage={manager} studentView={roles.includes('student') && !manager} onNotice={setNotice}/>}
+    {(activeTab === 'catalog' || activeTab === 'reports') && <LearningOperations key={activeTab} roles={roles} panel={activeTab}/>}
   </div>;
 }
 
