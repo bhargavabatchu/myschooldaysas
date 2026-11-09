@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from "react";
 import { Link, useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, CreditCard, Percent } from "lucide-react";
 import {
   getGetFeeInvoicesQueryKey,
   getGetMyFeeInvoicesQueryKey,
@@ -22,6 +23,14 @@ import {
 import { SCHOOL_NAME } from "@/lib/branding";
 import { onlinePaymentsEnabled } from "@/lib/features";
 import { AcademicYearSelect } from "@/components/academic/academic-year-select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { FeeConcessionEditor } from "./fee-concession-editor";
 import { FeePaymentRecorder } from "./fee-payment-recorder";
 import { FeeCollectionReport } from "./fee-collection-report";
@@ -429,18 +438,38 @@ export function FeesPage({ roles }: FeesPageProps) {
                           : "—"}
                       </td>
                       <td className="p-3">
-                        <div className="flex flex-wrap gap-2">
-                          {invoice.status === "unpaid" && invoice.balancePaise > 0 && (
-                            <button className="btn btn-primary min-h-9 px-3" type="button" onClick={() => setRecordingInvoice(invoice)}>
-                              Record payment
-                            </button>
-                          )}
-                          {(invoice.status === "unpaid" || invoice.status === "waived") && (
-                            <button className="btn btn-muted min-h-9 px-3" type="button" onClick={() => setEditingInvoice(invoice)}>
-                              {invoice.concessionPaise ? "Edit concession" : "Add concession"}
-                            </button>
-                          )}
-                        </div>
+                        {((invoice.status === "unpaid" && invoice.balancePaise > 0)
+                          || invoice.status === "waived") ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                className="btn btn-muted min-h-9 whitespace-nowrap px-3"
+                                type="button"
+                                aria-label={`Manage invoice ${invoice.invoiceNumber}`}
+                              >
+                                Manage <ChevronDown aria-hidden="true" size={15} />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                              <DropdownMenuLabel>Invoice actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {invoice.status === "unpaid" && invoice.balancePaise > 0 && (
+                                <DropdownMenuItem onSelect={() => setRecordingInvoice(invoice)}>
+                                  <CreditCard aria-hidden="true" />
+                                  Record payment
+                                </DropdownMenuItem>
+                              )}
+                              {(invoice.status === "unpaid" || invoice.status === "waived") && (
+                                <DropdownMenuItem onSelect={() => setEditingInvoice(invoice)}>
+                                  <Percent aria-hidden="true" />
+                                  {invoice.concessionPaise ? "Edit concession" : "Add concession"}
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : (
+                          <span className="text-sm text-[hsl(var(--muted-foreground))]">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}
