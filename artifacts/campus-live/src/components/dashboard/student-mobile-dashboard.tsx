@@ -349,7 +349,7 @@ export function StudentDashboard({ userName }: StudentMobileDashboardProps) {
             <span className="mt-1 block text-[9px] leading-relaxed text-[hsl(var(--muted-foreground))]">{assignmentDetail}</span>
           </span>
         </Link>
-        <Link href="/learning/reports" className="surface flex min-h-[112px] items-start gap-3 p-3.5 transition hover:border-[hsl(var(--primary)/.35)] md:p-4" aria-label={`Latest result: ${resultsValue}. ${resultsDetail}`}>
+        <Link href="/results" className="surface flex min-h-[112px] items-start gap-3 p-3.5 transition hover:border-[hsl(var(--primary)/.35)] md:p-4" aria-label={`Latest result: ${resultsValue}. ${resultsDetail}`}>
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--accent)/.16)] text-[hsl(var(--foreground))]"><GraduationCap size={17}/></span>
           <span className="min-w-0">
             <span className="block text-[9px] font-bold uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]">Latest result</span>
@@ -372,7 +372,7 @@ export function StudentDashboard({ userName }: StudentMobileDashboardProps) {
           {[
             { label: 'Timetable', href: '/timetable', icon: CalendarDays, tone: 'bg-[hsl(var(--brand-mint))] text-[hsl(var(--brand-mint-ink))]' },
             { label: 'Learning', href: '/learning', icon: BookOpen, tone: 'bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]' },
-            { label: 'Results', href: '/learning/reports', icon: FileText, tone: 'bg-[hsl(var(--accent)/.16)] text-[hsl(var(--foreground))]' },
+            { label: 'Results', href: '/results', icon: FileText, tone: 'bg-[hsl(var(--accent)/.16)] text-[hsl(var(--foreground))]' },
             { label: 'Updates', href: '/announcements', icon: Radio, tone: 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]' },
             { label: 'Highlights', href: '/highlights', icon: Activity, tone: 'bg-[hsl(var(--brand-mint))] text-[hsl(var(--brand-mint-ink))]' },
           ].map(({ label, href, icon: Icon, tone }) => (
@@ -607,7 +607,7 @@ export function StudentMobileNavigation({
     { label: 'Home', href: '/dashboard', icon: LayoutDashboard, active: path === '/' || path === '/dashboard' },
     { label: 'Learn', href: '/learning', icon: GraduationCap, active: path === '/learning' },
     { label: 'Timetable', href: '/timetable', icon: CalendarDays, active: path === '/timetable' },
-    { label: 'Results', href: '/learning/reports', icon: FileText, active: path === '/learning/reports' },
+    { label: 'Results', href: '/results', icon: FileText, active: path === '/results' || path === '/learning/reports' },
   ];
 
   return (

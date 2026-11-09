@@ -14,18 +14,18 @@ import type { AcademicSubject, LearningReportCard } from '@workspace/api-client-
 import { BookOpen, Check, CircleAlert, FileText, Printer, Plus, Save, ShieldCheck, UsersRound, X } from 'lucide-react';
 import { SectionSubjectsManager } from './section-subjects-manager';
 
-type Props = { roles: string[] };
+type Props = { roles: string[]; panel: PanelTab };
 type PanelTab = 'catalog' | 'reports';
 const admins = ['org_admin', 'campus_admin', 'super_admin'];
 const learningStaff = [...admins, 'teacher', 'class_teacher', 'hod'];
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'Please try again.';
 const shortDate = (date?: string | null) => date ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(date)) : 'Not published';
 
-export function LearningOperations({ roles }: Props) {
+export function LearningOperations({ roles, panel }: Props) {
   const canAdmin = roles.some(role => admins.includes(role));
   const canStaff = roles.some(role => learningStaff.includes(role));
   const familyView = roles.some(role => ['parent', 'student'].includes(role)) && !canStaff;
-  const [tab, setTab] = useState<PanelTab>(canAdmin ? 'catalog' : 'reports');
+  const tab = panel;
   const [sectionId, setSectionId] = useState('');
   const [termId, setTermId] = useState('');
   const [selected, setSelected] = useState('');
@@ -108,13 +108,9 @@ export function LearningOperations({ roles }: Props) {
   const openCard = (card: LearningReportCard) => setSelected(card.id);
 
   return <div className="space-y-5">
-    <div className="surface flex flex-col justify-between gap-3 p-3 sm:flex-row sm:items-center">
-      <div className="flex gap-1 overflow-x-auto" aria-label="Learning tools">
-        {canAdmin && <button aria-pressed={tab === 'catalog'} onClick={() => { setTab('catalog'); setSelected(''); }} className={`rounded-lg px-4 py-2.5 text-xs font-bold transition ${tab === 'catalog' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'hover:bg-[hsl(var(--secondary))]'}`}>Subjects & teachers</button>}
-        <button aria-pressed={tab === 'reports'} onClick={() => { setTab('reports'); setSelected(''); }} className={`rounded-lg px-4 py-2.5 text-xs font-bold transition ${tab === 'reports' ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'hover:bg-[hsl(var(--secondary))]'}`}>{familyView ? 'Published report cards' : 'Report cards'}</button>
-      </div>
-      {canStaff && <label className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]"><UsersRound size={15}/><span className="sr-only">Filter by section</span><select className="field min-h-9 py-1.5 text-xs sm:w-[210px]" value={sectionId} onChange={event => setSectionId(event.target.value)}><option value="">All sections</option>{(canAdmin ? sections.data?.items ?? [] : allowedSections).map(section => <option key={section.id} value={section.id}>{section.className} · {section.name}</option>)}</select></label>}
-    </div>
+    {canStaff && <div className="surface flex justify-end p-3">
+      <label className="flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]"><UsersRound size={15}/><span className="sr-only">Filter by section</span><select className="field min-h-9 py-1.5 text-xs sm:w-[210px]" value={sectionId} onChange={event => setSectionId(event.target.value)}><option value="">All sections</option>{(canAdmin ? sections.data?.items ?? [] : allowedSections).map(section => <option key={section.id} value={section.id}>{section.className} · {section.name}</option>)}</select></label>
+    </div>}
     {notice && <div role="status" className="rounded-xl border border-[hsl(var(--status-good)/.3)] bg-[hsl(var(--status-good-bg))] px-4 py-3 text-sm text-[hsl(var(--brand-mint-ink))]">{notice}</div>}
     {mutationError && <div role="alert" className="rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.08)] px-4 py-3 text-sm text-[hsl(var(--destructive))]">{errorText(mutationError)}</div>}
     {tab === 'catalog' && canAdmin && <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">

@@ -20,6 +20,7 @@ import {
 
 type Props = { roles: string[]; initialTab?: Tab };
 type Tab = 'syllabus' | 'assignments' | 'exams' | 'terms' | 'catalog' | 'reports';
+type LearningArea = 'learning' | 'results';
 const canManage = (roles: string[]) => roles.some(role => ['teacher', 'class_teacher', 'hod', 'org_admin', 'campus_admin', 'super_admin'].includes(role));
 const canAdminister = (roles: string[]) => roles.some(role => ['org_admin', 'campus_admin', 'super_admin'].includes(role));
 type AssignmentSection = Pick<SectionSummary, 'id' | 'classId' | 'className' | 'name'>;
@@ -34,9 +35,10 @@ const localValue = (value?: string) => value ? value.slice(0, 16) : '';
 const toIsoDate = (value: string) => new Date(value).toISOString();
 const statusStyle = (status: string) => status === 'published' ? 'bg-[hsl(var(--status-good-bg))] text-[hsl(var(--brand-mint-ink))]' : status === 'closed' ? 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]' : 'bg-[hsl(var(--accent)/.16)] text-[hsl(var(--foreground))]';
 
-export function LearningPage({ roles, initialTab = 'assignments' }: Props) {
+export function LearningPage({ roles, initialTab = 'assignments', area = 'learning' }: Props & { area?: LearningArea }) {
   const manager = canManage(roles);
   const administrator = canAdminister(roles);
+  const resultsArea = area === 'results';
   const [tab, setTab] = useState<Tab>(initialTab);
   const [sectionId, setSectionId] = useState('');
   const [activeAssignment, setActiveAssignment] = useState<LearningAssignment | null>(null);
@@ -50,12 +52,12 @@ export function LearningPage({ roles, initialTab = 'assignments' }: Props) {
     return all.filter(section => allowed.has(section.id));
   }, [sections.data, teacherAssignments.data, administrator]);
   const resolvedSection = availableSections.some(section => section.id === sectionId) ? sectionId : availableSections[0]?.id ?? '';
-  const sectionAssignments = useGetAcademicTeacherAssignments({ sectionId: resolvedSection }, { query: { enabled: manager && !!resolvedSection } });
+  const sectionAssignments = useGetAcademicTeacherAssignments({ sectionId: resolvedSection }, { query: { enabled: resultsArea && manager && !!resolvedSection } });
   const allowedSubjectIds = useMemo(() => (sectionAssignments.data?.items ?? []).map(item => item.subjectId), [sectionAssignments.data]);
   const params = useMemo(() => manager && resolvedSection ? { sectionId: resolvedSection } : undefined, [manager, resolvedSection]);
-  const managedAssignments = useGetLearningAssignments(params, { query: { enabled: manager } });
-  const myAssignments = useGetMyLearningAssignments({ query: { enabled: !manager } });
-  const exams = useGetLearningExams(params, { query: { enabled: tab === 'exams' || tab === 'terms' } });
+  const managedAssignments = useGetLearningAssignments(params, { query: { enabled: !resultsArea && manager } });
+  const myAssignments = useGetMyLearningAssignments({ query: { enabled: !resultsArea && !manager } });
+  const exams = useGetLearningExams(params, { query: { enabled: resultsArea && tab === 'exams' } });
   const terms = useGetLearningTerms({ query: { enabled: tab === 'terms' && administrator } });
   const scale = useGetLearningGradeScale({ query: { enabled: tab === 'terms' && administrator } });
   const queryClient = useQueryClient();
@@ -79,26 +81,27 @@ export function LearningPage({ roles, initialTab = 'assignments' }: Props) {
   const [showTermForm, setShowTermForm] = useState(false);
   const [notice, setNotice] = useState('');
   const failure = addAssignment.error || editAssignment.error || addExam.error || addTerm.error || updateScale.error;
-  const tabs: Tab[] = ['syllabus', 'assignments', 'exams'];
-  if (administrator) tabs.push('terms', 'catalog');
-  tabs.push('reports');
+  const tabs: Tab[] = resultsArea ? ['exams', 'reports'] : ['syllabus', 'assignments'];
+  if (!resultsArea && administrator) tabs.push('terms', 'catalog');
 
   return <div className="space-y-6">
     <header className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
-      <div><div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--primary))]"><span className="h-px w-7 bg-[hsl(var(--accent))]"/>Learning workspace</div>
-        <h1 className="display m-0 text-[32px] font-extrabold tracking-[-.045em] md:text-[38px]">Work & results</h1>
-        <p className="mb-0 mt-2 max-w-2xl text-[13px] text-[hsl(var(--muted-foreground))]">{manager ? 'Keep assignments, submissions and assessments in one dependable place.' : 'Your schoolwork, feedback and published results — all in one view.'}</p>
+      <div><div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.2em] text-[hsl(var(--primary))]"><span className="h-px w-7 bg-[hsl(var(--accent))]"/>{resultsArea ? 'Academic results' : 'Learning workspace'}</div>
+        <h1 className="display m-0 text-[32px] font-extrabold tracking-[-.045em] md:text-[38px]">{resultsArea ? 'Results & assessments' : 'Learning'}</h1>
+        <p className="mb-0 mt-2 max-w-2xl text-[13px] text-[hsl(var(--muted-foreground))]">{resultsArea
+          ? manager ? 'Manage assessments and report cards for your classes.' : 'View assessments, feedback and report cards shared with you.'
+          : manager ? 'Keep class syllabuses and assignments in one place.' : 'Explore your syllabus and keep up with school assignments.'}</p>
       </div>
       {manager && <div className="flex flex-wrap gap-2">
-        <button onClick={() => setShowAssignmentForm(true)} className="btn btn-primary"><Plus size={16}/>Assignment</button>
-        <button onClick={() => setShowExamForm(true)} className="btn btn-muted"><Plus size={16}/>Assessment</button>
+        {!resultsArea && <button onClick={() => setShowAssignmentForm(true)} className="btn btn-primary"><Plus size={16}/>Assignment</button>}
+        {resultsArea && <button onClick={() => setShowExamForm(true)} className="btn btn-primary"><Plus size={16}/>Assessment</button>}
       </div>}
     </header>
     <div className="surface flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
       <nav aria-label="Learning sections" className="flex gap-1 overflow-x-auto">
         {tabs.map(item => <button key={item} onClick={() => { setTab(item); setActiveAssignment(null); setActiveExam(null); }} aria-pressed={tab === item} className={`rounded-lg px-4 py-2.5 text-xs font-bold capitalize transition ${tab === item ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))]'}`}>{item === 'exams' ? 'Assessments & results' : item === 'catalog' ? 'Subjects & teachers' : item === 'reports' ? 'Report cards' : item}</button>)}
       </nav>
-      {manager && <label className="flex items-center gap-2 px-1 text-[11px] font-semibold text-[hsl(var(--muted-foreground))]"><UsersRound size={15}/><span className="sr-only">Filter by section</span><select className="field min-h-9 w-full py-1.5 text-xs sm:w-auto" value={resolvedSection} onChange={event => setSectionId(event.target.value)}><option value="">All assigned sections</option>{availableSections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label>}
+      {manager && resultsArea && tab === 'exams' && <label className="flex items-center gap-2 px-1 text-[11px] font-semibold text-[hsl(var(--muted-foreground))]"><UsersRound size={15}/><span className="sr-only">Filter by section</span><select className="field min-h-9 w-full py-1.5 text-xs sm:w-auto" value={resolvedSection} onChange={event => setSectionId(event.target.value)}><option value="">All assigned sections</option>{availableSections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}</select></label>}
     </div>
     {notice && <div role="status" className="rounded-xl border border-[hsl(var(--status-good)/.3)] bg-[hsl(var(--status-good-bg))] px-4 py-3 text-sm text-[hsl(var(--brand-mint-ink))]">{notice}</div>}
     {failure && <div role="alert" className="rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.08)] px-4 py-3 text-sm text-[hsl(var(--destructive))]">{errorMessage(failure)}</div>}
@@ -117,7 +120,7 @@ export function LearningPage({ roles, initialTab = 'assignments' }: Props) {
       : <ExamList exams={exams.data?.items ?? []} loading={exams.isLoading} error={exams.error} retry={() => exams.refetch()} manager={manager} onSelect={setActiveExam}/>)}
     {(tab === 'terms' && administrator) && <TermScalePanel terms={terms.data?.items ?? []} termsLoading={terms.isLoading} termsError={terms.error} retryTerms={() => terms.refetch()} bands={scale.data?.bands ?? []} scaleLoading={scale.isLoading} scaleError={scale.error} retryScale={() => scale.refetch()} onAddTerm={() => setShowTermForm(true)} onSaveScale={bands => updateScale.mutate({ data: { bands } }, { onSuccess: () => setNotice('Grade scale saved.') })} saving={updateScale.isPending}/>}
     {tab === 'syllabus' && <LearningSyllabus canManage={manager} studentView={roles.includes('student') && !manager} onNotice={setNotice}/>}
-    {(tab === 'catalog' || tab === 'reports') && <LearningOperations roles={roles}/>}
+    {(tab === 'catalog' || tab === 'reports') && <LearningOperations key={tab} roles={roles} panel={tab}/>}
   </div>;
 }
 

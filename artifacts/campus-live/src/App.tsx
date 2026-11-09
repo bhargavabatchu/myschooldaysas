@@ -14,7 +14,7 @@ import {
 } from '@workspace/api-client-react';
 import type { AcademicYear, BoardConfig, BoardTemplate, BoardTemplateInput, LiveSession, LiveSessionInput, SectionSummary } from '@workspace/api-client-react';
 import {
-  Activity, ArrowDown, ArrowRight, ArrowUpRight, BookOpen, CalendarDays, Check, ChevronDown, ClipboardList,
+  Activity, ArrowDown, ArrowRight, ArrowUpRight, Award, BookOpen, CalendarDays, Check, ChevronDown, ClipboardList,
   ChevronLeft, ChevronRight, CircleAlert, Clock3, DoorOpen, GraduationCap, LayoutDashboard,
   Library, LoaderCircle, LogOut, Menu, Moon, Plus, Radio, Search, Settings2, ShieldCheck,
   Sun, Users, Video, X, CalendarCheck,
@@ -208,7 +208,8 @@ function ProtectedApp() {
         <Route path="/admin/assistant" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <DashboardPage roles={user.roles} userName={user.name} requestedAcademicYear={selectedAcademicYear} /> : <NotFound/>} />
         <Route path="/live/sessions" component={() => liveClassesEnabled ? <SessionsPage userRoles={user.roles} /> : <LiveClassesUnavailable />} />
         <Route path="/boards/templates" component={() => <TemplatesPage roles={user.roles} />} />
-        <Route path="/learning/reports" component={() => <LearningPage roles={user.roles} initialTab="reports" />} />
+        <Route path="/results" component={() => <LearningPage roles={user.roles} area="results" initialTab="exams" />} />
+        <Route path="/learning/reports" component={() => <LearningPage roles={user.roles} area="results" initialTab="reports" />} />
         <Route path="/learning/syllabus" component={() => <LearningPage roles={user.roles} initialTab="syllabus" />} />
         <Route path="/learning" component={() => <LearningPage roles={user.roles} />} />
         <Route path="/announcements" component={() => <AnnouncementsPage roles={user.roles} userId={user.id} />} />
@@ -256,6 +257,7 @@ function AppShell({
     ...(liveClassesEnabled ? [{ label: 'Live classes', href: '/live/sessions', icon: Video }] : []),
     { label: 'Smartboards', href: '/boards/templates', icon: Library },
     { label: 'Learning', href: '/learning', icon: GraduationCap },
+    { label: 'Results', href: '/results', icon: Award },
     { label: 'Announcements', href: '/announcements', icon: Radio },
     { label: 'Highlights', href: '/highlights', icon: Activity },
     { label: 'Attendance', href: '/attendance', icon: CalendarCheck },
@@ -288,7 +290,11 @@ function AppShell({
       <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.17em] text-white/40">Workspace</div>
        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto">
         {nav.map(item => {
-          const Icon = item.icon; const active = path === item.href || (item.href !== '/dashboard' && path.startsWith(item.href));
+          const Icon = item.icon;
+          const active = path === item.href
+            || (path === '/learning/reports' && item.href === '/results')
+            || (item.href !== '/dashboard' && path.startsWith(item.href)
+              && !(path === '/learning/reports' && item.href === '/learning'));
           return <Link key={item.href} href={item.href} onClick={() => setMobileNav(false)} data-testid={`link-nav-${item.label.toLowerCase().replaceAll(' ', '-')}`} className={`flex h-11 items-center gap-3 rounded-xl px-3 text-[13px] font-semibold transition ${active ? 'bg-white/10 text-white' : 'text-white/65 hover:bg-white/5 hover:text-white'}`}>
             <Icon size={17} strokeWidth={1.8}/>{item.label}{active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[hsl(var(--accent))]"/>}
           </Link>;
@@ -312,7 +318,7 @@ function AppShell({
       <header className={`sticky top-0 z-20 ${isStudent ? 'hidden md:flex' : 'flex'} h-[68px] items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--background)/.94)] px-4 backdrop-blur-md md:px-9`}>
         <div className="flex items-center gap-3">
           <button aria-label="Open navigation" data-testid="button-open-navigation" onClick={() => setMobileNav(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-[hsl(var(--border))] md:hidden"><Menu size={18}/></button>
-          <div className="text-[11px] text-[hsl(var(--muted-foreground))]">Workspace / <span className="font-semibold capitalize text-[hsl(var(--foreground))]">{path === '/admin/assistant' ? 'Ask assistant' : nav.find(item => path.startsWith(item.href))?.label ?? 'Classroom'}</span></div>
+           <div className="text-[11px] text-[hsl(var(--muted-foreground))]">Workspace / <span className="font-semibold capitalize text-[hsl(var(--foreground))]">{path === '/admin/assistant' ? 'Ask assistant' : path === '/learning/reports' ? 'Results' : nav.find(item => path.startsWith(item.href))?.label ?? 'Classroom'}</span></div>
         </div>
          <div className="flex items-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]">
            {isDashboard && isAdmin && (
