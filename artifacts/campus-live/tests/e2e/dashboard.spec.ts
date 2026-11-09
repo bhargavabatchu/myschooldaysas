@@ -247,6 +247,7 @@ test("teacher navigation stays role-aware and theme control remains reachable on
 test("student accounts cannot open the student directory", async ({ page }) => {
   await signIn(page, "student1@demo.edu");
   await expect(page.getByTestId("student-overview-dashboard")).toBeVisible();
+  await expect(page.getByTestId("student-thought-of-the-day")).toBeVisible();
   await expect(page.getByTestId("student-insight-cards")).toBeVisible();
   await expect(page.getByTestId("student-attendance-value")).toBeVisible();
   await expect(page.getByTestId("student-assignment-value")).toBeVisible();

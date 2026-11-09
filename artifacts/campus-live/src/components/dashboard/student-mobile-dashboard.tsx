@@ -12,6 +12,7 @@ import {
   CreditCard,
   FileText,
   GraduationCap,
+  Lightbulb,
   LayoutDashboard,
   Menu,
   Radio,
@@ -43,6 +44,29 @@ type LocalClock = {
 };
 
 const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const dailyThoughts = [
+  { thought: 'Curiosity helps learning grow.', prompt: 'Ask one question about something you notice today.' },
+  { thought: 'Kindness makes a classroom stronger.', prompt: 'Include someone and offer help when you can.' },
+  { thought: 'Every expert started as a beginner.', prompt: 'Try a new task one step at a time.' },
+  { thought: 'Mistakes are part of learning.', prompt: 'Think about what you can try differently next time.' },
+  { thought: 'Small efforts add up.', prompt: 'Give your attention to one thing you can improve today.' },
+  { thought: 'Good ideas grow when we share.', prompt: 'Listen carefully and make room for others to share.' },
+  { thought: 'Practice helps confidence grow.', prompt: 'Keep going, even when a skill feels new.' },
+  { thought: 'A thoughtful question can open a new path.', prompt: 'Stay curious in class and beyond.' },
+  { thought: 'Everyone has something valuable to contribute.', prompt: 'Notice and appreciate what a classmate brings.' },
+  { thought: 'Patience gives good ideas room to grow.', prompt: 'Take your time with one thing that feels challenging.' },
+  { thought: 'Respect helps everyone feel they belong.', prompt: 'Use words and actions that help others feel welcome.' },
+  { thought: 'One helpful choice can brighten someone’s day.', prompt: 'Look for a small way to be helpful today.' },
+  { thought: 'Learning happens one step at a time.', prompt: 'Celebrate the progress you make, however small.' },
+  { thought: 'The best way to begin is to try.', prompt: 'Choose one task and give it your best effort.' },
+];
+
+function thoughtForSchoolDate(dateKey: string) {
+  const dayNumber = Math.floor(Date.parse(`${dateKey}T00:00:00Z`) / 86_400_000);
+  const index = ((dayNumber % dailyThoughts.length) + dailyThoughts.length) % dailyThoughts.length;
+  return dailyThoughts[index];
+}
 
 function timeToMinutes(value: string): number {
   const [hours, minutes] = value.split(':').map(Number);
@@ -143,6 +167,7 @@ export function StudentDashboard({ userName }: StudentMobileDashboardProps) {
 
   const studentName = userName.trim() || 'Student';
   const firstName = studentName.split(/\s+/)[0];
+  const thoughtOfTheDay = clock ? thoughtForSchoolDate(clock.dateKey) : null;
   const currentSection = sections.data?.items[0];
   const sectionLabel = currentSection
     ? `${currentSection.className} · Section ${currentSection.name}`
@@ -279,6 +304,23 @@ export function StudentDashboard({ userName }: StudentMobileDashboardProps) {
           </p>
         </div>
       </section>
+
+      {thoughtOfTheDay && (
+        <section
+          className="surface flex items-start gap-3.5 border-l-4 border-l-[hsl(var(--brand-accent))] p-4 md:p-5"
+          aria-labelledby="student-thought-title"
+          data-testid="student-thought-of-the-day"
+        >
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--accent)/.16)] text-[hsl(var(--brand-accent))]">
+            <Lightbulb size={18} strokeWidth={1.9} />
+          </span>
+          <div className="min-w-0">
+            <p className="m-0 text-[9px] font-bold uppercase tracking-[.16em] text-[hsl(var(--muted-foreground))]">Thought of the day</p>
+            <h2 id="student-thought-title" className="display m-0 mt-1 text-[15px] font-extrabold leading-snug tracking-[-.02em] md:text-base">{thoughtOfTheDay.thought}</h2>
+            <p className="m-0 mt-1 text-[11px] leading-relaxed text-[hsl(var(--muted-foreground))]">{thoughtOfTheDay.prompt}</p>
+          </div>
+        </section>
+      )}
 
       <section
         className="relative overflow-hidden rounded-[20px] bg-[hsl(var(--brand-forest))] p-5 text-[hsl(var(--brand-inverse))] shadow-sm md:p-6"
