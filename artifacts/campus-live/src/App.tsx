@@ -16,7 +16,7 @@ import type { AcademicYear, BoardConfig, BoardTemplate, BoardTemplateInput, Live
 import {
   Activity, ArrowDown, ArrowRight, ArrowUpRight, BookOpen, CalendarDays, Check, ChevronDown, ClipboardList,
   ChevronLeft, ChevronRight, CircleAlert, Clock3, DoorOpen, GraduationCap, LayoutDashboard,
-  Library, LoaderCircle, LogOut, Menu, MessageSquareText, Moon, Plus, Radio, Search, Settings2, ShieldCheck,
+  Library, LoaderCircle, LogOut, Menu, Moon, Plus, Radio, Search, Settings2, ShieldCheck,
   Sun, Users, Video, X, CalendarCheck,
   CreditCard,
 } from 'lucide-react';
@@ -40,7 +40,7 @@ import { ClassRemovalControls, SectionRemovalControls } from '@/components/acade
 import { EnrollmentYearField } from '@/components/academic/enrollment-year-field';
 import { EnrollmentForm } from '@/components/academic/enrollment-form';
 import { AdmissionIntake } from '@/components/academic/admission-intake';
-import { AdminAssistantPage } from '@/components/admin-assistant-page';
+import { AdminAssistantChatWidget } from '@/components/admin-assistant-chat-widget';
 import { StudentProfileEditor } from '@/components/academic/student-profile-editor';
 import { ClassPromotionWizard } from '@/components/academic/class-promotion-wizard';
 import { AddSectionForm, ClassSetupPanel } from '@/components/academic/class-setup';
@@ -205,7 +205,7 @@ function ProtectedApp() {
         <Route path="/admin/students" component={() => canViewStudentRoster(user.roles) ? <StudentsPage roles={user.roles} /> : <NotFound />} />
         <Route path="/admin/admissions" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <AdmissionsInbox/> : <NotFound/>} />
         <Route path="/admin/guardians" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <GuardianAccessPage/> : <NotFound/>} />
-        <Route path="/admin/assistant" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <AdminAssistantPage/> : <NotFound/>} />
+        <Route path="/admin/assistant" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <DashboardPage roles={user.roles} userName={user.name} requestedAcademicYear={selectedAcademicYear} /> : <NotFound/>} />
         <Route path="/live/sessions" component={() => liveClassesEnabled ? <SessionsPage userRoles={user.roles} /> : <LiveClassesUnavailable />} />
         <Route path="/boards/templates" component={() => <TemplatesPage roles={user.roles} />} />
         <Route path="/learning/reports" component={() => <LearningPage roles={user.roles} initialTab="reports" />} />
@@ -246,7 +246,7 @@ function AppShell({
   const [mobileNav, setMobileNav] = useState(false);
   const [dark, setDark] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
   const toggleTheme = () => { document.documentElement.classList.toggle('dark'); setDark(!dark); };
-  const isDashboard = path === '/' || path === '/dashboard';
+  const isDashboard = path === '/' || path === '/dashboard' || path === '/admin/assistant';
   const isStudent = user.roles.includes('student');
   const isAdmin = user.roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role));
   const nav = [
@@ -270,7 +270,6 @@ function AppShell({
     nav.push({ label: 'Admissions', href: '/admin/admissions', icon: ClipboardList });
     nav.push({ label: 'Family access', href: '/admin/guardians', icon: ShieldCheck });
     nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
-    nav.push({ label: 'Ask assistant', href: '/admin/assistant', icon: MessageSquareText });
   }
   if (user.roles.includes('parent')) {
     nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
@@ -313,7 +312,7 @@ function AppShell({
       <header className={`sticky top-0 z-20 ${isStudent ? 'hidden md:flex' : 'flex'} h-[68px] items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--background)/.94)] px-4 backdrop-blur-md md:px-9`}>
         <div className="flex items-center gap-3">
           <button aria-label="Open navigation" data-testid="button-open-navigation" onClick={() => setMobileNav(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-[hsl(var(--border))] md:hidden"><Menu size={18}/></button>
-          <div className="text-[11px] text-[hsl(var(--muted-foreground))]">Workspace / <span className="font-semibold capitalize text-[hsl(var(--foreground))]">{nav.find(item => path.startsWith(item.href))?.label ?? 'Classroom'}</span></div>
+          <div className="text-[11px] text-[hsl(var(--muted-foreground))]">Workspace / <span className="font-semibold capitalize text-[hsl(var(--foreground))]">{path === '/admin/assistant' ? 'Ask assistant' : nav.find(item => path.startsWith(item.href))?.label ?? 'Classroom'}</span></div>
         </div>
          <div className="flex items-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]">
            {isDashboard && isAdmin && (
@@ -345,6 +344,7 @@ function AppShell({
       <div className={`page-enter mx-auto w-full max-w-[1450px] px-4 md:px-9 ${isStudent ? 'pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:py-9' : 'py-7 md:py-9'}`}>{children}</div>
     </main>
     {isStudent && <StudentMobileNavigation path={path} menuOpen={mobileNav} onMore={() => setMobileNav(true)} />}
+    {isAdmin && <AdminAssistantChatWidget openOnMount={path === '/admin/assistant'} />}
   </div>;
 }
 
