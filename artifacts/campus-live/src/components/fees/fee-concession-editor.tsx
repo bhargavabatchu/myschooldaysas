@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetFeeInvoicesQueryKey,
@@ -64,16 +65,16 @@ export function FeeConcessionEditor({ invoice, onClose, onSaved }: FeeConcession
     ? requestError.data.error.message
     : requestError?.message;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/45 p-3 sm:p-4"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !update.isPending) onClose();
       }}
     >
       <section
-        className="surface w-full max-w-2xl p-5 shadow-2xl md:p-6"
+        className="surface my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl overflow-y-auto p-5 shadow-2xl sm:max-h-[calc(100dvh-2rem)] md:p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="fee-concession-title"
@@ -177,6 +178,7 @@ export function FeeConcessionEditor({ invoice, onClose, onSaved }: FeeConcession
           </div>
         </form>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
