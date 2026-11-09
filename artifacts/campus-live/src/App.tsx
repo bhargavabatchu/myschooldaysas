@@ -216,7 +216,7 @@ function ProtectedApp() {
         <Route path="/highlights" component={() => <HighlightsPage roles={user.roles} />} />
         <Route path="/attendance" component={() => <AttendancePage roles={user.roles} />} />
         <Route path="/calendar" component={() => <AcademicCalendarPage roles={user.roles} />} />
-        <Route path="/timetable" component={() => <TimetablePage canManage={user.roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role))} />} />
+        <Route path="/timetable" component={() => <TimetablePage canManage={user.roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role))} isStudent={user.roles.includes('student')} />} />
         <Route path="/family/consents" component={() => user.roles.includes('parent') ? <ConsentsPage/> : <NotFound/>} />
         <Route path="/fees/receipts/:receiptNumber" component={FeeReceiptPage} />
         <Route path="/fees" component={() => <FeesPage roles={user.roles} />} />
