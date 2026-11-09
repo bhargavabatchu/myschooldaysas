@@ -1,6 +1,7 @@
 import { createPool } from "@workspace/db";
 import { hashPassword } from "./lib/auth.ts";
 import { addDefaultSectionSubjects } from "./lib/section-subjects.ts";
+import { seedGradeOneSyllabus } from "./lib/seed-grade-one-syllabus.ts";
 
 if (process.env.NODE_ENV !== "development") {
   throw new Error("Development seeds are disabled outside NODE_ENV=development.");
@@ -198,6 +199,12 @@ try {
     for (const sectionId of allSectionIds) {
       await addDefaultSectionSubjects(client, orgId, sectionId);
     }
+    const gradeOneClassId = classIds[0];
+    const demoAdminId = userIds.get("admin@demo.edu");
+    if (!gradeOneClassId || !demoAdminId) {
+      throw new Error("Could not find the Grade 1 demo class or its administrator.");
+    }
+    await seedGradeOneSyllabus(client, orgId, gradeOneClassId, demoAdminId);
 
     const studentUsers = users.filter((user) => user.kind === "student");
     const teacherUsers = users.filter((user) => user.kind === "teacher");
