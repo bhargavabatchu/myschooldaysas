@@ -116,7 +116,7 @@ export function LearningPage({ roles, initialTab = 'assignments' }: Props) {
       ? <ExamDetail key={activeExam.id} exam={activeExam} manager={manager} onBack={() => setActiveExam(null)} onNotice={setNotice}/>
       : <ExamList exams={exams.data?.items ?? []} loading={exams.isLoading} error={exams.error} retry={() => exams.refetch()} manager={manager} onSelect={setActiveExam}/>)}
     {(tab === 'terms' && administrator) && <TermScalePanel terms={terms.data?.items ?? []} termsLoading={terms.isLoading} termsError={terms.error} retryTerms={() => terms.refetch()} bands={scale.data?.bands ?? []} scaleLoading={scale.isLoading} scaleError={scale.error} retryScale={() => scale.refetch()} onAddTerm={() => setShowTermForm(true)} onSaveScale={bands => updateScale.mutate({ data: { bands } }, { onSuccess: () => setNotice('Grade scale saved.') })} saving={updateScale.isPending}/>}
-    {tab === 'syllabus' && <LearningSyllabus canManage={manager} onNotice={setNotice}/>}
+    {tab === 'syllabus' && <LearningSyllabus canManage={manager} studentView={roles.includes('student') && !manager} onNotice={setNotice}/>}
     {(tab === 'catalog' || tab === 'reports') && <LearningOperations roles={roles}/>}
   </div>;
 }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import type { LucideIcon } from 'lucide-react';
 import {
   getGetLearningSyllabusQueryKey,
   useCreateLearningSyllabusLesson,
@@ -21,11 +22,20 @@ import type {
   LearningSyllabusTopic,
 } from '@workspace/api-client-react';
 import {
+  Activity,
+  ArrowLeft,
   BookOpen,
+  Calculator,
+  ChevronRight,
   CirclePlay,
   ExternalLink,
   FileText,
+  Globe,
+  Languages,
+  Leaf,
   Link2,
+  Monitor,
+  Palette,
   Pencil,
   Plus,
   Save,
@@ -33,13 +43,23 @@ import {
   X,
 } from 'lucide-react';
 
-type Props = { canManage: boolean; onNotice: (message: string) => void };
+type Props = { canManage: boolean; studentView: boolean; onNotice: (message: string) => void };
 type TextDraft = { title: string; description: string };
 type MaterialDraft = LearningSyllabusMaterialInput;
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Please try again.';
+const subjectIcons: Record<string, LucideIcon> = {
+  English: Languages,
+  Mathematics: Calculator,
+  Science: Leaf,
+  'Social Studies': Globe,
+  Hindi: Languages,
+  'Computer Science': Monitor,
+  Arts: Palette,
+  'Physical Education': Activity,
+};
 
-export function LearningSyllabus({ canManage, onNotice }: Props) {
+export function LearningSyllabus({ canManage, studentView, onNotice }: Props) {
   const queryClient = useQueryClient();
   const syllabus = useGetLearningSyllabus();
   const addLesson = useCreateLearningSyllabusLesson();
@@ -67,8 +87,9 @@ export function LearningSyllabus({ canManage, onNotice }: Props) {
   const subjects = items.filter((item) => item.classId === selectedClassId);
   const selectedSubjectId = subjects.some((item) => item.subjectId === subjectId)
     ? subjectId
-    : subjects[0]?.subjectId ?? '';
+    : studentView ? '' : subjects[0]?.subjectId ?? '';
   const active = items.find((item) => item.classId === selectedClassId && item.subjectId === selectedSubjectId) ?? null;
+  const selectedClassName = classes.find((item) => item.id === selectedClassId)?.name ?? 'Your class';
   const isSaving = addLesson.isPending || updateLesson.isPending || deleteLesson.isPending
     || addTopic.isPending || updateTopic.isPending || deleteTopic.isPending
     || addMaterial.isPending || updateMaterial.isPending || deleteMaterial.isPending;
@@ -207,6 +228,70 @@ export function LearningSyllabus({ canManage, onNotice }: Props) {
       {material.description && <p className="basis-full m-0 pl-6 text-xs text-[hsl(var(--muted-foreground))]">{material.description}</p>}
     </div>;
   };
+
+  if (studentView) {
+    if (!items.length) return <div className="surface p-8 text-center">
+      <BookOpen className="mx-auto text-[hsl(var(--muted-foreground))]" size={24}/>
+      <h2 className="display mt-3 text-base font-extrabold">No syllabus shared yet</h2>
+      <p className="mx-auto mb-0 mt-1 max-w-lg text-sm text-[hsl(var(--muted-foreground))]">Your class subjects and lessons will appear here when the school shares them.</p>
+    </div>;
+
+    return <section className="space-y-4" aria-label="Class syllabus">
+      {failure && <div role="alert" className="rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.08)] px-4 py-3 text-sm text-[hsl(var(--destructive))]">{errorMessage(failure)}</div>}
+      {!active ? <>
+        <header className="space-y-1">
+          <p className="mb-0 text-[10px] font-bold uppercase tracking-[.17em] text-[hsl(var(--primary))]">{selectedClassName} · Class syllabus</p>
+          <h2 className="display m-0 text-xl font-extrabold">Your subjects</h2>
+          <p className="m-0 text-sm text-[hsl(var(--muted-foreground))]">Choose a subject to explore its lessons and topics.</p>
+        </header>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+          {subjects.map((item) => {
+            const Icon = subjectIcons[item.subjectName] ?? BookOpen;
+            const lessonCount = item.lessons.length;
+            const topicCount = item.lessons.reduce((total, lesson) => total + lesson.topics.length, 0);
+            return <button
+              key={item.subjectId}
+              type="button"
+              onClick={() => setSubjectId(item.subjectId)}
+              className="surface group min-h-36 rounded-2xl p-4 text-left transition hover:-translate-y-0.5 hover:border-[hsl(var(--primary)/.45)] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))] sm:min-h-40 sm:p-5"
+              aria-label={`Open ${item.subjectName}: ${lessonCount} lessons, ${topicCount} topics`}
+            >
+              <span className="flex items-start justify-between">
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))] transition group-hover:bg-[hsl(var(--primary))] group-hover:text-[hsl(var(--primary-foreground))]">
+                  <Icon size={21} aria-hidden="true"/>
+                </span>
+                <ChevronRight size={17} className="mt-1 text-[hsl(var(--muted-foreground))] transition group-hover:translate-x-0.5 group-hover:text-[hsl(var(--primary))]" aria-hidden="true"/>
+              </span>
+              <span className="mt-4 block text-sm font-extrabold text-[hsl(var(--foreground))]">{item.subjectName}</span>
+              <span className="mt-1 block text-xs text-[hsl(var(--muted-foreground))]">
+                {lessonCount} lesson{lessonCount === 1 ? '' : 's'} · {topicCount} topic{topicCount === 1 ? '' : 's'}
+              </span>
+            </button>;
+          })}
+        </div>
+      </> : <>
+        <header className="surface flex flex-wrap items-center gap-3 p-4 sm:p-5">
+          <button type="button" className="btn btn-muted min-h-10 px-3" onClick={() => setSubjectId('')}>
+            <ArrowLeft size={16} aria-hidden="true"/> All subjects
+          </button>
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]">
+            {(() => {
+              const Icon = subjectIcons[active.subjectName] ?? BookOpen;
+              return <Icon size={21} aria-hidden="true"/>;
+            })()}
+          </span>
+          <div>
+            <p className="m-0 text-[10px] font-bold uppercase tracking-[.15em] text-[hsl(var(--primary))]">{selectedClassName} · Subject syllabus</p>
+            <h2 className="display m-0 mt-1 text-lg font-extrabold">{active.subjectName}</h2>
+          </div>
+        </header>
+        {!active.lessons.length ? <div className="surface p-7 text-center">
+          <h3 className="m-0 text-sm font-bold">No lessons published yet</h3>
+          <p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Lessons and topics for this subject will appear here when the school adds them.</p>
+        </div> : <div className="space-y-3">{active.lessons.map(renderLesson)}</div>}
+      </>}
+    </section>;
+  }
 
   return <section className="space-y-4">
     <header className="surface flex flex-col gap-4 p-4 sm:flex-row sm:items-end sm:justify-between sm:p-5">
