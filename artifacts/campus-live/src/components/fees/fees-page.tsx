@@ -1,9 +1,9 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, CreditCard, Percent } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, CreditCard, Percent, Search, X } from "lucide-react";
 import {
   getGetFeeInvoicesQueryKey,
   getGetMyFeeInvoicesQueryKey,
@@ -37,6 +37,7 @@ import { FeeCollectionReport } from "./fee-collection-report";
 import './school-work-pages.css';
 
 const adminRoles = ["super_admin", "org_admin", "campus_admin"];
+const invoicePageSize = 100;
 const money = (paise: number) => `₹${(paise / 100).toFixed(2)}`;
 const dateText = (value?: string | Date | null) => value
   ? value instanceof Date ? value.toISOString().slice(0, 10) : value.slice(0, 10)
@@ -129,8 +130,18 @@ export function FeesPage({ roles }: FeesPageProps) {
   const classItems = Array.from(new Map(
     sectionItems.map((section) => [section.classId, { id: section.classId, name: section.className }]),
   ).values());
+  const [invoiceSearchInput, setInvoiceSearchInput] = useState("");
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [invoiceOffset, setInvoiceOffset] = useState(0);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setInvoiceSearch(invoiceSearchInput.trim());
+      setInvoiceOffset(0);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [invoiceSearchInput]);
   const invoices = useGetFeeInvoices(
-    { limit: 100, offset: 0 },
+    { limit: invoicePageSize, offset: invoiceOffset, search: invoiceSearch || undefined },
     { query: { enabled: isAdmin } },
   );
   const myInvoices = useGetMyFeeInvoices({ query: { enabled: isParent || isStudent } });
@@ -238,6 +249,9 @@ export function FeesPage({ roles }: FeesPageProps) {
 
   if (isAdmin) {
     const invoiceItems = invoices.data?.items ?? [];
+    const invoiceTotal = invoices.data?.total ?? 0;
+    const invoiceFirst = invoiceTotal > 0 ? invoiceOffset + 1 : 0;
+    const invoiceLast = invoiceOffset + invoiceItems.length;
     return (
       <div className="fees-admin-page mx-auto max-w-6xl space-y-6">
         <header>
@@ -400,12 +414,38 @@ export function FeesPage({ roles }: FeesPageProps) {
         </section>
 
         <section className="surface fees-invoice-table overflow-hidden">
-          <div className="border-b border-[hsl(var(--border))] p-5">
+          <div className="flex flex-col gap-3 border-b border-[hsl(var(--border))] p-5 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="display text-lg font-bold">Recent invoices</h2>
+            <label className="relative block w-full sm:max-w-sm">
+              <span className="sr-only">Search invoices by student name, class, or admission number</span>
+              <Search aria-hidden="true" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+              <input
+                type="search"
+                value={invoiceSearchInput}
+                onChange={(event) => setInvoiceSearchInput(event.target.value)}
+                placeholder="Search name, class, admission no."
+                maxLength={100}
+                className="field h-10 w-full pl-9 pr-10 text-sm"
+                aria-label="Search invoices by student name, class, or admission number"
+              />
+              {invoiceSearchInput && (
+                <button
+                  type="button"
+                  aria-label="Clear invoice search"
+                  onClick={() => setInvoiceSearchInput("")}
+                  className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </label>
           </div>
           {invoices.isLoading ? <p className="p-5 text-sm">Loading invoices…</p> : invoiceItems.length === 0
-            ? <p className="p-5 text-sm text-[hsl(var(--muted-foreground))]">No fee invoices have been issued yet.</p>
-            : <div className="overflow-x-auto">
+            ? <p className="p-5 text-sm text-[hsl(var(--muted-foreground))]">
+              {invoiceSearch ? `No invoices match “${invoiceSearch}”. Try a student name, class, or admission number.` : "No fee invoices have been issued yet."}
+            </p>
+            : <>
+              <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] text-left text-sm">
                 <thead className="bg-[hsl(var(--muted))] text-xs uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
                   <tr><th className="p-3">Student</th><th className="p-3">Invoice</th><th className="p-3">Period</th><th className="p-3">Fee</th><th className="p-3">Concession</th><th className="p-3">Balance</th><th className="p-3">Due</th><th className="p-3">Status</th><th className="p-3">Payments & receipts</th><th className="p-3">Action</th></tr>
@@ -475,7 +515,31 @@ export function FeesPage({ roles }: FeesPageProps) {
                   ))}
                 </tbody>
               </table>
-            </div>}
+              </div>
+              <div className="flex flex-col gap-3 border-t border-[hsl(var(--border))] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="m-0 text-xs text-[hsl(var(--muted-foreground))]" aria-live="polite">
+                  Showing {invoiceFirst}–{invoiceLast} of {invoiceTotal.toLocaleString("en-IN")} invoice{invoiceTotal === 1 ? "" : "s"}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-muted min-h-9 px-3"
+                    disabled={invoiceOffset === 0 || invoices.isLoading}
+                    onClick={() => setInvoiceOffset((current) => Math.max(0, current - invoicePageSize))}
+                  >
+                    <ChevronLeft size={15} aria-hidden="true" /> Previous
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-muted min-h-9 px-3"
+                    disabled={invoiceOffset + invoiceItems.length >= invoiceTotal || invoices.isLoading}
+                    onClick={() => setInvoiceOffset((current) => current + invoicePageSize)}
+                  >
+                    Next <ChevronRight size={15} aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            </>}
         </section>
         {editingInvoice && (
           <FeeConcessionEditor

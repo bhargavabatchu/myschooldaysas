@@ -317,12 +317,42 @@ const routes: FastifyPluginAsync = async (fastify) => {
     if (!parsed.success) return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide valid invoice pagination."));
     const limit = parsed.data.limit ?? 50;
     const offset = parsed.data.offset ?? 0;
+    const searchText = parsed.data.search?.trim();
+    const searchPattern = searchText
+      ? `%${searchText.replace(/[!%_]/g, (character) => `!${character}`)}%`
+      : null;
 
     try {
       const page = await withOrg(user.orgId, async (client) => {
         const count = await client.query<{ total: string }>(
-          "SELECT COUNT(*)::text AS total FROM fees.invoices WHERE org_id = $1",
-          [user.orgId],
+          `SELECT COUNT(*)::text AS total
+             FROM fees.invoices invoice
+             JOIN identity.users student
+               ON student.org_id = invoice.org_id AND student.id = invoice.student_user_id
+            WHERE invoice.org_id = $1
+              AND (
+                $2::text IS NULL
+                OR student.name ILIKE $2 ESCAPE '!'
+                OR EXISTS (
+                  SELECT 1
+                    FROM academic.enrollments enrollment
+                   WHERE enrollment.org_id = invoice.org_id
+                     AND enrollment.student_user_id = invoice.student_user_id
+                     AND enrollment.section_id = invoice.section_id
+                     AND enrollment.academic_year = invoice.academic_year
+                     AND enrollment.admission_no ILIKE $2 ESCAPE '!'
+                )
+                OR EXISTS (
+                  SELECT 1
+                    FROM academic.sections section
+                    JOIN academic.classes class
+                      ON class.org_id = section.org_id AND class.id = section.class_id
+                   WHERE section.org_id = invoice.org_id
+                     AND section.id = invoice.section_id
+                     AND (class.name ILIKE $2 ESCAPE '!' OR section.name ILIKE $2 ESCAPE '!')
+                )
+              )`,
+          [user.orgId, searchPattern],
         );
         const invoices = await client.query<InvoiceRow>(
           `SELECT i.id, i.student_user_id, student.name AS student_name, i.section_id,
@@ -335,9 +365,31 @@ const routes: FastifyPluginAsync = async (fastify) => {
                ON student.org_id = i.org_id AND student.id = i.student_user_id
               ${paymentHistoryJoin}
             WHERE i.org_id = $1
+              AND (
+                $2::text IS NULL
+                OR student.name ILIKE $2 ESCAPE '!'
+                OR EXISTS (
+                  SELECT 1
+                    FROM academic.enrollments enrollment
+                   WHERE enrollment.org_id = i.org_id
+                     AND enrollment.student_user_id = i.student_user_id
+                     AND enrollment.section_id = i.section_id
+                     AND enrollment.academic_year = i.academic_year
+                     AND enrollment.admission_no ILIKE $2 ESCAPE '!'
+                )
+                OR EXISTS (
+                  SELECT 1
+                    FROM academic.sections section
+                    JOIN academic.classes class
+                      ON class.org_id = section.org_id AND class.id = section.class_id
+                   WHERE section.org_id = i.org_id
+                     AND section.id = i.section_id
+                     AND (class.name ILIKE $2 ESCAPE '!' OR section.name ILIKE $2 ESCAPE '!')
+                )
+              )
             ORDER BY i.created_at DESC, i.id DESC
-            LIMIT $2 OFFSET $3`,
-          [user.orgId, limit, offset],
+            LIMIT $3 OFFSET $4`,
+          [user.orgId, searchPattern, limit, offset],
         );
         return {
           items: invoices.rows.map((row) => mapInvoice(row, false, true)),

@@ -2394,6 +2394,10 @@ paths:
         - in: query
           name: offset
           schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: search
+          description: Search invoices by student name, admission number, class, or section.
+          schema: { type: string, minLength: 1, maxLength: 100 }
       responses:
         "200":
           description: Paginated school invoices

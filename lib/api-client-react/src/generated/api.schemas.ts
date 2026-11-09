@@ -2803,6 +2803,12 @@ limit?: number;
  * @minimum 0
  */
 offset?: number;
+/**
+ * Search invoices by student name, admission number, class, or section.
+ * @minLength 1
+ * @maxLength 100
+ */
+search?: string;
 };
 
 export type GetAdmissionEnquiriesParams = {

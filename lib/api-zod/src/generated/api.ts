@@ -3858,11 +3858,14 @@ export const getFeeInvoicesQueryLimitMax = 100;
 export const getFeeInvoicesQueryOffsetDefault = 0;
 export const getFeeInvoicesQueryOffsetMin = 0;
 
+export const getFeeInvoicesQuerySearchMax = 100;
+
 
 
 export const GetFeeInvoicesQueryParams = zod.object({
   "limit": zod.coerce.number().int().min(1).max(getFeeInvoicesQueryLimitMax).default(getFeeInvoicesQueryLimitDefault),
-  "offset": zod.coerce.number().int().min(getFeeInvoicesQueryOffsetMin).default(getFeeInvoicesQueryOffsetDefault)
+  "offset": zod.coerce.number().int().min(getFeeInvoicesQueryOffsetMin).default(getFeeInvoicesQueryOffsetDefault),
+  "search": zod.string().min(1).max(getFeeInvoicesQuerySearchMax).optional().describe('Search invoices by student name, admission number, class, or section.')
 })
 
 
