@@ -670,6 +670,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardOverview"
+  /admin/assistant/query:
+    post:
+      operationId: askAdminAssistant
+      tags: [dashboard]
+      summary: Answer a read-only school operations question for administrators
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminAssistantQuestion" }
+      responses:
+        "200":
+          description: A grounded answer from approved school data queries
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAssistantAnswer" }
+        "400": { description: Invalid or unsupported question }
+        "403": { description: Administrator role required }
   /academic/years:
     get:
       operationId: getAcademicYears
@@ -2786,6 +2806,48 @@ components:
           items: { $ref: "#/components/schemas/ActivityItem" }
         adminInsights:
           $ref: "#/components/schemas/DashboardAdminInsights"
+    AdminAssistantQuestion:
+      type: object
+      additionalProperties: false
+      required: [question]
+      properties:
+        question: { type: string, minLength: 1, maxLength: 300 }
+    AdminAssistantFact:
+      type: object
+      additionalProperties: false
+      required: [label, value]
+      properties:
+        label: { type: string }
+        value: { type: string }
+    AdminAssistantStudent:
+      type: object
+      additionalProperties: false
+      required: [name, admissionNo, className, sectionName, outstandingPaise]
+      properties:
+        name: { type: string }
+        admissionNo: { type: string }
+        className: { type: string }
+        sectionName: { type: string }
+        outstandingPaise: { type: integer, minimum: 0, nullable: true }
+    AdminAssistantAnswer:
+      type: object
+      additionalProperties: false
+      required: [answer, topic, sourceLabel, sourceHref, facts, students, suggestedQuestions]
+      properties:
+        answer: { type: string }
+        topic: { type: string, enum: [fees, students, attendance, help] }
+        sourceLabel: { type: string, nullable: true }
+        sourceHref: { type: string, nullable: true }
+        facts:
+          type: array
+          items: { $ref: "#/components/schemas/AdminAssistantFact" }
+        students:
+          type: array
+          items: { $ref: "#/components/schemas/AdminAssistantStudent" }
+        suggestedQuestions:
+          type: array
+          maxItems: 4
+          items: { type: string }
     DashboardAdminInsights:
       type: object
       required: [attendanceToday, fees]

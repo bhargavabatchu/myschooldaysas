@@ -938,6 +938,43 @@ export const GetDashboardOverviewResponse = zod.object({
 
 
 /**
+ * @summary Answer a read-only school operations question for administrators
+ */
+export const askAdminAssistantBodyQuestionMax = 300;
+
+
+
+export const AskAdminAssistantBody = zod.object({
+  "question": zod.string().min(1).max(askAdminAssistantBodyQuestionMax)
+})
+
+export const askAdminAssistantResponseStudentsItemOutstandingPaiseMin = 0;
+
+export const askAdminAssistantResponseSuggestedQuestionsMax = 4;
+
+
+
+export const AskAdminAssistantResponse = zod.object({
+  "answer": zod.string(),
+  "topic": zod.enum(['fees', 'students', 'attendance', 'help']),
+  "sourceLabel": zod.string().nullable(),
+  "sourceHref": zod.string().nullable(),
+  "facts": zod.array(zod.object({
+  "label": zod.string(),
+  "value": zod.string()
+})),
+  "students": zod.array(zod.object({
+  "name": zod.string(),
+  "admissionNo": zod.string(),
+  "className": zod.string(),
+  "sectionName": zod.string(),
+  "outstandingPaise": zod.int().min(askAdminAssistantResponseStudentsItemOutstandingPaiseMin).nullable()
+})),
+  "suggestedQuestions": zod.array(zod.string()).max(askAdminAssistantResponseSuggestedQuestionsMax)
+})
+
+
+/**
  * @summary List the school's configured academic years
  */
 export const getAcademicYearsResponseItemsItemAcademicYearMin = 4;

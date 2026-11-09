@@ -332,6 +332,54 @@ export interface DashboardOverview {
   adminInsights?: DashboardAdminInsights;
 }
 
+export interface AdminAssistantQuestion {
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  question: string;
+}
+
+export interface AdminAssistantFact {
+  label: string;
+  value: string;
+}
+
+export interface AdminAssistantStudent {
+  name: string;
+  admissionNo: string;
+  className: string;
+  sectionName: string;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  outstandingPaise: number | null;
+}
+
+export type AdminAssistantAnswerTopic = typeof AdminAssistantAnswerTopic[keyof typeof AdminAssistantAnswerTopic];
+
+
+export const AdminAssistantAnswerTopic = {
+  fees: 'fees',
+  students: 'students',
+  attendance: 'attendance',
+  help: 'help',
+} as const;
+
+export interface AdminAssistantAnswer {
+  answer: string;
+  topic: AdminAssistantAnswerTopic;
+  /** @nullable */
+  sourceLabel: string | null;
+  /** @nullable */
+  sourceHref: string | null;
+  facts: AdminAssistantFact[];
+  students: AdminAssistantStudent[];
+  /** @maxItems 4 */
+  suggestedQuestions: string[];
+}
+
 export interface ClassSummary {
   id: string;
   name: string;

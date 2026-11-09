@@ -16,7 +16,7 @@ import type { AcademicYear, BoardConfig, BoardTemplate, BoardTemplateInput, Live
 import {
   Activity, ArrowDown, ArrowRight, ArrowUpRight, BookOpen, CalendarDays, Check, ChevronDown, ClipboardList,
   ChevronLeft, ChevronRight, CircleAlert, Clock3, DoorOpen, GraduationCap, LayoutDashboard,
-  Library, LoaderCircle, LogOut, Menu, Moon, Plus, Radio, Search, Settings2, ShieldCheck,
+  Library, LoaderCircle, LogOut, Menu, MessageSquareText, Moon, Plus, Radio, Search, Settings2, ShieldCheck,
   Sun, Users, Video, X, CalendarCheck,
   CreditCard,
 } from 'lucide-react';
@@ -40,6 +40,7 @@ import { ClassRemovalControls, SectionRemovalControls } from '@/components/acade
 import { EnrollmentYearField } from '@/components/academic/enrollment-year-field';
 import { EnrollmentForm } from '@/components/academic/enrollment-form';
 import { AdmissionIntake } from '@/components/academic/admission-intake';
+import { AdminAssistantPage } from '@/components/admin-assistant-page';
 import { StudentProfileEditor } from '@/components/academic/student-profile-editor';
 import { ClassPromotionWizard } from '@/components/academic/class-promotion-wizard';
 import { AddSectionForm, ClassSetupPanel } from '@/components/academic/class-setup';
@@ -204,6 +205,7 @@ function ProtectedApp() {
         <Route path="/admin/students" component={() => canViewStudentRoster(user.roles) ? <StudentsPage roles={user.roles} /> : <NotFound />} />
         <Route path="/admin/admissions" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <AdmissionsInbox/> : <NotFound/>} />
         <Route path="/admin/guardians" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <GuardianAccessPage/> : <NotFound/>} />
+        <Route path="/admin/assistant" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <AdminAssistantPage/> : <NotFound/>} />
         <Route path="/live/sessions" component={() => liveClassesEnabled ? <SessionsPage userRoles={user.roles} /> : <LiveClassesUnavailable />} />
         <Route path="/boards/templates" component={() => <TemplatesPage roles={user.roles} />} />
         <Route path="/learning/reports" component={() => <LearningPage roles={user.roles} initialTab="reports" />} />
@@ -268,6 +270,7 @@ function AppShell({
     nav.push({ label: 'Admissions', href: '/admin/admissions', icon: ClipboardList });
     nav.push({ label: 'Family access', href: '/admin/guardians', icon: ShieldCheck });
     nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
+    nav.push({ label: 'Ask assistant', href: '/admin/assistant', icon: MessageSquareText });
   }
   if (user.roles.includes('parent')) {
     nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
