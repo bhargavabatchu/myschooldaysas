@@ -28,3 +28,9 @@ Preserve existing production records during database repairs; do not replace pro
 **Why:** the user explicitly chose to preserve production records when offered a development-to-production database copy.
 
 **How to apply:** keep schema repair separate from demo-data provisioning and avoid database-overwrite options.
+
+A full development-to-production database copy can replace production records and leave the application role without schema or table grants, causing `permission denied for schema` errors even when tables and RLS policies exist. If a copy is explicitly kept, restore only the intended application grants to `campus_app`; `campus_runtime` inherits them.
+
+**Why:** a production copy caused login and page failures until the missing app-role grants were restored; the tenant tables still had forced RLS.
+
+**How to apply:** prefer schema-only publishing. After any database copy, verify app-role schema/table privileges and RLS before troubleshooting application code or issuing broader grants.
