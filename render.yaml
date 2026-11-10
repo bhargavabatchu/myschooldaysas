@@ -1,0 +1,45 @@
+# Render Blueprint for the Campus Live Fastify API.
+# Deploy: Render dashboard -> New -> Blueprint -> select this repository.
+services:
+  - type: web
+    name: campus-live-api
+    runtime: node
+    plan: starter
+    region: singapore
+    branch: main
+    buildCommand: npm ci --include=dev && npm run build --workspace=@workspace/api-server
+    startCommand: npm run start --workspace=@workspace/api-server
+    healthCheckPath: /api/healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # Database (Supabase pooler, campus_app restricted role)
+      - key: CAMPUS_DATABASE_URL
+        sync: false
+      # Supabase Auth
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+      # Secrets
+      - key: INTERNAL_API_KEY
+        generateValue: true
+      # Feature flags (live classes need a LiveKit Cloud project)
+      - key: ENABLE_LIVE_CLASSES
+        value: "true"
+      - key: ENABLE_ONLINE_PAYMENTS
+        value: "false"
+      - key: ENABLE_REDIS
+        value: "false"
+      # LiveKit Cloud credentials (https://cloud.livekit.io) - required for live classes
+      - key: LIVEKIT_PUBLIC_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
