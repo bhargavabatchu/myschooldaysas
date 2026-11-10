@@ -2,6 +2,7 @@ import {
   setAuthTokenGetter,
   setAuthTokenRefreshHandler,
 } from '@workspace/api-client-react';
+import { getSupabase } from './lib/supabase';
 
 let accessToken: string | null = null;
 let refreshInFlight: Promise<string | null> | null = null;
@@ -16,44 +17,27 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
-function readCsrfToken(): string | null {
-  if (typeof document === "undefined") return null;
-  for (const part of document.cookie.split(";")) {
-    const separator = part.indexOf("=");
-    if (separator < 0) continue;
-    const name = part.slice(0, separator).trim();
-    if (name !== "__Host-campus_csrf" && name !== "campus_csrf") continue;
-    try {
-      return decodeURIComponent(part.slice(separator + 1).trim());
-    } catch {
-      return null;
-    }
-  }
-  return null;
+/** Install a Supabase session returned by POST /identity/auth/login. */
+export async function installSupabaseSession(input: {
+  accessToken: string;
+  refreshToken: string;
+}): Promise<void> {
+  const { data } = await getSupabase().auth.setSession({
+    access_token: input.accessToken,
+    refresh_token: input.refreshToken,
+  });
+  accessToken = data.session?.access_token ?? input.accessToken;
 }
 
-async function refreshRememberedAccessToken(): Promise<string | null> {
-  const csrfToken = readCsrfToken();
-  if (!csrfToken || typeof window === "undefined") return null;
-
+async function refreshSupabaseAccessToken(): Promise<string | null> {
   try {
-    const response = await fetch("/api/identity/auth/refresh", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        accept: "application/json",
-        "x-csrf-token": csrfToken,
-      },
-    });
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) setAccessToken(null);
+    const { data, error } = await getSupabase().auth.refreshSession();
+    if (error || !data.session) {
+      setAccessToken(null);
       return null;
     }
-
-    const result = (await response.json()) as { accessToken?: unknown };
-    if (typeof result.accessToken !== "string" || !result.accessToken) return null;
-    setAccessToken(result.accessToken);
-    return result.accessToken;
+    setAccessToken(data.session.access_token);
+    return data.session.access_token;
   } catch {
     return null;
   }
@@ -61,7 +45,7 @@ async function refreshRememberedAccessToken(): Promise<string | null> {
 
 export function refreshRememberedSession(): Promise<string | null> {
   if (refreshInFlight) return refreshInFlight;
-  refreshInFlight = refreshRememberedAccessToken().finally(() => {
+  refreshInFlight = refreshSupabaseAccessToken().finally(() => {
     refreshInFlight = null;
   });
   return refreshInFlight;
@@ -69,23 +53,31 @@ export function refreshRememberedSession(): Promise<string | null> {
 
 setAuthTokenRefreshHandler(refreshRememberedSession);
 
+/** Try to restore a persisted Supabase session on page load. */
 export async function restoreRememberedSession(): Promise<boolean> {
-  return Boolean(await refreshRememberedSession());
+  try {
+    const { data } = await getSupabase().auth.getSession();
+    if (data.session) {
+      setAccessToken(data.session.access_token);
+      return true;
+    }
+  } catch {
+    // Ignore storage failures; the user signs in again.
+  }
+  return false;
 }
 
 export async function logoutRememberedSession(): Promise<void> {
-  const csrfToken = readCsrfToken();
   try {
-    if (csrfToken && typeof window !== "undefined") {
-      await fetch("/api/identity/auth/logout", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "x-csrf-token": csrfToken },
-      });
-    }
+    await fetch("/api/identity/auth/logout", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: accessToken ? { authorization: `Bearer ${accessToken}` } : undefined,
+    });
   } catch {
-    // Clear the in-memory session even if the network is unavailable.
+    // Clear the session even if the network is unavailable.
   } finally {
+    await getSupabase().auth.signOut().catch(() => undefined);
     setAccessToken(null);
   }
 }

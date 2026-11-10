@@ -160,6 +160,7 @@ import type {
   ManualFeePaymentInput,
   ManualFeePaymentResult,
   MySchoolAttendancePage,
+  PasswordChangeResult,
   PromoteStudentsInput,
   PromotionResult,
   PublicAdmissionEnquiryInput,
@@ -2757,80 +2758,6 @@ export const useLogin = <TError = ErrorType<void>,
       return useMutation(getLoginMutationOptions(options), queryClient);
     }
 
-export const getRefreshSessionUrl = () => {
-
-
-
-
-  return `/api/identity/auth/refresh`
-}
-
-/**
- * @summary Restore or renew a remembered session
- */
-export const refreshSession = async ( options?: Parameters<typeof customFetch>[1]): Promise<AuthSession> => {
-
-  return customFetch<AuthSession>(getRefreshSessionUrl(),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-
-export const getRefreshSessionMutationKey = () => ['refreshSession'] as const;
-
-export const getRefreshSessionMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshSession>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof refreshSession>>, TError,void, TContext> => {
-
-const mutationKey = getRefreshSessionMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshSession>>, void> = () => {
-
-
-          return  refreshSession(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type RefreshSessionMutationResult = NonNullable<Awaited<ReturnType<typeof refreshSession>>>
-
-    export type RefreshSessionMutationError = ErrorType<void>
-
-
-    /**
- * @summary Restore or renew a remembered session
- */
-export const useRefreshSession = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshSession>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof refreshSession>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getRefreshSessionMutationOptions(options), queryClient);
-    }
-
 export const getLogoutSessionUrl = () => {
 
 
@@ -2840,7 +2767,7 @@ export const getLogoutSessionUrl = () => {
 }
 
 /**
- * @summary Revoke a remembered session on this device
+ * @summary Revoke the caller's Supabase session
  */
 export const logoutSession = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
 
@@ -2859,7 +2786,7 @@ export const logoutSession = async ( options?: Parameters<typeof customFetch>[1]
 
 export const getLogoutSessionMutationKey = () => ['logoutSession'] as const;
 
-export const getLogoutSessionMutationOptions = <TError = ErrorType<void>,
+export const getLogoutSessionMutationOptions = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logoutSession>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof logoutSession>>, TError,void, TContext> => {
 
@@ -2888,13 +2815,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type LogoutSessionMutationResult = NonNullable<Awaited<ReturnType<typeof logoutSession>>>
 
-    export type LogoutSessionMutationError = ErrorType<void>
+    export type LogoutSessionMutationError = ErrorType<unknown>
 
 
     /**
- * @summary Revoke a remembered session on this device
+ * @summary Revoke the caller's Supabase session
  */
-export const useLogoutSession = <TError = ErrorType<void>,
+export const useLogoutSession = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logoutSession>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof logoutSession>>,
@@ -2916,7 +2843,7 @@ export const getChangePasswordUrl = () => {
 /**
  * @summary Change a password, including a forced first-login change
  */
-export const changePassword = async (changePasswordInput: ChangePasswordInput, options?: Parameters<typeof customFetch>[1]): Promise<AuthSession> => {
+export const changePassword = async (changePasswordInput: ChangePasswordInput, options?: Parameters<typeof customFetch>[1]): Promise<PasswordChangeResult> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -2932,7 +2859,7 @@ export const changePassword = async (changePasswordInput: ChangePasswordInput, o
     }
     return headers;
   };
-return customFetch<AuthSession>(getChangePasswordUrl(),
+return customFetch<PasswordChangeResult>(getChangePasswordUrl(),
   {
     ...options,
     method: 'POST',

@@ -48,10 +48,12 @@ test("production config rejects short secrets and development defaults", () => {
         RAZORPAY_KEY_ID: "razorpay-key-12345",
         RAZORPAY_KEY_SECRET: "long-razorpay-secret-value-which-is-long",
         RAZORPAY_WEBHOOK_SECRET: "long-webhook-secret-value-which-is-long",
-        JWT_SECRET: "short",
+        SUPABASE_URL: "https://campus-live-demo.supabase.co",
+        SUPABASE_SECRET_KEY: "short",
+        SUPABASE_JWKS_URL: "https://campus-live-demo.supabase.co/auth/v1/.well-known/jwks.json",
         INTERNAL_API_KEY: "development-internal-key-not-real",
       }),
-    /JWT_SECRET: Must be at least 32 characters in production/,
+    /SUPABASE_SECRET_KEY: Must be at least 32 characters in production/,
   );
 });
 
@@ -67,7 +69,9 @@ test("production config accepts structurally valid long values", () => {
     RAZORPAY_KEY_ID: "razorpay-key-12345",
     RAZORPAY_KEY_SECRET: "razorpay-secret-value-more-than-thirty-two-characters",
     RAZORPAY_WEBHOOK_SECRET: "webhook-secret-value-more-than-thirty-two-characters",
-    JWT_SECRET: "jwt-secret-value-more-than-thirty-two-characters",
+    SUPABASE_URL: "https://campus-live-demo.supabase.co",
+    SUPABASE_SECRET_KEY: "supabase-service-role-secret-more-than-thirty-two-characters",
+    SUPABASE_JWKS_URL: "https://campus-live-demo.supabase.co/auth/v1/.well-known/jwks.json",
     INTERNAL_API_KEY: "internal-key-value-more-than-thirty-two-characters",
   });
   assert.equal(config.NODE_ENV, "production");
@@ -77,7 +81,9 @@ const coreProduction = {
   NODE_ENV: "production",
   PORT: "8080",
   CAMPUS_DATABASE_URL: "postgres://localhost/campus",
-  JWT_SECRET: "jwt-test-fixture-more-than-thirty-two-characters",
+  SUPABASE_URL: "https://campus-live-demo.supabase.co",
+  SUPABASE_SECRET_KEY: "supabase-service-role-secret-more-than-thirty-two-characters",
+  SUPABASE_JWKS_URL: "https://campus-live-demo.supabase.co/auth/v1/.well-known/jwks.json",
   INTERNAL_API_KEY: "internal-test-fixture-more-than-thirty-two-characters",
   ENABLE_LIVE_CLASSES: "false",
   ENABLE_ONLINE_PAYMENTS: "false",
@@ -93,8 +99,8 @@ test("core-only production starts without optional provider credentials", () => 
 
 test("core-only production still rejects missing authentication secrets", () => {
   assert.throws(
-    () => loadRuntimeConfig({ ...coreProduction, JWT_SECRET: undefined }),
-    /JWT_SECRET: Required in production/,
+    () => loadRuntimeConfig({ ...coreProduction, SUPABASE_SECRET_KEY: undefined }),
+    /SUPABASE_SECRET_KEY: Required in production/,
   );
 });
 

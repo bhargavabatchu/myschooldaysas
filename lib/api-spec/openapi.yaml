@@ -436,53 +436,21 @@ paths:
               $ref: "#/components/schemas/LoginInput"
       responses:
         "200":
-          description: Authenticated user and access token
+          description: Authenticated user and Supabase session tokens
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthSession"
         "401":
           description: Invalid credentials
-  /identity/auth/refresh:
-    post:
-      operationId: refreshSession
-      tags: [identity]
-      summary: Restore or renew a remembered session
-      security:
-        - refreshCookieAuth: []
-      parameters:
-        - in: header
-          name: X-CSRF-Token
-          required: true
-          schema: { type: string }
-      responses:
-        "200":
-          description: Renewed access token and authenticated user
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AuthSession"
-        "401":
-          description: Remembered session is missing, expired, or revoked
-        "403":
-          description: CSRF check failed
   /identity/auth/logout:
     post:
       operationId: logoutSession
       tags: [identity]
-      summary: Revoke a remembered session on this device
-      security:
-        - refreshCookieAuth: []
-      parameters:
-        - in: header
-          name: X-CSRF-Token
-          required: true
-          schema: { type: string }
+      summary: Revoke the caller's Supabase session
       responses:
         "204":
-          description: Session revoked and cookies cleared
-        "403":
-          description: CSRF check failed
+          description: Session revoked
   /identity/auth/change-password:
     post:
       operationId: changePassword
@@ -498,11 +466,11 @@ paths:
               $ref: "#/components/schemas/ChangePasswordInput"
       responses:
         "200":
-          description: Password changed; returns a refreshed access token
+          description: Password changed
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthSession"
+                $ref: "#/components/schemas/PasswordChangeResult"
         "400":
           description: Password does not meet policy
         "401":
@@ -2661,10 +2629,6 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-    refreshCookieAuth:
-      type: apiKey
-      in: cookie
-      name: __Host-campus_refresh
   schemas:
     HealthStatus:
       type: object
@@ -2698,9 +2662,16 @@ components:
         rememberMe: { type: boolean }
     AuthSession:
       type: object
-      required: [accessToken, user]
+      required: [accessToken, refreshToken, expiresAt, user]
       properties:
         accessToken: { type: string }
+        refreshToken: { type: string }
+        expiresAt: { type: integer, format: int64 }
+        user: { $ref: "#/components/schemas/User" }
+    PasswordChangeResult:
+      type: object
+      required: [user]
+      properties:
         user: { $ref: "#/components/schemas/User" }
     ChangePasswordInput:
       type: object

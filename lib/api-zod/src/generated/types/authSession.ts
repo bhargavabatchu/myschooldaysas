@@ -9,5 +9,7 @@ import type { User } from './user';
 
 export interface AuthSession {
   accessToken: string;
+  refreshToken: string;
+  expiresAt: bigint;
   user: User;
 }

@@ -49,6 +49,12 @@ export interface LoginInput {
 
 export interface AuthSession {
   accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  user: User;
+}
+
+export interface PasswordChangeResult {
   user: User;
 }
 

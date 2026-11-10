@@ -603,6 +603,8 @@ export const LoginBody = zod.object({
 
 export const LoginResponse = zod.object({
   "accessToken": zod.string(),
+  "refreshToken": zod.string(),
+  "expiresAt": zod.int(),
   "user": zod.object({
   "id": zod.uuid(),
   "orgId": zod.uuid(),
@@ -615,32 +617,8 @@ export const LoginResponse = zod.object({
 
 
 /**
- * @summary Restore or renew a remembered session
+ * @summary Revoke the caller's Supabase session
  */
-export const RefreshSessionHeader = zod.object({
-  "X-CSRF-Token": zod.string()
-})
-
-export const RefreshSessionResponse = zod.object({
-  "accessToken": zod.string(),
-  "user": zod.object({
-  "id": zod.uuid(),
-  "orgId": zod.uuid(),
-  "name": zod.string(),
-  "email": zod.email(),
-  "roles": zod.array(zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent'])),
-  "mustChangePassword": zod.boolean()
-})
-})
-
-
-/**
- * @summary Revoke a remembered session on this device
- */
-export const LogoutSessionHeader = zod.object({
-  "X-CSRF-Token": zod.string()
-})
-
 export const LogoutSessionResponse = zod.void()
 
 
@@ -660,7 +638,6 @@ export const ChangePasswordBody = zod.object({
 })
 
 export const ChangePasswordResponse = zod.object({
-  "accessToken": zod.string(),
   "user": zod.object({
   "id": zod.uuid(),
   "orgId": zod.uuid(),

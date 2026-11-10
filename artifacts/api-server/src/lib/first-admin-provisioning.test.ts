@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Pool } from "pg";
 import { provisionFirstAdmin } from "./first-admin-provisioning.ts";
+import { SupabaseUserExistsError } from "./supabase-admin.ts";
 
 const validInput = {
   organizationName: "St Joseph's Public School",
@@ -56,7 +57,7 @@ function fakeDatabase(options: {
 
 test("first-admin provisioning creates the organization and org_admin in one transaction", async () => {
   const { database, calls } = fakeDatabase();
-  const result = await provisionFirstAdmin(database, validInput, async () => "scrypt-hash");
+  const result = await provisionFirstAdmin(database, validInput, async () => "supabase-user-id");
 
   assert.deepEqual(result, {
     ok: true,
@@ -66,7 +67,7 @@ test("first-admin provisioning creates the organization and org_admin in one tra
   });
   assert.ok(calls.some(({ sql }) => sql.includes("pg_advisory_xact_lock")));
   assert.ok(calls.some(({ sql }) => sql.includes("set_config('app.org_id'") && sql.includes("$1")));
-  assert.ok(calls.some(({ sql, values }) => sql.includes("INSERT INTO identity.users") && values?.[3] === "scrypt-hash"));
+  assert.ok(calls.some(({ sql, values }) => sql.includes("INSERT INTO identity.users") && values?.[3] === "supabase-user-id"));
   assert.ok(calls.some(({ sql }) => sql.includes("INSERT INTO identity.user_roles") && sql.includes("'org_admin'")));
   assert.equal(calls.at(-2)?.sql, "COMMIT");
   assert.equal(calls.at(-1)?.sql, "RELEASE");
@@ -90,7 +91,7 @@ test("an existing empty organization is reused rather than duplicated", async ()
   const { database, calls } = fakeDatabase({
     organizations: [{ id: "org-id", name: "St Joseph's Public School", slug: "st-josephs-public-school" }],
   });
-  const result = await provisionFirstAdmin(database, validInput, async () => "scrypt-hash");
+  const result = await provisionFirstAdmin(database, validInput, async () => "supabase-user-id");
 
   assert.equal(result.ok, true);
   assert.equal(calls.some(({ sql }) => sql.includes("INSERT INTO identity.organizations")), false);
@@ -108,7 +109,7 @@ test("an existing database requires its exact organization ID", async () => {
 
 test("a missing organization insert privilege returns the migration hint", async () => {
   const { database, calls } = fakeDatabase({ organizationInsertErrorCode: "42501" });
-  const result = await provisionFirstAdmin(database, validInput, async () => "scrypt-hash");
+  const result = await provisionFirstAdmin(database, validInput, async () => "supabase-user-id");
 
   assert.equal(result.ok, false);
   if (!result.ok) {
@@ -116,6 +117,17 @@ test("a missing organization insert privilege returns the migration hint", async
     assert.match(result.message, /migration 003/);
   }
   assert.ok(calls.some(({ sql }) => sql === "ROLLBACK"));
+});
+
+test("an already-registered Supabase email fails without database changes", async () => {
+  const { database, calls } = fakeDatabase();
+  const result = await provisionFirstAdmin(database, validInput, async () => {
+    throw new SupabaseUserExistsError("A user with this email address has already been registered");
+  });
+
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.code, "FIRST_ADMIN_CONFLICT");
+  assert.equal(calls.length, 0);
 });
 
 test("invalid password length is rejected before database access", async () => {

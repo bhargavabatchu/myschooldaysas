@@ -9,7 +9,9 @@ const runtimeEnvSchema = z
     ENABLE_REDIS: z.enum(["true", "false"]).default("true").transform(value => value === "true"),
     DATABASE_URL: z.string().url().optional(),
     CAMPUS_DATABASE_URL: z.string().url().optional(),
-    JWT_SECRET: z.string().optional(),
+    SUPABASE_URL: z.string().url().optional(),
+    SUPABASE_SECRET_KEY: z.string().optional(),
+    SUPABASE_JWKS_URL: z.string().url().optional(),
     INTERNAL_API_KEY: z.string().optional(),
     REDIS_URL: z.string().url().optional(),
     LIVEKIT_PUBLIC_URL: z.preprocess(
@@ -41,7 +43,9 @@ const runtimeEnvSchema = z
     if (env.NODE_ENV !== "production") return;
     const requiredKeys = [
       "CAMPUS_DATABASE_URL",
-      "JWT_SECRET",
+      "SUPABASE_URL",
+      "SUPABASE_SECRET_KEY",
+      "SUPABASE_JWKS_URL",
       "INTERNAL_API_KEY",
       ...(env.ENABLE_REDIS ? ["REDIS_URL"] as const : []),
       ...(env.ENABLE_LIVE_CLASSES ? ["LIVEKIT_PUBLIC_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"] as const : []),
@@ -54,7 +58,7 @@ const runtimeEnvSchema = z
     }
 
     const secretKeys = [
-      "JWT_SECRET",
+      "SUPABASE_SECRET_KEY",
       "INTERNAL_API_KEY",
       "LIVEKIT_API_SECRET",
       "RAZORPAY_KEY_SECRET",
@@ -67,7 +71,7 @@ const runtimeEnvSchema = z
       }
     }
 
-    const nonSecretKeys = ["JWT_SECRET", "INTERNAL_API_KEY", "LIVEKIT_API_KEY", ...secretKeys] as const;
+    const nonSecretKeys = ["SUPABASE_URL", "SUPABASE_JWKS_URL", "INTERNAL_API_KEY", "LIVEKIT_API_KEY", ...secretKeys] as const;
     for (const key of new Set(nonSecretKeys)) {
       const value = env[key];
       if (value && /development|change.?me|example|devkey|mock/i.test(value)) {

@@ -15,7 +15,7 @@ This build covers sign-in, a role-scoped dashboard, class/section directories, a
 | Migrations | A separate local `campus_migrator` role applies numbered migrations before the API starts | Release migration job, checksums, lock/statement limits |
 | Redis | Readiness check only | Redis Streams event bus and service consumers |
 | LiveKit | Local container is present; token minting refuses to proceed without `LIVEKIT_PUBLIC_URL` | LiveKit classroom, webhook processing, attendance, and recording flows |
-| Authentication | Organization-scoped login, scrypt password verification, short-lived signed access token held in browser memory | Refresh rotation, lockout/rate limits, change-password flow, production key management |
+| Authentication | Organization-scoped login via Supabase Auth: the API returns a Supabase session, verifies Supabase-issued access tokens (ES256/RS256 JWKS) per request, and reloads roles from the database; legacy scrypt accounts migrate on first login. See `ops/SUPABASE_AUTH_SETUP.md` | Lockout/rate limits, production key rotation |
 
 The web and API use the required Next.js and Fastify frameworks. The single API process remains an explicit scaffold compromise, not a claim that the spec's independent-service architecture has been met. No application code in this slice relies on Replit's managed database superuser.
 
@@ -25,8 +25,8 @@ The repository uses npm workspaces with one root `package-lock.json`; use `npm c
 
 ## Trust boundaries and data flow
 
-1. The browser is untrusted. It submits credentials and requests using an in-memory bearer token; it never selects LiveKit grants.
-2. The API validates the token, reloads the user's current roles, applies route-level authorization, and derives organization scope from the authenticated user.
+1. The browser is untrusted. It submits credentials and requests using an in-memory bearer token (a Supabase Auth access token); it never selects LiveKit grants.
+2. The API verifies the token against the Supabase project JWKS, maps the subject to `identity.users`, reloads the user's current roles, applies route-level authorization, and derives organization scope from the authenticated user.
 3. Database work runs in a transaction that sets `app.org_id` locally. Forced row-level security limits the non-superuser app role to that organization. The migration role is separate from the runtime role.
 4. Redis is currently used only by the readiness probe. No event consumer or notification delivery path is implemented.
 5. The LiveKit server is a separate trust boundary. The client now connects using server-derived grants; students are subscribe-only until a teacher grants microphone access. Board drawing never grants media publishing. The WebSocket board operates independently of media availability. A publicly reachable LiveKit URL is still required to verify real media from this preview.
@@ -35,7 +35,7 @@ The repository uses npm workspaces with one root `package-lock.json`; use `npm c
 
 | Threat | Current controls | Remaining risk |
 |---|---|---|
-| Spoofing | Password hashes, signed short-lived JWTs, current roles reloaded from the database | No refresh rotation, account lockout, password-change flow, asymmetric keys, or production key rotation |
+| Spoofing | Supabase Auth password management, asymmetric (JWKS-verified) short-lived access tokens, current roles reloaded from the database | No account lockout or production key rotation |
 | Tampering | Zod request validation, server-owned session grants, database constraints and RLS | Not every target endpoint exists; no complete privileged-user management surface |
 | Repudiation | Structured request logging | No durable audit-log service or complete audit coverage |
 | Information disclosure | Organization-scoped SQL, RLS, role-filtered academic queries, no token in local storage | Consent, export, erasure, retention, and full child-data access reviews are not implemented |

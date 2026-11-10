@@ -1,5 +1,5 @@
 import { createPool } from "@workspace/db";
-import { hashPassword } from "./lib/auth.ts";
+import { hashPassword } from "./lib/password-hash.ts";
 import { addDefaultSectionSubjects } from "./lib/section-subjects.ts";
 import { seedGradeOneSyllabus } from "./lib/seed-grade-one-syllabus.ts";
 

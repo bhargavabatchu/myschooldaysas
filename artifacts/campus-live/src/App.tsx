@@ -25,6 +25,7 @@ import NotFound from '@/components/not-found';
 import '@/components/auth/login-page.css';
 import '@/components/dashboard/dashboard-page.css';
 import {
+  installSupabaseSession,
   logoutRememberedSession,
   refreshRememberedSession,
   restoreRememberedSession,
@@ -366,7 +367,7 @@ function LoginGate({ error, retry }: { error: unknown; retry: () => void }) {
 function LoginPage() {
   const [orgSlug, setOrgSlug] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
-  const [, setLocation] = useLocation(); const login = useLogin({ mutation: { onSuccess: result => { setAccessToken(result.accessToken); queryClient.setQueryData(getGetMeQueryKey(), result.user); setLocation('/dashboard'); } } });
+  const [, setLocation] = useLocation(); const login = useLogin({ mutation: { onSuccess: result => { void installSupabaseSession({ accessToken: result.accessToken, refreshToken: result.refreshToken }); queryClient.setQueryData(getGetMeQueryKey(), result.user); setLocation('/dashboard'); } } });
   return <main className="premium-login">
     <section className="premium-story" aria-label="School welcome">
       <div className="premium-orbit premium-orbit-one" aria-hidden="true"/>
@@ -454,7 +455,6 @@ function PasswordChangePage({ email }: { email: string }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [, setLocation] = useLocation();
   const change = useChangePassword({ mutation: { onSuccess: result => {
-    setAccessToken(result.accessToken);
     queryClient.setQueryData(getGetMeQueryKey(), result.user);
     setLocation('/dashboard');
   } } });

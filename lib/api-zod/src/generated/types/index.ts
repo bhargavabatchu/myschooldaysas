@@ -227,6 +227,7 @@ export * from './manualFeePaymentResultPaymentMethod';
 export * from './mySchoolAttendanceItem';
 export * from './mySchoolAttendancePage';
 export * from './mySchoolAttendanceSummary';
+export * from './passwordChangeResult';
 export * from './promoteStudentsInput';
 export * from './promoteStudentsInputSectionMap';
 export * from './promotionResult';

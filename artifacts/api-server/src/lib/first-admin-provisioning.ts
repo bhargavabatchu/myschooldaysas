@@ -1,6 +1,14 @@
 import type { Pool } from "pg";
 import { z } from "zod";
-import { hashPassword } from "./password-hash.ts";
+import { adminCreateUser, SupabaseUserExistsError } from "./supabase-admin.ts";
+
+/** Creates the Supabase Auth account and returns its user id. */
+export type SupabaseUserFactory = (email: string, password: string) => Promise<string>;
+
+const defaultSupabaseUserFactory: SupabaseUserFactory = async (email, password) => {
+  const user = await adminCreateUser({ email, password, emailConfirm: true });
+  return user.id;
+};
 
 const firstAdminInputSchema = z.object({
   organizationName: z.string().trim().min(2).max(120),
@@ -34,7 +42,7 @@ export type FirstAdminProvisioningResult =
 export async function provisionFirstAdmin(
   database: ProvisioningDatabase,
   input: unknown,
-  passwordHasher: (password: string) => Promise<string> = hashPassword,
+  supabaseUserFactory: SupabaseUserFactory = defaultSupabaseUserFactory,
 ): Promise<FirstAdminProvisioningResult> {
   const parsed = firstAdminInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -45,7 +53,23 @@ export async function provisionFirstAdmin(
     };
   }
 
-  const passwordHash = await passwordHasher(parsed.data.password);
+  let supabaseUserId: string;
+  try {
+    supabaseUserId = await supabaseUserFactory(parsed.data.email, parsed.data.password);
+  } catch (error) {
+    if (error instanceof SupabaseUserExistsError) {
+      return {
+        ok: false,
+        code: "FIRST_ADMIN_CONFLICT",
+        message: "A Supabase account with this email already exists.",
+      };
+    }
+    return {
+      ok: false,
+      code: "SUPABASE_UNAVAILABLE",
+      message: error instanceof Error ? error.message : "Could not create the Supabase administrator account.",
+    };
+  }
   const client = await database.connect();
   let transactionStarted = false;
 
@@ -99,10 +123,10 @@ export async function provisionFirstAdmin(
 
     await client.query("SELECT set_config('app.org_id', $1, true)", [organizationId]);
     const user = await client.query<{ id: string }>(
-      `INSERT INTO identity.users (org_id, email, name, password_hash)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO identity.users (org_id, email, name, password_hash, supabase_user_id)
+       VALUES ($1, $2, $3, NULL, $4)
        RETURNING id`,
-      [organizationId, parsed.data.email, parsed.data.name, passwordHash],
+      [organizationId, parsed.data.email, parsed.data.name, supabaseUserId],
     );
     const userId = user.rows[0]?.id;
     if (!userId) throw new Error("Could not create the initial administrator account.");

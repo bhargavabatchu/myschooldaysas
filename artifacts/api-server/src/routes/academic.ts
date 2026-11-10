@@ -41,7 +41,12 @@ import {
 } from "@workspace/api-zod";
 import { withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
-import { hashPassword, requireAuth, type CampusRole } from "../lib/auth";
+import { requireAuth, type CampusRole } from "../lib/auth";
+import {
+  adminCreateUser,
+  adminDeleteUser,
+  SupabaseUserExistsError,
+} from "../lib/supabase-admin";
 import { canManageAcademicSetup, sectionHasCapacity } from "../lib/academic-scheduling-policy";
 import { generateTemporaryPassword } from "../lib/identity-security";
 import { findAdmissionNameMatches } from "../lib/student-admission-policy";
@@ -376,23 +381,17 @@ async function inspectAdmissions(
   };
 }
 
-async function hashAdmissionPasswords(rows: AdmissionInputRow[]) {
-  const credentials = rows.map((row) => ({ ...row, temporaryPassword: generateTemporaryPassword() }));
-  const hashes = new Array<string>(credentials.length);
-  let nextIndex = 0;
-  await Promise.all(Array.from({ length: Math.min(2, credentials.length) }, async () => {
-    while (true) {
-      const index = nextIndex++;
-      if (index >= credentials.length) return;
-      hashes[index] = await hashPassword(credentials[index]!.temporaryPassword);
-    }
-  }));
-  return credentials.map((credential, index) => ({ ...credential, passwordHash: hashes[index]! }));
+async function generateAdmissionPasswords(rows: AdmissionInputRow[]) {
+  return rows.map((row) => ({ ...row, temporaryPassword: generateTemporaryPassword() }));
 }
 const unavailableConsentPurposes = new Set<ConsentPurpose>(["recording", "photo"]);
 
 function errorBody(code: string, message: string) {
   return { error: { code, message } };
+}
+
+async function compensateSupabaseUsers(userIds: string[]) {
+  await Promise.all(userIds.map((id) => adminDeleteUser(id).catch(() => undefined)));
 }
 
 type EnrollmentMoveInput =
@@ -2624,6 +2623,7 @@ router.post("/academic/admissions", requireAuth, async (req, res, next) => {
     return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a valid section, academic year, and student list."));
   }
 
+  const createdSupabaseUserIds: string[] = [];
   try {
     const preliminary = await withOrg(user.orgId, (client) =>
       inspectAdmissions(client, user.orgId, parsed.data.sectionId, academicYear, parsed.data.rows, false),
@@ -2651,7 +2651,7 @@ router.post("/academic/admissions", requireAuth, async (req, res, next) => {
       guardianEmail: guardianEmail ?? undefined, guardianPhone: guardianPhone ?? undefined,
       guardianRelationship: guardianRelationship ?? undefined,
     }));
-    const credentialRows = await hashAdmissionPasswords(preparedRows);
+    const credentialRows = await generateAdmissionPasswords(preparedRows);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const result = await withOrg(user.orgId, async (client) => {
       const current = await inspectAdmissions(
@@ -2671,12 +2671,29 @@ router.post("/academic/admissions", requireAuth, async (req, res, next) => {
       const created = [];
       for (const [index, item] of current.items.entries()) {
         const credential = credentialRows[index]!;
+        let supabaseUserId: string;
+        try {
+          supabaseUserId = (await adminCreateUser({
+            email: item.email,
+            password: credential.temporaryPassword,
+            emailConfirm: true,
+          })).id;
+        } catch (error) {
+          if (error instanceof SupabaseUserExistsError) {
+            return {
+              kind: "supabase_conflict" as const,
+              email: item.email,
+            };
+          }
+          throw error;
+        }
+        createdSupabaseUserIds.push(supabaseUserId);
         const account = await client.query<{ id: string }>(
           `INSERT INTO identity.users
-             (org_id, email, name, password_hash, must_change_password, temporary_password_expires_at)
-           VALUES ($1, $2, $3, $4, true, $5)
+             (org_id, email, name, password_hash, supabase_user_id, must_change_password, temporary_password_expires_at)
+           VALUES ($1, $2, $3, NULL, $4, true, $5)
            RETURNING id`,
-          [user.orgId, item.email, item.name, credential.passwordHash, expiresAt],
+          [user.orgId, item.email, item.name, supabaseUserId, expiresAt],
         );
         const studentId = account.rows[0]!.id;
         await client.query(
@@ -2718,9 +2735,15 @@ router.post("/academic/admissions", requireAuth, async (req, res, next) => {
     });
 
     if (result.kind === "section_not_found") {
+      await compensateSupabaseUsers(createdSupabaseUserIds);
       return void res.status(404).json(errorBody("NOT_FOUND", "Section not found."));
     }
+    if (result.kind === "supabase_conflict") {
+      await compensateSupabaseUsers(createdSupabaseUserIds);
+      return void res.status(409).json(errorBody("CONFLICT", `A Supabase account already exists for ${result.email}. Use a different email address.`));
+    }
     if (result.kind === "invalid") {
+      await compensateSupabaseUsers(createdSupabaseUserIds);
       return void res.status(409).json({
         error: { code: "CONFLICT", message: "The section or student data changed after preview. Review the errors and try again.", details: result.errors },
       });
@@ -2736,6 +2759,7 @@ router.post("/academic/admissions", requireAuth, async (req, res, next) => {
     }
     res.status(201).json({ items: result.items, total: result.items.length });
   } catch (error: any) {
+    await compensateSupabaseUsers(createdSupabaseUserIds);
     if (error?.code === "23505") {
       return void res.status(409).json(errorBody("CONFLICT", "An email or admission number was claimed by another request. Preview the batch again."));
     }

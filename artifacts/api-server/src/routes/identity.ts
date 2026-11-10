@@ -12,11 +12,11 @@ import {
 import { pool, withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
 import {
-  createAccessToken,
-  hashPassword,
+  findAccountBySupabaseUserId,
   requireAuth,
   requireRoles,
   verifyPassword,
+  verifySupabaseToken,
 } from "../lib/auth";
 import {
   canDeactivateSchoolAdmin,
@@ -24,19 +24,18 @@ import {
   canManageUser,
   generateTemporaryPassword,
   isValidNewPassword,
-  needsPasswordRehash,
 } from "../lib/identity-security";
 import {
-  clearSessionCookies,
-  createCsrfToken,
-  createRefreshCredential,
-  createSessionCookies,
-  hashRefreshSecret,
-  hasValidCsrfToken,
-  matchesRefreshSecret,
-  readRefreshCredential,
-  REMEMBERED_SESSION_SECONDS,
-} from "../lib/auth-sessions";
+  adminSignOutAllSessions,
+  adminUpdateUserPassword,
+  signInWithPassword,
+  type SupabaseSession,
+} from "../lib/supabase-admin";
+import {
+  CampusEmailConflictError,
+  createCampusAccountWithPassword,
+  linkLegacyAccountToSupabase,
+} from "../lib/user-provisioning";
 
 const routes: FastifyPluginAsync = async (fastify) => {
 const router = createRouteRegistrar(fastify);
@@ -69,13 +68,14 @@ router.post("/identity/auth/login", async (req, res, next) => {
         org_id: string;
         name: string;
         email: string;
-        password_hash: string;
+        password_hash: string | null;
+        supabase_user_id: string | null;
         status: string;
         must_change_password: boolean;
         temporary_password_expires_at: Date | null;
         roles: Array<"super_admin" | "org_admin" | "campus_admin" | "hod" | "teacher" | "class_teacher" | "student" | "parent">;
       }>(
-        `SELECT u.id, u.org_id, u.name, u.email, u.password_hash, u.status,
+        `SELECT u.id, u.org_id, u.name, u.email, u.password_hash, u.supabase_user_id, u.status,
                 u.must_change_password, u.temporary_password_expires_at,
                 COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') AS roles
            FROM identity.users AS u
@@ -87,12 +87,7 @@ router.post("/identity/auth/login", async (req, res, next) => {
       ),
     );
     const user = userResult.rows[0];
-    if (
-      !user ||
-      user.status !== "active" ||
-      user.roles.length === 0 ||
-       !(await verifyPassword(parsed.data.password, user.password_hash))
-    ) {
+    if (!user || user.status !== "active" || user.roles.length === 0) {
       res.status(401).json(invalid("Invalid organization or credentials.", "INVALID_CREDENTIALS"));
       return;
     }
@@ -105,18 +100,6 @@ router.post("/identity/auth/login", async (req, res, next) => {
       return;
     }
 
-    if (needsPasswordRehash(user.password_hash)) {
-      const upgradedHash = await hashPassword(parsed.data.password);
-      await withOrg(org.id, (client) =>
-        client.query(
-          `UPDATE identity.users
-              SET password_hash = $1, updated_at = now()
-            WHERE id = $2 AND org_id = $3 AND password_hash = $4`,
-          [upgradedHash, user.id, org.id, user.password_hash],
-        ),
-      );
-    }
-
     const authUser = {
       id: user.id,
       orgId: user.org_id,
@@ -125,149 +108,53 @@ router.post("/identity/auth/login", async (req, res, next) => {
       roles: user.roles,
       mustChangePassword: user.must_change_password,
     };
-    if (parsed.data.rememberMe) {
-      const credential = createRefreshCredential(org.id);
-      const csrfToken = createCsrfToken();
-      await withOrg(org.id, (client) =>
-        client.query(
-          `INSERT INTO identity.auth_sessions
-             (id, org_id, user_id, refresh_secret_hash, expires_at)
-           VALUES ($1, $2, $3, $4, now() + ($5 * interval '1 second'))`,
-          [
-            credential.sessionId,
-            org.id,
-            user.id,
-            hashRefreshSecret(credential.secret),
-            REMEMBERED_SESSION_SECONDS,
-          ],
-        ),
-      );
-      res.header("set-cookie", createSessionCookies(credential, csrfToken));
+
+    let session: SupabaseSession | null;
+    if (user.supabase_user_id) {
+      session = await signInWithPassword(user.email, parsed.data.password);
+    } else if (user.password_hash && (await verifyPassword(parsed.data.password, user.password_hash))) {
+      // Migrate-on-login: legacy scrypt account verified; move it to Supabase Auth.
+      await linkLegacyAccountToSupabase({
+        orgId: user.org_id,
+        userId: user.id,
+        email: user.email,
+        password: parsed.data.password,
+      });
+      session = await signInWithPassword(user.email, parsed.data.password);
     } else {
-      res.header("set-cookie", clearSessionCookies());
+      session = null;
     }
-    res.status(200).json({ accessToken: createAccessToken(authUser), user: authUser });
-  } catch (error) {
-    next(error);
-  }
-});
 
-router.post("/identity/auth/refresh", async (req, res, next) => {
-  if (!hasValidCsrfToken(req)) {
-    res.status(403).json(invalid("The session security check failed. Refresh the page and sign in again.", "CSRF_FAILED"));
-    return;
-  }
-
-  const credential = readRefreshCredential(req.headers.cookie);
-  if (!credential) {
-    res.header("set-cookie", clearSessionCookies());
-    res.status(401).json(invalid("Sign in to continue.", "UNAUTHENTICATED"));
-    return;
-  }
-
-  try {
-    const nextCredential = createRefreshCredential(credential.orgId, credential.sessionId);
-    const csrfToken = createCsrfToken();
-    const sessionResult = await withOrg(credential.orgId, async (client) => {
-      const result = await client.query<{
-        refresh_secret_hash: string;
-        id: string;
-        org_id: string;
-        name: string;
-        email: string;
-        must_change_password: boolean;
-        temporary_password_expires_at: Date | null;
-        roles: Array<"super_admin" | "org_admin" | "campus_admin" | "hod" | "teacher" | "class_teacher" | "student" | "parent">;
-      }>(
-        `SELECT s.refresh_secret_hash, u.id, u.org_id, u.name, u.email,
-                u.must_change_password, u.temporary_password_expires_at,
-                COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') AS roles
-           FROM identity.auth_sessions AS s
-           JOIN identity.users AS u
-             ON u.id = s.user_id AND u.org_id = s.org_id
-           LEFT JOIN identity.user_roles AS ur
-             ON ur.user_id = u.id AND ur.org_id = u.org_id
-          WHERE s.id = $1 AND s.org_id = $2
-            AND s.revoked_at IS NULL AND s.expires_at > now()
-            AND u.status = 'active'
-          GROUP BY s.id, u.id`,
-        [credential.sessionId, credential.orgId],
-      );
-      const session = result.rows[0];
-      if (
-        !session ||
-        session.roles.length === 0 ||
-        !matchesRefreshSecret(credential.secret, session.refresh_secret_hash) ||
-        (session.must_change_password &&
-          (!session.temporary_password_expires_at ||
-            session.temporary_password_expires_at.getTime() <= Date.now()))
-      ) {
-        return null;
-      }
-
-      const updated = await client.query(
-        `UPDATE identity.auth_sessions
-            SET refresh_secret_hash = $1,
-                last_used_at = now(),
-                expires_at = now() + ($2 * interval '1 second')
-          WHERE id = $3 AND org_id = $4 AND refresh_secret_hash = $5
-            AND revoked_at IS NULL AND expires_at > now()`,
-        [
-          hashRefreshSecret(nextCredential.secret),
-          REMEMBERED_SESSION_SECONDS,
-          credential.sessionId,
-          credential.orgId,
-          session.refresh_secret_hash,
-        ],
-      );
-      if (updated.rowCount !== 1) return null;
-
-      return {
-        id: session.id,
-        orgId: session.org_id,
-        name: session.name,
-        email: session.email,
-        roles: session.roles,
-        mustChangePassword: session.must_change_password,
-      };
-    });
-
-    if (!sessionResult) {
-      res.header("set-cookie", clearSessionCookies());
-      res.status(401).json(invalid("Your remembered session is no longer valid. Sign in again.", "UNAUTHENTICATED"));
+    if (!session) {
+      res.status(401).json(invalid("Invalid organization or credentials.", "INVALID_CREDENTIALS"));
       return;
     }
-
-    res.header("set-cookie", createSessionCookies(nextCredential, csrfToken));
     res.status(200).json({
-      accessToken: createAccessToken(sessionResult),
-      user: sessionResult,
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      expiresAt: session.expires_at,
+      user: authUser,
     });
   } catch (error) {
+    if (error instanceof CampusEmailConflictError) {
+      res.status(409).json(invalid("This email is already registered to another account. Contact your administrator.", "CONFLICT"));
+      return;
+    }
     next(error);
   }
 });
 
 router.post("/identity/auth/logout", async (req, res, next) => {
-  const credential = readRefreshCredential(req.headers.cookie);
-  if (credential && !hasValidCsrfToken(req)) {
-    res.status(403).json(invalid("The session security check failed.", "CSRF_FAILED"));
-    return;
-  }
-
   try {
-    if (credential) {
-      await withOrg(credential.orgId, (client) =>
-        client.query(
-          `UPDATE identity.auth_sessions
-              SET revoked_at = now()
-            WHERE id = $1 AND org_id = $2 AND refresh_secret_hash = $3
-              AND revoked_at IS NULL`,
-          [credential.sessionId, credential.orgId, hashRefreshSecret(credential.secret)],
-        ),
-      );
+    // Revoke the caller's Supabase session server-side when a bearer token is
+    // present; the browser client also calls supabase.auth.signOut() locally.
+    const authorization = req.headers.authorization;
+    const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : "";
+    const claims = token ? await verifySupabaseToken(token) : null;
+    if (claims) {
+      const account = await findAccountBySupabaseUserId(claims.sub);
+      if (account) await adminSignOutAllSessions(claims.sub);
     }
-    res.header("set-cookie", clearSessionCookies());
     res.status(204).send();
   } catch (error) {
     next(error);
@@ -288,27 +175,46 @@ router.post("/identity/auth/change-password", requireAuth, async (req, res, next
 
   try {
     const current = await withOrg(user.orgId, (client) =>
-      client.query<{ password_hash: string; must_change_password: boolean }>(
-        `SELECT password_hash, must_change_password
+      client.query<{ password_hash: string | null; supabase_user_id: string | null; email: string }>(
+        `SELECT password_hash, supabase_user_id, email
            FROM identity.users
           WHERE id = $1 AND org_id = $2 AND status = 'active'`,
         [user.id, user.orgId],
       ),
     );
     const row = current.rows[0];
-    if (!row || !(await verifyPassword(parsed.data.currentPassword, row.password_hash))) {
+    if (!row) {
+      return void res.status(401).json(invalid("Sign in to continue.", "UNAUTHENTICATED"));
+    }
+    // The Supabase password is authoritative; fall back to the legacy hash
+    // for accounts that have not yet logged in since the migration.
+    const currentPasswordValid = row.supabase_user_id
+      ? (await signInWithPassword(row.email, parsed.data.currentPassword)) !== null
+      : row.password_hash
+        ? await verifyPassword(parsed.data.currentPassword, row.password_hash)
+        : false;
+    if (!currentPasswordValid) {
       return void res.status(401).json(invalid("Your current password is incorrect.", "INVALID_CREDENTIALS"));
     }
 
-    const passwordHash = await hashPassword(parsed.data.newPassword);
+    if (row.supabase_user_id) {
+      await adminUpdateUserPassword(row.supabase_user_id, parsed.data.newPassword);
+    } else {
+      await linkLegacyAccountToSupabase({
+        orgId: user.orgId,
+        userId: user.id,
+        email: row.email,
+        password: parsed.data.newPassword,
+      });
+    }
     const updated = await withOrg(user.orgId, (client) =>
       client.query(
         `UPDATE identity.users
-            SET password_hash = $1, must_change_password = false,
+            SET must_change_password = false, password_hash = NULL,
                 temporary_password_expires_at = NULL, updated_at = now()
-          WHERE id = $2 AND org_id = $3 AND password_hash = $4
+          WHERE id = $1 AND org_id = $2
           RETURNING id`,
-        [passwordHash, user.id, user.orgId, row.password_hash],
+        [user.id, user.orgId],
       ),
     );
     if (!updated.rowCount) {
@@ -316,7 +222,7 @@ router.post("/identity/auth/change-password", requireAuth, async (req, res, next
     }
 
     const updatedUser = { ...user, mustChangePassword: false };
-    res.json({ accessToken: createAccessToken(updatedUser), user: updatedUser });
+    res.json({ user: updatedUser });
   } catch (error) {
     next(error);
   }
@@ -342,34 +248,33 @@ router.post(
 
     try {
       const temporaryPassword = generateTemporaryPassword();
-      const passwordHash = await hashPassword(temporaryPassword);
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      const teacher = await withOrg(actor.orgId, async (client) => {
-        const created = await client.query<{ id: string; name: string; email: string }>(
-          `INSERT INTO identity.users
-             (org_id, email, name, password_hash, status, must_change_password, temporary_password_expires_at)
-           VALUES ($1, $2, $3, $4, 'active', true, $5)
-           RETURNING id, name, email`,
-          [actor.orgId, email, name, passwordHash, expiresAt],
-        );
-        const account = created.rows[0];
-        if (!account) throw new Error("Teacher account was not created.");
-        await client.query(
+      const teacher = await createCampusAccountWithPassword({
+        orgId: actor.orgId,
+        email,
+        name,
+        temporaryPassword,
+        mustChangePassword: true,
+        temporaryPasswordExpiresAt: expiresAt,
+      });
+      await withOrg(actor.orgId, (client) =>
+        client.query(
           `INSERT INTO identity.user_roles (org_id, user_id, role)
            VALUES ($1, $2, 'teacher')`,
-          [actor.orgId, account.id],
-        );
-        return account;
-      });
+          [actor.orgId, teacher.id],
+        ),
+      );
 
       res.status(201).json({
-        ...teacher,
+        id: teacher.id,
+        name,
+        email,
         role: "teacher",
         temporaryPassword,
         expiresAt: expiresAt.toISOString(),
       });
     } catch (error: any) {
-      if (error?.code === "23505") {
+      if (error instanceof CampusEmailConflictError || error?.code === "23505") {
         return void res.status(409).json(invalid("An account with this email already exists in your school.", "CONFLICT"));
       }
       next(error);
@@ -400,38 +305,37 @@ router.post(
 
     try {
       const temporaryPassword = generateTemporaryPassword();
-      const passwordHash = await hashPassword(temporaryPassword);
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      const administrator = await withOrg(actor.orgId, async (client) => {
-        const created = await client.query<{ id: string; name: string; email: string }>(
-          `INSERT INTO identity.users
-             (org_id, email, name, password_hash, status, must_change_password, temporary_password_expires_at)
-           VALUES ($1, $2, $3, $4, 'active', true, $5)
-           RETURNING id, name, email`,
-          [actor.orgId, email, name, passwordHash, expiresAt],
-        );
-        const account = created.rows[0];
-        if (!account) throw new Error("School administrator account was not created.");
-        await client.query(
+      const administrator = await createCampusAccountWithPassword({
+        orgId: actor.orgId,
+        email,
+        name,
+        temporaryPassword,
+        mustChangePassword: true,
+        temporaryPasswordExpiresAt: expiresAt,
+      });
+      await withOrg(actor.orgId, (client) =>
+        client.query(
           `INSERT INTO identity.user_roles (org_id, user_id, role)
            VALUES ($1, $2, 'org_admin')`,
-          [actor.orgId, account.id],
-        );
-        return account;
-      });
+          [actor.orgId, administrator.id],
+        ),
+      );
 
       req.log.info(
         { actorUserId: actor.id, organizationId: actor.orgId, createdUserId: administrator.id, createdRole: "org_admin" },
         "School administrator account created",
       );
       res.status(201).json({
-        ...administrator,
+        id: administrator.id,
+        name,
+        email,
         role: "org_admin",
         temporaryPassword,
         expiresAt: expiresAt.toISOString(),
       });
     } catch (error: any) {
-      if (error?.code === "23505") {
+      if (error instanceof CampusEmailConflictError || error?.code === "23505") {
         return void res.status(409).json(invalid("An account with this email already exists in your school.", "CONFLICT"));
       }
       next(error);
@@ -553,7 +457,7 @@ router.patch(
         );
         const current = currentResult.rows[0];
         if (!current) return { kind: "not_found" as const };
-        if (current.status === body.data.status) return { kind: "updated" as const, account: current };
+        if (current.status === body.data.status) return { kind: "updated" as const, account: current, signOutSupabaseUserId: null };
 
         if (body.data.status === "disabled") {
           const activeCount = await client.query<{ total: number }>(
@@ -571,23 +475,20 @@ router.patch(
 
         const updated = await client.query<{
           id: string; name: string; email: string; status: "active" | "disabled"; createdAt: Date;
+          supabase_user_id: string | null;
         }>(
           `UPDATE identity.users
               SET status = $3, updated_at = now()
             WHERE org_id = $1 AND id = $2
-            RETURNING id, name, email, status, created_at AS "createdAt"`,
+            RETURNING id, name, email, status, created_at AS "createdAt", supabase_user_id`,
           [actor.orgId, params.data.userId, body.data.status],
         );
         const account = updated.rows[0];
         if (!account) return { kind: "not_found" as const };
 
-        if (body.data.status === "disabled") {
-          await client.query(
-            `UPDATE identity.auth_sessions
-                SET revoked_at = now()
-              WHERE org_id = $1 AND user_id = $2 AND revoked_at IS NULL`,
-            [actor.orgId, params.data.userId],
-          );
+        if (body.data.status === "disabled" && account.supabase_user_id) {
+          // Sign out Supabase sessions after the transaction commits below.
+          return { kind: "updated" as const, account, signOutSupabaseUserId: account.supabase_user_id };
         }
         return { kind: "updated" as const, account };
       });
@@ -597,6 +498,11 @@ router.patch(
       }
       if (result.kind === "last_active_admin") {
         return void res.status(409).json(invalid("The school must keep at least one active administrator.", "LAST_ACTIVE_ADMIN"));
+      }
+      if (result.signOutSupabaseUserId) {
+        await adminSignOutAllSessions(result.signOutSupabaseUserId).catch((error) =>
+          req.log.warn({ error }, "Could not revoke Supabase sessions for disabled administrator"),
+        );
       }
       req.log.info(
         { actorUserId: actor.id, organizationId: actor.orgId, targetUserId: result.account.id, status: result.account.status },
@@ -640,23 +546,38 @@ router.post(
       }
 
       const temporaryPassword = generateTemporaryPassword();
-      const passwordHash = await hashPassword(temporaryPassword);
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      await withOrg(actor.orgId, async (client) => {
-        await client.query(
-          `UPDATE identity.users
-              SET password_hash = $1, must_change_password = true,
-                  temporary_password_expires_at = $2, updated_at = now()
-            WHERE id = $3 AND org_id = $4`,
-          [passwordHash, expiresAt, target.id, actor.orgId],
-        );
-        await client.query(
-          `UPDATE identity.auth_sessions
-              SET revoked_at = now()
-            WHERE user_id = $1 AND org_id = $2 AND revoked_at IS NULL`,
+      const targetAccount = await withOrg(actor.orgId, (client) =>
+        client.query<{ supabase_user_id: string | null; email: string }>(
+          `SELECT supabase_user_id, email
+             FROM identity.users
+            WHERE id = $1 AND org_id = $2`,
           [target.id, actor.orgId],
-        );
-      });
+        ),
+      );
+      const targetRow = targetAccount.rows[0];
+      if (!targetRow) return void res.status(404).json(invalid("User not found.", "NOT_FOUND"));
+
+      if (targetRow.supabase_user_id) {
+        await adminUpdateUserPassword(targetRow.supabase_user_id, temporaryPassword);
+        await adminSignOutAllSessions(targetRow.supabase_user_id).catch(() => undefined);
+      } else {
+        await linkLegacyAccountToSupabase({
+          orgId: actor.orgId,
+          userId: target.id,
+          email: targetRow.email,
+          password: temporaryPassword,
+        });
+      }
+      await withOrg(actor.orgId, (client) =>
+        client.query(
+          `UPDATE identity.users
+              SET must_change_password = true,
+                  temporary_password_expires_at = $1, updated_at = now()
+            WHERE id = $2 AND org_id = $3`,
+          [expiresAt, target.id, actor.orgId],
+        ),
+      );
       res.json({ temporaryPassword, expiresAt: expiresAt.toISOString() });
     } catch (error) {
       next(error);

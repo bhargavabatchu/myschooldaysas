@@ -61,3 +61,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+.env.local
+creds*.json
+creds/
