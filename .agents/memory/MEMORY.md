@@ -24,4 +24,5 @@
 - [Campus Live student attendance](campus-live-student-attendance.md) — students can view their own attendance history, but cannot record or edit marks.
 - [Campus Live syllabus scope](campus-live-syllabus-scope.md) — syllabus content is shared across a class's sections and uses document/video links.
 - [Campus Live student timetable](campus-live-student-timetable.md) — students see their enrollment-scoped timetable without class or section filters.
+- [Campus Live academic results](campus-live-academic-results.md) — keep Results focused on report cards; staff assessment workflows live in Learning.
 - [Campus Live daily thought](campus-live-daily-thought.md) — show all students the same original, age-appropriate thought for each school-local day.

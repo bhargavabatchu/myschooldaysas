@@ -40,7 +40,7 @@ export function LearningPage({ roles, initialTab = 'assignments', area = 'learni
   const administrator = canAdminister(roles);
   const resultsArea = area === 'results';
   const [tab, setTab] = useState<Tab>(initialTab);
-  const activeTab: Tab = resultsArea ? 'reports' : tab;
+  const activeTab: Tab = resultsArea ? 'reports' : tab === 'reports' ? 'assignments' : tab;
   const [sectionId, setSectionId] = useState('');
   const [activeAssignment, setActiveAssignment] = useState<LearningAssignment | null>(null);
   const [activeExam, setActiveExam] = useState<LearningExam | null>(null);
