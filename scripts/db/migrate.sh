@@ -11,7 +11,7 @@ fi
 
 : "${MIGRATOR_DATABASE_URL:?MIGRATOR_DATABASE_URL is required}"
 
-psql "$MIGRATOR_DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+psql -d "$MIGRATOR_DATABASE_URL" -v ON_ERROR_STOP=1 -c \
   "CREATE TABLE IF NOT EXISTS public.schema_migrations (
      version text PRIMARY KEY,
      applied_at timestamptz NOT NULL DEFAULT now()
@@ -19,14 +19,14 @@ psql "$MIGRATOR_DATABASE_URL" -v ON_ERROR_STOP=1 -c \
 
 while IFS='|' read -r version migration; do
   [[ -z "$version" ]] && continue
-  applied="$(psql "$MIGRATOR_DATABASE_URL" -tAc \
+  applied="$(psql -d "$MIGRATOR_DATABASE_URL" -tAc \
     "SELECT 1 FROM public.schema_migrations WHERE version = '$version'")"
   if [[ "$applied" == "1" ]]; then
     echo "Already applied: $version"
     continue
   fi
-  psql "$MIGRATOR_DATABASE_URL" --single-transaction -v ON_ERROR_STOP=1 -f "$migration"
-  psql "$MIGRATOR_DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+  psql -d "$MIGRATOR_DATABASE_URL" --single-transaction -v ON_ERROR_STOP=1 -f "$migration"
+  psql -d "$MIGRATOR_DATABASE_URL" -v ON_ERROR_STOP=1 -c \
     "INSERT INTO public.schema_migrations (version) VALUES ('$version') ON CONFLICT (version) DO NOTHING"
   echo "Applied: $version"
 done <<'MIGRATIONS'

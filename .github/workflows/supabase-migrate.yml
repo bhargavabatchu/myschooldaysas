@@ -1,0 +1,49 @@
+name: Supabase database migration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-production-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply and verify schema migrations
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      MIGRATOR_DATABASE_URL: ${{ secrets.MIGRATOR_DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Apply migrations as the restricted migrator
+        run: NODE_ENV=ci bash scripts/db/migrate.sh
+
+      - name: Verify runtime role and tenant RLS
+        run: |
+          psql -d "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -c "
+            SELECT current_user AS runtime_role,
+                   (SELECT rolsuper FROM pg_roles WHERE rolname = current_user) AS is_superuser,
+                   (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user) AS bypasses_rls;"
+          psql -d "$MIGRATOR_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c "
+            WITH tenant_tables AS (
+              SELECT c.oid, c.relrowsecurity, c.relforcerowsecurity
+              FROM pg_class c
+              JOIN pg_namespace n ON n.oid = c.relnamespace
+              JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'org_id' AND NOT a.attisdropped
+              WHERE c.relkind = 'r'
+                AND n.nspname IN ('identity','academic','school','live','board','learning','fees','registry')
+            )
+            SELECT count(*) AS tenant_tables,
+                   count(*) FILTER (WHERE relrowsecurity AND relforcerowsecurity) AS forced_rls_tables
+            FROM tenant_tables;"
