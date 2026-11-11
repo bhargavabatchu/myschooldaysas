@@ -8,9 +8,15 @@ export function createPool(connectionString: string): pg.Pool {
     throw new Error("A database connection string is required.");
   }
 
+  // Serverless hosts (Vercel functions) run several concurrent instances,
+  // so the per-instance pool size must stay small against the Supabase
+  // pooler; long-running deployments keep the larger default.
+  const configuredMax = Number.parseInt(process.env.CAMPUS_DB_POOL_MAX ?? "", 10);
+  const max = Number.isFinite(configuredMax) && configuredMax > 0 ? configuredMax : 12;
+
   const connection = new Pool({
     connectionString,
-    max: 12,
+    max,
     connectionTimeoutMillis: 5_000,
     idleTimeoutMillis: 30_000,
     statement_timeout: 10_000,

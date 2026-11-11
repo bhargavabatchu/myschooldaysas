@@ -4,12 +4,12 @@ import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 're
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { Link, Route, Switch, useLocation, useParams } from 'wouter';
 import {
-  useLogin, useGetMe, getGetMeQueryKey, useGetDashboardOverview, getGetDashboardOverviewQueryKey,
+  useGetMe, getGetMeQueryKey, useGetDashboardOverview, getGetDashboardOverviewQueryKey,
   useGetClasses, useGetSections, useGetTimetable, useGetCalendar, getGetCalendarQueryKey, useGetAcademicYears,
   useGetStudents, getGetStudentsQueryKey, useGetSessions, getGetSessionsQueryKey,
   useCreateSession, useStartSession, useEndSession, useGetSessionToken,
   useGetBoardTemplates, getGetBoardTemplatesQueryKey, useCreateBoardTemplate, useUpdateBoardTemplate,
-  useChangePassword, useGetConsents, getGetConsentsQueryKey, useGrantConsent, useRevokeConsent,
+  useGetConsents, getGetConsentsQueryKey, useGrantConsent, useRevokeConsent,
   getGetConsentReviewStatusQueryKey, useCompleteConsentReview, useGetConsentReviewStatus,
 } from '@workspace/api-client-react';
 import type { AcademicYear, BoardConfig, BoardTemplate, BoardTemplateInput, LiveSession, LiveSessionInput, SectionSummary } from '@workspace/api-client-react';
@@ -25,12 +25,17 @@ import NotFound from '@/components/not-found';
 import '@/components/auth/login-page.css';
 import '@/components/dashboard/dashboard-page.css';
 import {
-  installSupabaseSession,
   logoutRememberedSession,
   refreshRememberedSession,
   restoreRememberedSession,
   setAccessToken,
 } from './auth-token';
+import {
+  completeCampusPasswordChange,
+  fetchCampusProfile,
+  getSupabase,
+  profileToUser,
+} from './lib/supabase';
 import { ClassroomScreen } from '@/components/classroom/classroom-screen';
 import { LearningPage } from '@/components/learning/learning-page';
 import { AttendancePage } from '@/components/attendance/attendance-page';
@@ -111,7 +116,14 @@ function App() {
   const [sessionReady, setSessionReady] = useState(false);
   useEffect(() => {
     let mounted = true;
-    void restoreRememberedSession().finally(() => {
+    void restoreRememberedSession().then(async (token) => {
+      // Hydrate the signed-in user straight from Supabase so the shell works
+      // even when the Fastify API is not reachable (direct-Supabase login).
+      if (!token) return null;
+      const profile = await fetchCampusProfile();
+      if (profile) queryClient.setQueryData(getGetMeQueryKey(), profileToUser(profile));
+      return profile;
+    }).finally(() => {
       if (mounted) setSessionReady(true);
     });
     const refreshWhenVisible = () => {
@@ -158,7 +170,15 @@ function canViewAcademicDirectory(roles: string[]) {
 
 function ProtectedApp() {
   const [path, setPath] = useLocation();
-  const me = useGetMe({ query: { retry: false } });
+  const me = useGetMe({
+    query: {
+      retry: false,
+      // Keep the Supabase-hydrated profile when the API is unreachable.
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
+  });
   const academicYearsQuery = useGetAcademicYears({
     query: {
       enabled: me.data?.roles?.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role)) ?? false,
@@ -367,7 +387,47 @@ function LoginGate({ error, retry }: { error: unknown; retry: () => void }) {
 function LoginPage() {
   const [orgSlug, setOrgSlug] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
-  const [, setLocation] = useLocation(); const login = useLogin({ mutation: { onSuccess: result => { void installSupabaseSession({ accessToken: result.accessToken, refreshToken: result.refreshToken }); queryClient.setQueryData(getGetMeQueryKey(), result.user); setLocation('/dashboard'); } } });
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
+  const [, setLocation] = useLocation();
+
+  // Direct-to-Supabase sign-in: the browser authenticates against Supabase
+  // Auth and loads the campus profile through the my_campus_profile RPC, so
+  // login works with only Vercel + Supabase (no API host required).
+  const submitSignIn = async (event: FormEvent) => {
+    event.preventDefault();
+    setSignInError(null);
+    setSigningIn(true);
+    try {
+      const { data, error: authError } = await getSupabase().auth.signInWithPassword({ email, password });
+      if (authError || !data.session) {
+        setSignInError('Invalid email or password.');
+        return;
+      }
+      setAccessToken(data.session.access_token);
+      const profile = await fetchCampusProfile();
+      if (!profile) {
+        await getSupabase().auth.signOut();
+        setAccessToken(null);
+        setSignInError('This account is not registered to a school. Contact your administrator.');
+        return;
+      }
+      const trimmedOrg = orgSlug.trim().toLowerCase();
+      if (trimmedOrg && profile.orgSlug !== trimmedOrg) {
+        await getSupabase().auth.signOut();
+        setAccessToken(null);
+        setSignInError(`This account belongs to the organization "${profile.orgSlug}", not "${trimmedOrg}".`);
+        return;
+      }
+      queryClient.setQueryData(getGetMeQueryKey(), profileToUser(profile));
+      setLocation(profile.mustChangePassword ? '/change-password' : '/dashboard');
+    } catch {
+      setSignInError('Sign-in is temporarily unavailable. Try again.');
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
   return <main className="premium-login">
     <section className="premium-story" aria-label="School welcome">
       <div className="premium-orbit premium-orbit-one" aria-hidden="true"/>
@@ -407,7 +467,7 @@ function LoginPage() {
           <h2>Welcome back.</h2>
           <p>Sign in with your school account to continue.</p>
         </div>
-        <form onSubmit={event => { event.preventDefault(); login.mutate({ data: { orgSlug, email, password, rememberMe } }); }}>
+        <form onSubmit={submitSignIn}>
           <label className="premium-label" htmlFor="login-organization">Organization</label>
           <input id="login-organization" required autoComplete="organization" data-testid="input-organization" className="premium-input" placeholder="Your school's organization" value={orgSlug} onChange={event => setOrgSlug(event.target.value)}/>
 
@@ -428,10 +488,10 @@ function LoginPage() {
           </label>
           <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Leave this off on shared devices.</p>
 
-          {login.isError && <div role="alert" data-testid="status-login-error" className="premium-login-error">{errorText(login.error)}</div>}
-          <button type="submit" disabled={login.isPending} aria-busy={login.isPending} data-testid="button-submit-login" className="premium-submit">
-            <span>{login.isPending ? 'Signing in…' : 'Sign in'}</span>
-            {login.isPending ? <LoaderCircle className="premium-submit-icon animate-spin" size={17}/> : <ArrowRight className="premium-submit-icon" size={17} strokeWidth={1.8}/>}
+          {signInError && <div role="alert" data-testid="status-login-error" className="premium-login-error">{signInError}</div>}
+          <button type="submit" disabled={signingIn} aria-busy={signingIn} data-testid="button-submit-login" className="premium-submit">
+            <span>{signingIn ? 'Signing in…' : 'Sign in'}</span>
+            {signingIn ? <LoaderCircle className="premium-submit-icon animate-spin" size={17}/> : <ArrowRight className="premium-submit-icon" size={17} strokeWidth={1.8}/>}
           </button>
         </form>
         <div className="premium-assurance">
@@ -453,28 +513,60 @@ function PasswordChangePage({ email }: { email: string }) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [changeError, setChangeError] = useState<string | null>(null);
+  const [changing, setChanging] = useState(false);
   const [, setLocation] = useLocation();
-  const change = useChangePassword({ mutation: { onSuccess: result => {
-    queryClient.setQueryData(getGetMeQueryKey(), result.user);
-    setLocation('/dashboard');
-  } } });
   const confirmError = confirmPassword && newPassword !== confirmPassword ? 'Passwords do not match.' : null;
+
+  // Direct-to-Supabase password change: verify the current password with a
+  // fresh sign-in, set the new one via updateUser, then clear the campus
+  // must-change-password flag through the Supabase RPC. Works without the
+  // Fastify API being reachable.
+  const submitNewPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    if (confirmError) return;
+    setChangeError(null);
+    setChanging(true);
+    try {
+      const { data: signIn, error: signInError } = await getSupabase().auth.signInWithPassword({ email, password: currentPassword });
+      if (signInError || !signIn.session) {
+        setChangeError('Your current password is incorrect.');
+        return;
+      }
+      const { error: updateError } = await getSupabase().auth.updateUser({ password: newPassword });
+      if (updateError) {
+        setChangeError(updateError.message);
+        return;
+      }
+      setAccessToken(signIn.session.access_token);
+      const cleared = await completeCampusPasswordChange();
+      const profile = await fetchCampusProfile();
+      if (profile) {
+        queryClient.setQueryData(getGetMeQueryKey(), {
+          ...profileToUser(profile),
+          mustChangePassword: cleared ? false : profile.mustChangePassword,
+        });
+      }
+      setLocation('/dashboard');
+    } catch {
+      setChangeError('Password change is temporarily unavailable. Try again.');
+    } finally {
+      setChanging(false);
+    }
+  };
 
   return <div className="grid min-h-[100dvh] place-items-center p-5">
     <section className="surface w-full max-w-md p-7 sm:p-9">
-      <div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><ShieldCheck size={24}/></div>
+      <div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-[hsl(var(--secondary))]"><ShieldCheck size={24}/></div>
       <span className="tag">Account security</span>
       <h1 className="display mb-2 mt-3 text-2xl font-extrabold">Change your temporary password</h1>
       <p className="mb-6 text-sm text-[hsl(var(--muted-foreground))]">Choose a new password before continuing. Signed in as {email}.</p>
-      <form className="space-y-4" onSubmit={event => {
-        event.preventDefault();
-        if (!confirmError) change.mutate({ data: { currentPassword, newPassword } });
-      }}>
+      <form className="space-y-4" onSubmit={submitNewPassword}>
         <label className="block text-xs font-bold">Current password<div className="mt-1.5"><input required type="password" autoComplete="current-password" className="field" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)}/></div></label>
         <label className="block text-xs font-bold">New password<div className="mt-1.5"><input required minLength={12} maxLength={256} type="password" autoComplete="new-password" className="field" value={newPassword} onChange={event => setNewPassword(event.target.value)}/></div><span className="mt-1 block text-[11px] font-normal text-[hsl(var(--muted-foreground))]">Use at least 12 characters.</span></label>
         <label className="block text-xs font-bold">Confirm new password<div className="mt-1.5"><input required minLength={12} maxLength={256} type="password" autoComplete="new-password" className="field" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)}/></div></label>
-        {(confirmError || change.isError) && <p role="alert" className="text-xs text-[hsl(var(--destructive))]">{confirmError ?? errorText(change.error)}</p>}
-        <button disabled={change.isPending || !!confirmError} className="btn btn-primary w-full">{change.isPending ? 'Updating…' : 'Set new password'}<ArrowRight size={15}/></button>
+        {(confirmError || changeError) && <p role="alert" className="text-xs text-[hsl(var(--destructive))]">{confirmError ?? changeError}</p>}
+        <button disabled={changing || !!confirmError} className="btn btn-primary w-full">{changing ? 'Updating…' : 'Set new password'}<ArrowRight size={15}/></button>
       </form>
     </section>
   </div>;

@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/app.ts"
+  },
   "scripts": {
     "dev": "set -a; . ../../.env; set +a; . ../../scripts/db/use-replit-development-database.sh; npm run db:migrate && npm run db:seed && npm run build && npm run start",
     "build": "node ./build.mjs",

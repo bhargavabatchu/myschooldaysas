@@ -4,6 +4,8 @@
 
 ## Current build
 
+**Deployment model (2026-11-11): single service.** The whole product deploys as one Next.js app on Vercel: the Fastify API is embedded through a catch-all route (`artifacts/campus-live/src/app/api/[...path]/route.ts` dispatches into the Fastify instance from `artifacts/api-server/src/app.ts`). Supabase provides Postgres (tenant RLS) and Auth; LiveKit Cloud carries live-class media (browser-direct). The classroom board uses HTTP polling in this mode (`NEXT_PUBLIC_BOARD_TRANSPORT=polling`, `routes/board-http.ts`) because serverless functions cannot hold WebSockets; the standalone API process (`npm run start --workspace=@workspace/api-server`, see `ops/DEPLOY-API.md`) still serves the board WebSocket when self-hosted. School photos and fee attachments are stored in `school.stored_files` (bytea) instead of Replit object storage. Sign-in goes browser→Supabase Auth directly, with the campus profile served by the `my_campus_profile` RPC; see `ops/VERCEL-DEPLOY.md`.
+
 This build covers sign-in, a role-scoped dashboard, class/section directories, a paginated student roster with admin profile management, announcements, live-session scheduling and state changes, board-template configuration, a learning and assessment workspace, and the live classroom described below.
 
 | Area | Current implementation | Target in `MASTER_SPEC.md` |

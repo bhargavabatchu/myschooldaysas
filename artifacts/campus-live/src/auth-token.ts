@@ -17,7 +17,7 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
-/** Install a Supabase session returned by POST /identity/auth/login. */
+/** Install a Supabase session minted by direct sign-in. */
 export async function installSupabaseSession(input: {
   accessToken: string;
   refreshToken: string;
@@ -53,18 +53,18 @@ export function refreshRememberedSession(): Promise<string | null> {
 
 setAuthTokenRefreshHandler(refreshRememberedSession);
 
-/** Try to restore a persisted Supabase session on page load. */
-export async function restoreRememberedSession(): Promise<boolean> {
+/** Restore a persisted Supabase session; resolves to the access token, or null. */
+export async function restoreRememberedSession(): Promise<string | null> {
   try {
     const { data } = await getSupabase().auth.getSession();
     if (data.session) {
       setAccessToken(data.session.access_token);
-      return true;
+      return data.session.access_token;
     }
   } catch {
     // Ignore storage failures; the user signs in again.
   }
-  return false;
+  return null;
 }
 
 export async function logoutRememberedSession(): Promise<void> {

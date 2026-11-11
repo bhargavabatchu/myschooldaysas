@@ -15,9 +15,9 @@ function readEnv(): { url: string | null; publishableKey: string | null } {
 let client: SupabaseClient | null = null;
 
 /**
- * Browser Supabase client. It only manages the auth session; campus data
- * still flows exclusively through the Fastify API, which verifies the
- * Supabase access token.
+ * Browser Supabase client. It manages the auth session and the direct
+ * sign-in/profile RPCs; campus data still flows through the Fastify API,
+ * which verifies the Supabase access token.
  */
 export function getSupabase(): SupabaseClient {
   if (client) return client;
@@ -35,4 +35,81 @@ export function getSupabase(): SupabaseClient {
     },
   });
   return client;
+}
+
+export interface CampusProfile {
+  id: string;
+  orgId: string;
+  orgSlug: string;
+  name: string;
+  email: string;
+  roles: string[];
+  mustChangePassword: boolean;
+}
+
+/** Same shape as GET /identity/me, seeded from the direct-Supabase login. */
+export function profileToUser(profile: CampusProfile) {
+  return {
+    id: profile.id,
+    orgId: profile.orgId,
+    name: profile.name,
+    email: profile.email,
+    roles: profile.roles,
+    mustChangePassword: profile.mustChangePassword,
+  };
+}
+
+async function callCampusRpc<T>(name: string): Promise<T | null> {
+  const { url, publishableKey } = readEnv();
+  if (!url || !publishableKey) return null;
+  const { data: sessionData } = await getSupabase().auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) return null;
+  const response = await fetch(`${url.replace(/\/$/, "")}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: {
+      apikey: publishableKey,
+      authorization: `Bearer ${accessToken}`,
+      "content-type": "application/json",
+    },
+    body: "{}",
+  });
+  if (!response.ok) return null;
+  return (await response.json()) as T;
+}
+
+/**
+ * Fetch the signed-in user's campus profile (org, roles, password state)
+ * directly from Supabase. Returns null when there is no session, the
+ * account is not linked to a school, or it has no roles.
+ */
+export async function fetchCampusProfile(): Promise<CampusProfile | null> {
+  const row = await callCampusRpc<{
+    id: string;
+    org_id: string;
+    org_slug: string;
+    name: string;
+    email: string;
+    roles: string[];
+    must_change_password: boolean;
+  } | null>("my_campus_profile");
+  if (!row || !Array.isArray(row.roles) || row.roles.length === 0) return null;
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    orgSlug: row.org_slug,
+    name: row.name,
+    email: row.email,
+    roles: row.roles,
+    mustChangePassword: row.must_change_password,
+  };
+}
+
+/**
+ * Clear the must-change-password / temporary-password flags for the signed-in
+ * user after they set a new password through supabase.auth.updateUser().
+ */
+export async function completeCampusPasswordChange(): Promise<boolean> {
+  const result = await callCampusRpc<boolean>("complete_campus_password_change");
+  return result === true;
 }

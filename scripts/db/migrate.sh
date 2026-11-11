@@ -36,6 +36,7 @@ identity:003|services/identity/migrations/003_guardian_privacy_flags.sql
 identity:004|services/identity/migrations/004_student_profiles.sql
 identity:005|services/identity/migrations/005_auth_sessions.sql
 identity:006|services/identity/migrations/006_supabase_auth.sql
+identity:007|services/identity/migrations/007_campus_profile_rpc.sql
 academic:001|services/academic/migrations/001_academic.sql
 academic:002|services/academic/migrations/002_consents.sql
 academic:003|services/academic/migrations/003_subjects.sql
@@ -49,6 +50,7 @@ academic:010|services/academic/migrations/010_withdrawn_reason.sql
 school:001|services/school/migrations/001_attendance.sql
 school:002|services/school/migrations/002_announcements.sql
 school:003|services/school/migrations/003_calendar_events.sql
+school:004|services/school/migrations/004_highlight_photos.sql
 school:004|services/school/migrations/004_school_highlights.sql
 live:001|services/live/migrations/001_live.sql
 board:001|services/board/migrations/001_board.sql

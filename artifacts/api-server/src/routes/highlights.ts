@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { Client as ObjectStorageClient } from "@replit/object-storage";
 import type { FastifyPluginAsync } from "fastify";
 import {
   CreateSchoolHighlightBody,
@@ -10,6 +9,7 @@ import { withOrg } from "@workspace/db";
 import { createRouteRegistrar } from "../lib/fastify-routes";
 import { requireAuth, type CampusRole } from "../lib/auth";
 import { normalizeStoredHighlightPhoto, parseHighlightPhotoDataUrl } from "../lib/highlight-photo.ts";
+import { deleteFile, readFile, storeFile } from "../lib/object-store";
 
 const adminRoles: CampusRole[] = ["super_admin", "org_admin", "campus_admin"];
 const errorBody = (code: string, message: string) => ({ error: { code, message } });
@@ -174,14 +174,10 @@ const routes: FastifyPluginAsync = async (fastify) => {
       const objectName = photo ? `school-highlights/${user.orgId}/${randomUUID()}.${photo.contentType === "image/jpeg" ? "jpg" : photo.contentType.slice("image/".length)}` : null;
       if (photo && objectName) {
         try {
-          const uploaded = await new ObjectStorageClient().uploadFromBytes(objectName, photo.bytes);
-          if (!uploaded.ok) {
-            await new ObjectStorageClient().delete(objectName).catch(() => undefined);
-            return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "Photo storage is not ready. Check the school's App Storage setup and try again."));
-          }
+          await storeFile({ orgId: user.orgId, objectName, contentType: photo.contentType, bytes: photo.bytes });
         } catch {
-          await new ObjectStorageClient().delete(objectName).catch(() => undefined);
-          return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "Photo storage is not ready. Check the school's App Storage setup and try again."));
+          await deleteFile({ orgId: user.orgId, objectName }).catch(() => undefined);
+          return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "Photo storage is not ready. Try again."));
         }
       }
 
@@ -219,12 +215,12 @@ const routes: FastifyPluginAsync = async (fastify) => {
           return { id: result.rows[0].id };
         });
         if ("missing" in inserted) {
-          if (objectName) await new ObjectStorageClient().delete(objectName).catch(() => undefined);
+          if (objectName) await deleteFile({ orgId: user.orgId, objectName }).catch(() => undefined);
           return void res.status(404).json(errorBody("NOT_FOUND", "The selected class or section was not found."));
         }
         highlightId = inserted.id;
       } catch (error) {
-        if (objectName) await new ObjectStorageClient().delete(objectName).catch(() => undefined);
+        if (objectName) await deleteFile({ orgId: user.orgId, objectName }).catch(() => undefined);
         throw error;
       }
 
@@ -273,18 +269,18 @@ const routes: FastifyPluginAsync = async (fastify) => {
         return result.rows[0] ?? null;
       });
       if (!media?.object_name || !media.content_type) return void res.status(404).json(errorBody("NOT_FOUND", "Photo not found or not available to this account."));
-      const downloaded = await new ObjectStorageClient().downloadAsBytes(media.object_name);
-      if (!downloaded.ok) return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "This photo is temporarily unavailable."));
-      const photoBytes = normalizeStoredHighlightPhoto(downloaded.value);
+      const stored = await readFile({ orgId: user.orgId, objectName: media.object_name });
+      if (!stored) return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "This photo is temporarily unavailable."));
+      const photoBytes = normalizeStoredHighlightPhoto(stored.bytes);
       if (!photoBytes) return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "This photo is temporarily unavailable."));
       res
-        .type(media.content_type)
+        .type(stored.contentType)
         .header("Cache-Control", "private, no-store")
         .header("Vary", "Authorization")
         .send(photoBytes);
     } catch (error) {
       if (isStorageConfiguredError(error)) {
-        return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "Photo storage is not ready. Check the school's App Storage setup."));
+        return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "Photo storage is not ready."));
       }
       next(error);
     }

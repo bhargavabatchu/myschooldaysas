@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "npm ci --include=dev",
-  "buildCommand": "npm run typecheck:libs && npm run build --workspace=@workspace/campus-live",
+  "buildCommand": "npm run typecheck:libs && npm run typecheck --workspace=@workspace/api-server && npm run build --workspace=@workspace/campus-live",
   "outputDirectory": "artifacts/campus-live/.next"
 }

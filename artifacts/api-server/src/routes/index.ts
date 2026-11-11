@@ -5,6 +5,7 @@ import academicRouter from "./academic";
 import liveRouter from "./live";
 import boardRouter from "./board";
 import classroomBoardRouter from "./classroom-board";
+import boardHttpRouter from "./board-http";
 import dashboardRouter from "./dashboard";
 import adminAssistantRouter from "./admin-assistant";
 import learningRouter from "./learning";
@@ -34,6 +35,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(liveRouter);
   await fastify.register(boardRouter);
   await fastify.register(classroomBoardRouter);
+  await fastify.register(boardHttpRouter);
   await fastify.register(dashboardRouter);
   await fastify.register(adminAssistantRouter);
   await fastify.register(learningRouter);

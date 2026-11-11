@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { Client as ObjectStorageClient } from "@replit/object-storage";
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import {
@@ -24,6 +23,7 @@ import {
   normalizeStoredFeeAttachment,
   parseFeeConcessionAttachmentDataUrl,
 } from "../lib/fee-concession-attachment.ts";
+import { deleteFile, readFile, storeFile } from "../lib/object-store";
 import {
   classifyFeeCollectionChannel,
   isValidFeeCollectionDate,
@@ -596,18 +596,14 @@ const routes: FastifyPluginAsync = async (fastify) => {
       if (!uploadedObjectName) return;
       const objectName = uploadedObjectName;
       uploadedObjectName = null;
-      await new ObjectStorageClient().delete(objectName).catch(() => undefined);
+      await deleteFile({ orgId: user.orgId, objectName }).catch(() => undefined);
     };
     try {
       if (attachment) {
         const extension = concessionAttachmentExtension[attachment.contentType];
         uploadedObjectName = `fee-concessions/${user.orgId}/${params.data.invoiceId}/${randomUUID()}.${extension}`;
         try {
-          const uploaded = await new ObjectStorageClient().uploadFromBytes(uploadedObjectName, attachment.bytes);
-          if (!uploaded.ok) {
-            await discardUploadedAttachment();
-            return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "The attachment could not be stored securely. Try again."));
-          }
+          await storeFile({ orgId: user.orgId, objectName: uploadedObjectName, contentType: attachment.contentType, bytes: attachment.bytes });
         } catch {
           await discardUploadedAttachment();
           return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "Private file storage is unavailable. Try again later."));
@@ -805,9 +801,9 @@ const routes: FastifyPluginAsync = async (fastify) => {
       });
       if (!attachment) return void res.status(404).json(errorBody("NOT_FOUND", "Concession attachment not found."));
 
-      const downloaded = await new ObjectStorageClient().downloadAsBytes(attachment.object_name);
-      if (!downloaded.ok) return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "The attachment is temporarily unavailable."));
-      const bytes = normalizeStoredFeeAttachment(downloaded.value);
+      const downloaded = await readFile({ orgId: user.orgId, objectName: attachment.object_name });
+      if (!downloaded) return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "The attachment is temporarily unavailable."));
+      const bytes = normalizeStoredFeeAttachment(downloaded.bytes);
       if (!bytes) return void res.status(503).json(errorBody("STORAGE_UNAVAILABLE", "The attachment is temporarily unavailable."));
 
       const fallbackName = attachment.file_name.replace(/[^\x20-\x7e]|["\\;]/g, "_");

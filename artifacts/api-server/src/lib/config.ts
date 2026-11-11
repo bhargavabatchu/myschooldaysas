@@ -3,7 +3,7 @@ import { z } from "zod";
 const runtimeEnvSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-    PORT: z.coerce.number().int().min(1).max(65535),
+    PORT: z.coerce.number().int().min(1).max(65535).default(8080),
     ENABLE_LIVE_CLASSES: z.enum(["true", "false"]).default("true").transform(value => value === "true"),
     ENABLE_ONLINE_PAYMENTS: z.enum(["true", "false"]).default("true").transform(value => value === "true"),
     ENABLE_REDIS: z.enum(["true", "false"]).default("true").transform(value => value === "true"),
