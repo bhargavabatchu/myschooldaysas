@@ -75,7 +75,9 @@ async function callCampusRpc<T>(name: string): Promise<T | null> {
     body: "{}",
   });
   if (!response.ok) return null;
-  return (await response.json()) as T;
+  // PostgREST returns set-returning functions as a JSON array of rows.
+  const body = (await response.json()) as T | T[];
+  return Array.isArray(body) ? (body[0] ?? null) : body;
 }
 
 /**
