@@ -15,24 +15,30 @@ export function createPool(connectionString: string): pg.Pool {
   const max = Number.isFinite(configuredMax) && configuredMax > 0 ? configuredMax : 12;
 
   // Supabase pooler certificates chain to a root that Node's default CA
-  // bundle rejects ("self-signed certificate in certificate chain") unless
-  // sslmode=verify-full is explicitly requested. Encryption stays on; only
-  // certificate identity verification is relaxed for those hosts.
-  const sslmode = /sslmode=([^&]+)/.exec(connectionString)?.[1] ?? "";
-  const isSupabaseHost = /\.supabase\.(co|com)/.test(connectionString);
-  const ssl =
-    sslmode === "verify-full"
-      ? undefined // honor full verification when explicitly requested
-      : isSupabaseHost
-        ? { rejectUnauthorized: false }
-        : sslmode === "no-verify" || sslmode === "prefer"
-          ? { rejectUnauthorized: false }
-          : undefined;
+  // bundle rejects ("self-signed certificate in certificate chain"). In
+  // pg >= 8.12 an sslmode=require/allow/prefer parameter in the URL is
+  // treated as verify-full and OVERRIDES the ssl pool option, so the
+  // parameter must be stripped from the URL itself. Encryption stays on;
+  // identity verification is relaxed unless sslmode=verify-full is set.
+  const sslmode = /[?&]sslmode=([^&]+)/.exec(connectionString)?.[1] ?? "";
+  const relaxTls =
+    sslmode !== "verify-full" &&
+    (sslmode !== "" || /\.supabase\.(co|com)/.test(connectionString));
+  let effectiveUrl = connectionString;
+  let sslOption: pg.PoolConfig["ssl"];
+  if (relaxTls) {
+    effectiveUrl = connectionString
+      .replace(/([?&])sslmode=[^&]*/g, "$1")
+      .replace(/\?&+/, "?")
+      .replace(/[?&]+$/, "")
+      .replace(/&&+/g, "&");
+    sslOption = { rejectUnauthorized: false };
+  }
 
   const connection = new Pool({
-    connectionString,
+    connectionString: effectiveUrl,
     max,
-    ...(ssl ? { ssl } : {}),
+    ...(sslOption ? { ssl: sslOption } : {}),
     connectionTimeoutMillis: 5_000,
     idleTimeoutMillis: 30_000,
     statement_timeout: 10_000,
