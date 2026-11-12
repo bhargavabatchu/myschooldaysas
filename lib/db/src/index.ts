@@ -14,9 +14,25 @@ export function createPool(connectionString: string): pg.Pool {
   const configuredMax = Number.parseInt(process.env.CAMPUS_DB_POOL_MAX ?? "", 10);
   const max = Number.isFinite(configuredMax) && configuredMax > 0 ? configuredMax : 12;
 
+  // Supabase pooler certificates chain to a root that Node's default CA
+  // bundle rejects ("self-signed certificate in certificate chain") unless
+  // sslmode=verify-full is explicitly requested. Encryption stays on; only
+  // certificate identity verification is relaxed for those hosts.
+  const sslmode = /sslmode=([^&]+)/.exec(connectionString)?.[1] ?? "";
+  const isSupabaseHost = /\.supabase\.(co|com)/.test(connectionString);
+  const ssl =
+    sslmode === "verify-full"
+      ? undefined // honor full verification when explicitly requested
+      : isSupabaseHost
+        ? { rejectUnauthorized: false }
+        : sslmode === "no-verify" || sslmode === "prefer"
+          ? { rejectUnauthorized: false }
+          : undefined;
+
   const connection = new Pool({
     connectionString,
     max,
+    ...(ssl ? { ssl } : {}),
     connectionTimeoutMillis: 5_000,
     idleTimeoutMillis: 30_000,
     statement_timeout: 10_000,
