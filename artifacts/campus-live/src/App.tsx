@@ -207,7 +207,14 @@ function ProtectedApp() {
       return <div className="shell grain min-h-screen"><main className="mx-auto w-full max-w-5xl p-4 pt-8 md:p-8"><div className="mb-7 flex items-center justify-between"><div className="flex items-center gap-2 font-bold"><ShieldCheck size={18} className="text-[hsl(var(--primary))]"/>{SCHOOL_NAME}</div><button className="btn btn-muted" onClick={logout}><LogOut size={15}/>Sign out</button></div><ConsentsPage firstLogin /></main></div>;
     }
   }
-  if (path.startsWith('/classroom/')) return liveClassesEnabled ? <ErrorBoundary resetKey={path}><ClassroomPage roles={user.roles}/></ErrorBoundary> : <div className="shell grain p-8"><LiveClassesUnavailable /></div>;
+  if (path.startsWith('/classroom/')) {
+    // This early return renders outside any wouter <Route>, so useParams()
+    // would be empty inside ClassroomPage — extract the id from the path.
+    const classroomSessionId = path.split('/')[2];
+    return liveClassesEnabled
+      ? <ErrorBoundary resetKey={path}><ClassroomPage roles={user.roles} sessionId={classroomSessionId}/></ErrorBoundary>
+      : <div className="shell grain p-8"><LiveClassesUnavailable /></div>;
+  }
   return <div className="shell grain"><AppShell
     user={user}
     path={path}
@@ -1045,8 +1052,11 @@ function TemplatesPage({ roles }: { roles: string[] }) {
   </>;
 }
 
-function ClassroomPage({ roles: _roles }: { roles: string[] }) {
-  const { sessionId } = useParams<{ sessionId: string }>();
+function ClassroomPage({ roles: _roles, sessionId: sessionIdProp }: { roles: string[]; sessionId?: string }) {
+  const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
+  // When rendered from the early return (outside a wouter <Route>),
+  // useParams() is empty and the id is passed as a prop instead.
+  const sessionId = sessionIdProp ?? routeSessionId;
   return sessionId ? <ClassroomScreen sessionId={sessionId} /> : <NotFound />;
 }
 
