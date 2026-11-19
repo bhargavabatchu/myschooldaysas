@@ -13,7 +13,7 @@ export type BoardStatus = 'connecting' | 'live' | 'reconnecting' | 'closed';
 // WebSocket endpoint cannot be served); 'ws' is for standalone API
 // deployments with the same-origin board WebSocket.
 const TRANSPORT = (process.env.NEXT_PUBLIC_BOARD_TRANSPORT ?? 'polling') === 'ws' ? 'ws' : 'polling';
-const POLL_INTERVAL_MS = 1000;
+const POLL_INTERVAL_MS = 600;
 
 const authHeaders = (): Record<string, string> => {
   const t = getAccessToken();

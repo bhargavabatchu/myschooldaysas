@@ -63,7 +63,19 @@ import { PwaInstallButton } from '@/components/pwa/pwa-install-button';
 import { StudentDashboard, StudentMobileNavigation } from '@/components/dashboard/student-mobile-dashboard';
 import { HighlightsPage } from '@/components/highlights/highlights-page';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Every API round trip crosses regions on the serverless deployment;
+      // keep fetched data fresh for a minute and refetch on focus only,
+      // instead of re-requesting on every mount.
+      staleTime: 60_000,
+      gcTime: 10 * 60_000,
+      refetchOnWindowFocus: true,
+      retry: 1,
+    },
+  },
+});
 const fmtDate = (iso?: string) => iso ? `${iso.slice(0, 10)} · ${iso.slice(11, 16)}` : 'Time not set';
 const roleName = (role?: string) => role?.replaceAll('_', ' ') ?? 'Member';
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong. Please try again.';

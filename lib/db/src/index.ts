@@ -102,8 +102,9 @@ export async function withOrg<T>(
 ): Promise<T> {
   const client = await pool.connect();
   try {
-    await client.query("BEGIN");
-    await client.query("SELECT set_config('app.org_id', $1, true)", [orgId]);
+    // BEGIN + set_config and COMMIT each travel as a single round trip
+    // instead of two — noticeable against a remote pooler.
+    await client.query("BEGIN; SELECT set_config('app.org_id', $1, true)", [orgId]);
     const result = await callback(client);
     await client.query("COMMIT");
     return result;
