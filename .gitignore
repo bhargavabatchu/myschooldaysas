@@ -64,3 +64,4 @@ Thumbs.db
 .env.local
 creds*.json
 creds/
+creds.txt
