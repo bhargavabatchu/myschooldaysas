@@ -24,4 +24,4 @@ GRANT SELECT, INSERT, DELETE ON school.stored_files TO campus_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE campus_migrator IN SCHEMA school
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO campus_app;
 
-INSERT INTO public.schema_migrations (version) VALUES ('school:004');
+INSERT INTO public.schema_migrations (version) VALUES ('school:005');

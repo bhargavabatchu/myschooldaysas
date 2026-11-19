@@ -50,8 +50,8 @@ academic:010|services/academic/migrations/010_withdrawn_reason.sql
 school:001|services/school/migrations/001_attendance.sql
 school:002|services/school/migrations/002_announcements.sql
 school:003|services/school/migrations/003_calendar_events.sql
-school:004|services/school/migrations/004_highlight_photos.sql
 school:004|services/school/migrations/004_school_highlights.sql
+school:005|services/school/migrations/005_stored_files.sql
 live:001|services/live/migrations/001_live.sql
 board:001|services/board/migrations/001_board.sql
 board:002|services/board/migrations/002_realtime.sql
