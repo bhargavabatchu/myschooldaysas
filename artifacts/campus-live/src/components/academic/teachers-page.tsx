@@ -277,7 +277,7 @@ function StaffRecordsSection() {
     mutation: { onSuccess: (result) => { setEditing(null); setSavedFor(result.userId); } },
   });
 
-  function startEdit(staff: { userId: string; employeeCode: string | null; phone: string | null; qualification: string | null; specialization: string | null; joiningDate: string | null }) {
+  function startEdit(staff: { userId: string; employeeCode?: string | null; phone?: string | null; qualification?: string | null; specialization?: string | null; joiningDate?: string | null }) {
     setEditing(staff.userId);
     setSavedFor(null);
     setDraft({
