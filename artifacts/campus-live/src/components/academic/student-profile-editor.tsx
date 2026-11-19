@@ -74,6 +74,22 @@ export function StudentProfileEditor({
     setSaved(false);
   }
 
+  // Opens a printable certificate/TC page. The endpoint requires the bearer
+  // token, so fetch it as a blob and open the object URL.
+  async function openCertificate(kind: "tc" | "bonafide" | "study" | "character") {
+    const token = getAccessToken();
+    if (!token) return;
+    const path = kind === "tc"
+      ? `/api/academic/students/${encodeURIComponent(studentId)}/tc`
+      : `/api/academic/students/${encodeURIComponent(studentId)}/certificates/${kind}`;
+    const response = await fetch(path, { headers: { authorization: `Bearer ${token}` } });
+    if (!response.ok) return;
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     update.mutate({
@@ -115,22 +131,14 @@ export function StudentProfileEditor({
         </div>
         <div className="flex items-center gap-2">
           {!data.currentEnrollment && data.enrollmentHistory.length > 0 && (
-            <button
-              type="button"
-              className="btn btn-primary min-h-9 px-3"
-              onClick={async () => {
-                const token = getAccessToken();
-                if (!token) return;
-                const response = await fetch(`/api/academic/students/${encodeURIComponent(studentId)}/tc`, {
-                  headers: { authorization: `Bearer ${token}` },
-                });
-                if (!response.ok) return;
-                const blob = await response.blob();
-                const url = URL.createObjectURL(blob);
-                window.open(url, "_blank", "noopener");
-                setTimeout(() => URL.revokeObjectURL(url), 60_000);
-              }}
-            >Transfer certificate</button>
+            <button type="button" className="btn btn-primary min-h-9 px-3" onClick={() => openCertificate("tc")}>Transfer certificate</button>
+          )}
+          {data.currentEnrollment && (
+            <div className="flex items-center gap-2">
+              <button type="button" className="btn btn-muted min-h-9 px-3 text-xs" onClick={() => openCertificate("bonafide")}>Bonafide</button>
+              <button type="button" className="btn btn-muted min-h-9 px-3 text-xs" onClick={() => openCertificate("study")}>Study</button>
+              <button type="button" className="btn btn-muted min-h-9 px-3 text-xs" onClick={() => openCertificate("character")}>Character</button>
+            </div>
           )}
           <button type="button" className="btn btn-muted min-h-9 px-3" onClick={onClose} aria-label="Close student profile"><X size={16}/><span className="ml-1">Close</span></button>
         </div>
@@ -217,6 +225,31 @@ export function StudentProfileEditor({
             </label>
             <label className="text-xs font-semibold">Guardian phone
               <input className="field mt-1.5" type="tel" maxLength={32} value={draft.guardianPhone ?? ""} onChange={(event) => setField("guardianPhone", event.target.value || null)} />
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-1 border-t border-[hsl(var(--border))] pt-3 md:col-span-2">
+          <h3 className="m-0 text-xs font-bold">Additional records</h3>
+          <p className="mb-3 mt-1 text-xs text-[hsl(var(--muted-foreground))]">School-register details: nationality, background, and the student's previous school (for TC verification).</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="text-xs font-semibold">Nationality
+              <input className="field mt-1.5" maxLength={80} value={draft.nationality ?? ""} onChange={(event) => setField("nationality", event.target.value || null)} />
+            </label>
+            <label className="text-xs font-semibold">Mother tongue
+              <input className="field mt-1.5" maxLength={80} value={draft.motherTongue ?? ""} onChange={(event) => setField("motherTongue", event.target.value || null)} />
+            </label>
+            <label className="text-xs font-semibold">Category
+              <input className="field mt-1.5" maxLength={80} value={draft.category ?? ""} onChange={(event) => setField("category", event.target.value || null)} />
+            </label>
+            <label className="text-xs font-semibold">Religion
+              <input className="field mt-1.5" maxLength={80} value={draft.religion ?? ""} onChange={(event) => setField("religion", event.target.value || null)} />
+            </label>
+            <label className="text-xs font-semibold md:col-span-2">Previous school
+              <input className="field mt-1.5" maxLength={200} value={draft.previousSchool ?? ""} onChange={(event) => setField("previousSchool", event.target.value || null)} />
+            </label>
+            <label className="text-xs font-semibold">Previous school TC number
+              <input className="field mt-1.5" maxLength={80} value={draft.previousTcNo ?? ""} onChange={(event) => setField("previousTcNo", event.target.value || null)} />
             </label>
           </div>
         </div>

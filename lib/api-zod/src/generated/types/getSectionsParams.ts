@@ -7,6 +7,6 @@
  */
 
 export type GetSectionsParams = {
-classId?: string;
-includeArchived?: boolean;
+  classId?: string;
+  includeArchived?: boolean;
 };

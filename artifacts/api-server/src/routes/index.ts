@@ -22,6 +22,7 @@ import announcementsRouter from "./announcements";
 import highlightsRouter from "./highlights";
 import publicRouter from "./public";
 import transferCertificateRouter from "./transfer-certificate";
+import staffRecordsRouter from "./staff-records";
 import { installFeatureAvailability } from "../lib/feature-availability";
 
 const routes: FastifyPluginAsync = async (fastify) => {
@@ -31,6 +32,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(identityRouter);
   await fastify.register(academicRouter);
   await fastify.register(transferCertificateRouter);
+  await fastify.register(staffRecordsRouter);
   await fastify.register(academicSubjectsRouter);
   await fastify.register(academicSectionSubjectsRouter);
   await fastify.register(academicTimetableRouter);

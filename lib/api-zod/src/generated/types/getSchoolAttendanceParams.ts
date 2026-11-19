@@ -7,6 +7,6 @@
  */
 
 export type GetSchoolAttendanceParams = {
-sectionId: string;
-date: string;
+  sectionId: string;
+  date: string;
 };

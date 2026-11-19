@@ -15,6 +15,8 @@ import {
   getGetAcademicTeachersQueryKey,
   useCreateTeacherAccount,
   useGetAcademicTeachers,
+  useGetStaffRecords,
+  useUpdateStaffRecord,
 } from "@workspace/api-client-react";
 import type { CreatedTeacherAccount } from "@workspace/api-client-react";
 
@@ -254,10 +256,106 @@ export function TeachersPage() {
         )}
       </section>
 
+      <StaffRecordsSection />
+
       <aside className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary)/.45)] p-4 text-sm">
         <b>Next: assign classes and subjects.</b>{" "}
         Open <Link href="/learning" className="font-bold text-[hsl(var(--primary))] underline underline-offset-2">Subjects &amp; teachers</Link>, then choose the teacher, section, and subject.
       </aside>
     </main>
+  );
+}
+
+const emptyStaffDraft = { employeeCode: "", phone: "", qualification: "", specialization: "", joiningDate: "" };
+
+function StaffRecordsSection() {
+  const records = useGetStaffRecords();
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState(emptyStaffDraft);
+  const [savedFor, setSavedFor] = useState<string | null>(null);
+  const save = useUpdateStaffRecord({
+    mutation: { onSuccess: (result) => { setEditing(null); setSavedFor(result.userId); } },
+  });
+
+  function startEdit(staff: { userId: string; employeeCode: string | null; phone: string | null; qualification: string | null; specialization: string | null; joiningDate: string | null }) {
+    setEditing(staff.userId);
+    setSavedFor(null);
+    setDraft({
+      employeeCode: staff.employeeCode ?? "",
+      phone: staff.phone ?? "",
+      qualification: staff.qualification ?? "",
+      specialization: staff.specialization ?? "",
+      joiningDate: staff.joiningDate ?? "",
+    });
+  }
+
+  function submitSave(event: FormEvent) {
+    event.preventDefault();
+    if (!editing) return;
+    save.mutate({ userId: editing, data: draft });
+  }
+
+  return (
+    <section className="surface p-5 md:p-6">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="display m-0 text-lg font-extrabold">Staff records</h2>
+          <p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+            Employment details for every staff member — employee code, contact, qualification, subjects, joining date.
+          </p>
+        </div>
+        <span className="tag">{records.data?.items.length ?? 0}</span>
+      </div>
+      {records.isLoading ? (
+        <div className="space-y-3"><div className="skeleton h-12" /><div className="skeleton h-12" /></div>
+      ) : records.isError ? (
+        <div role="alert" className="text-sm text-[hsl(var(--destructive))]">Could not load staff records.</div>
+      ) : !records.data?.items.length ? (
+        <p className="mb-0 text-sm text-[hsl(var(--muted-foreground))]">No staff members yet.</p>
+      ) : (
+        <div className="divide-y divide-[hsl(var(--border))]">
+          {records.data.items.map((staff) => (
+            <div key={staff.userId} className="py-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="m-0 text-sm font-semibold">{staff.name} <span className="ml-2 font-normal text-xs text-[hsl(var(--muted-foreground))]">{staff.email}</span></p>
+                  <p className="m-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                    {[staff.employeeCode && `Code ${staff.employeeCode}`, staff.phone, staff.qualification, staff.specialization, staff.joiningDate && `Joined ${staff.joiningDate}`].filter(Boolean).join(" · ") || "No record details added yet"}
+                  </p>
+                </div>
+                <button type="button" className="btn btn-muted min-h-8 self-start px-3 text-xs sm:self-auto" onClick={() => startEdit(staff)}>
+                  {editing === staff.userId ? "Cancel" : "Edit record"}
+                </button>
+              </div>
+              {editing === staff.userId && (
+                <form onSubmit={submitSave} className="mt-3 grid gap-3 rounded-xl bg-[hsl(var(--background))] p-4 sm:grid-cols-2">
+                  <label className="text-xs font-semibold">Employee code
+                    <input className="field mt-1.5" maxLength={40} value={draft.employeeCode} onChange={(e) => setDraft({ ...draft, employeeCode: e.target.value })} />
+                  </label>
+                  <label className="text-xs font-semibold">Phone
+                    <input className="field mt-1.5" maxLength={20} value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
+                  </label>
+                  <label className="text-xs font-semibold">Qualification
+                    <input className="field mt-1.5" maxLength={160} value={draft.qualification} onChange={(e) => setDraft({ ...draft, qualification: e.target.value })} placeholder="B.Ed, M.Sc Mathematics…" />
+                  </label>
+                  <label className="text-xs font-semibold">Subjects / specialization
+                    <input className="field mt-1.5" maxLength={160} value={draft.specialization} onChange={(e) => setDraft({ ...draft, specialization: e.target.value })} />
+                  </label>
+                  <label className="text-xs font-semibold">Joining date
+                    <input type="date" className="field mt-1.5" value={draft.joiningDate} onChange={(e) => setDraft({ ...draft, joiningDate: e.target.value })} />
+                  </label>
+                  <div className="flex items-end gap-2">
+                    <button disabled={save.isPending} className="btn btn-primary min-h-10 flex-1">{save.isPending ? "Saving…" : "Save record"}</button>
+                    <button type="button" className="btn btn-muted min-h-10" onClick={() => setEditing(null)}>Cancel</button>
+                  </div>
+                  {save.isError && <p role="alert" className="text-xs text-[hsl(var(--destructive))] sm:col-span-2">{errorText(save.error)}</p>}
+                </form>
+              )}
+              {savedFor === staff.userId && editing !== staff.userId && <p role="status" className="m-0 mt-2 text-xs font-semibold text-[hsl(var(--status-good))]">Record saved.</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

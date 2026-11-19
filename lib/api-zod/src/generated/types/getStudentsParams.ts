@@ -7,23 +7,17 @@
  */
 
 export type GetStudentsParams = {
-sectionId?: string;
-classId?: string;
-/**
- * Administrators may include students whose latest enrollment has ended.
- */
-includeArchived?: boolean;
-/**
- * @maxLength 100
- */
-q?: string;
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
-/**
- * @minimum 0
- */
-offset?: number;
+  sectionId?: string;
+  classId?: string;
+  /** Administrators may include students whose latest enrollment has ended. */
+  includeArchived?: boolean;
+  /** @maxLength 100 */
+  q?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
 };

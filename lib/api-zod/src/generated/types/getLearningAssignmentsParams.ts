@@ -8,6 +8,6 @@
 import type { GetLearningAssignmentsStatus } from './getLearningAssignmentsStatus';
 
 export type GetLearningAssignmentsParams = {
-sectionId?: string;
-status?: GetLearningAssignmentsStatus;
+  sectionId?: string;
+  status?: GetLearningAssignmentsStatus;
 };

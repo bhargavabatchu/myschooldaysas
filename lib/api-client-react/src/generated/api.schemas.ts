@@ -510,6 +510,100 @@ export interface StudentProfileFields {
      * @nullable
      */
   guardianRelationship: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  nationality?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  motherTongue?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  category?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  religion?: string | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  previousSchool?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  previousTcNo?: string | null;
+}
+
+export interface StaffRecordInput {
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  employeeCode?: string | null;
+  /**
+     * @maxLength 20
+     * @nullable
+     */
+  phone?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  qualification?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  specialization?: string | null;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  joiningDate?: string | null;
+}
+
+export interface StaffRecord {
+  userId: string;
+  name: string;
+  email: string;
+  roles: Role[];
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  employeeCode?: string | null;
+  /**
+     * @maxLength 20
+     * @nullable
+     */
+  phone?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  qualification?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  specialization?: string | null;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  joiningDate?: string | null;
+}
+
+export interface StaffRecordsPage {
+  items: StaffRecord[];
 }
 
 export interface StudentCurrentEnrollment {
@@ -2593,58 +2687,56 @@ export interface SchoolHighlightParams {
 }
 
 export type GetAcademicTeacherAssignmentsParams = {
-sectionId?: string;
+  sectionId?: string;
 };
 
 export type GetSchoolAttendanceParams = {
-sectionId: string;
-date: string;
+  sectionId: string;
+  date: string;
 };
 
 export type GetCalendarParams = {
-from: string;
-to: string;
+  from: string;
+  to: string;
 };
 
 export type GetCalendarWorkingDayParams = {
-date: string;
+  date: string;
 };
 
 export type GetAnnouncementsParams = {
-unread?: boolean;
+  unread?: boolean;
 };
 
 export type GetSchoolHighlightsParams = {
-/**
- * @minimum 1
- * @maximum 30
- */
-limit?: number;
+  /**
+   * @minimum 1
+   * @maximum 30
+   */
+  limit?: number;
 };
 
 export type GetSchoolAdminAccountsParams = {
-includeDisabled?: boolean;
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
-/**
- * @minimum 0
- */
-offset?: number;
+  includeDisabled?: boolean;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
 };
 
 export type GetDashboardOverviewParams = {
-/**
- * @minLength 4
- * @maxLength 24
- */
-academicYear?: string;
+  /**
+   * @minLength 4
+   * @maxLength 24
+   */
+  academicYear?: string;
 };
 
 export type GetClassesParams = {
-includeArchived?: boolean;
+  includeArchived?: boolean;
 };
 
 export type GetClasses200 = {
@@ -2653,8 +2745,8 @@ export type GetClasses200 = {
 };
 
 export type GetSectionsParams = {
-classId?: string;
-includeArchived?: boolean;
+  classId?: string;
+  includeArchived?: boolean;
 };
 
 export type GetSections200 = {
@@ -2663,50 +2755,40 @@ export type GetSections200 = {
 };
 
 export type GetAvailableStudentsParams = {
-/**
- * @minLength 4
- * @maxLength 24
- */
-academicYear: string;
-/**
- * @maxLength 100
- */
-q?: string;
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
-/**
- * @minimum 0
- */
-offset?: number;
+  /**
+   * @minLength 4
+   * @maxLength 24
+   */
+  academicYear: string;
+  /** @maxLength 100 */
+  q?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
 };
 
 export type GetStudentsParams = {
-sectionId?: string;
-classId?: string;
-/**
- * Administrators may include students whose latest enrollment has ended.
- */
-includeArchived?: boolean;
-/**
- * @maxLength 100
- */
-q?: string;
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
-/**
- * @minimum 0
- */
-offset?: number;
+  sectionId?: string;
+  classId?: string;
+  /** Administrators may include students whose latest enrollment has ended. */
+  includeArchived?: boolean;
+  /** @maxLength 100 */
+  q?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
 };
 
 export type GetTimetableParams = {
-sectionId?: string;
+  sectionId?: string;
 };
 
 export type GetConsents200 = {
@@ -2719,19 +2801,15 @@ export type RevokeConsent200 = {
 };
 
 export type GetGuardianLinksParams = {
-/**
- * @maxLength 120
- */
-q?: string;
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
-/**
- * @minimum 0
- */
-offset?: number;
+  /** @maxLength 120 */
+  q?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
 };
 
 export type GetSessions200 = {
@@ -2745,8 +2823,8 @@ export type GetBoardTemplates200 = {
 };
 
 export type GetLearningAssignmentsParams = {
-sectionId?: string;
-status?: GetLearningAssignmentsStatus;
+  sectionId?: string;
+  status?: GetLearningAssignmentsStatus;
 };
 
 export type GetLearningAssignmentsStatus = typeof GetLearningAssignmentsStatus[keyof typeof GetLearningAssignmentsStatus];
@@ -2759,33 +2837,31 @@ export const GetLearningAssignmentsStatus = {
 } as const;
 
 export type GetLearningSyllabusParams = {
-classId?: string;
-subjectId?: string;
+  classId?: string;
+  subjectId?: string;
 };
 
 export type GetLearningExamsParams = {
-sectionId?: string;
+  sectionId?: string;
 };
 
 export type GetLearningReportCardsParams = {
-sectionId?: string;
-termId?: string;
+  sectionId?: string;
+  termId?: string;
 };
 
 export type GetFeeCollectionsParams = {
-date?: string;
-classId?: string;
-sectionId?: string;
-channel?: GetFeeCollectionsChannel;
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
-/**
- * @minimum 0
- */
-offset?: number;
+  date?: string;
+  classId?: string;
+  sectionId?: string;
+  channel?: GetFeeCollectionsChannel;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
 };
 
 export type GetFeeCollectionsChannel = typeof GetFeeCollectionsChannel[keyof typeof GetFeeCollectionsChannel];
@@ -2800,37 +2876,31 @@ export const GetFeeCollectionsChannel = {
 } as const;
 
 export type GetFeeInvoicesParams = {
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
-/**
- * @minimum 0
- */
-offset?: number;
-/**
- * Search invoices by student name, admission number, class, or section.
- * @minLength 1
- * @maxLength 100
- */
-search?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
+  /**
+   * Search invoices by student name, admission number, class, or section.
+   * @minLength 1
+   * @maxLength 100
+   */
+  search?: string;
 };
 
 export type GetAdmissionEnquiriesParams = {
-status?: AdmissionEnquiryStatus;
-/**
- * @maxLength 120
- */
-search?: string;
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
-/**
- * @minimum 0
- */
-offset?: number;
+  status?: AdmissionEnquiryStatus;
+  /** @maxLength 120 */
+  search?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
 };
 

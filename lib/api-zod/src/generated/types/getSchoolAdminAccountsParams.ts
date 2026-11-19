@@ -7,14 +7,12 @@
  */
 
 export type GetSchoolAdminAccountsParams = {
-includeDisabled?: boolean;
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
-/**
- * @minimum 0
- */
-offset?: number;
+  includeDisabled?: boolean;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
 };

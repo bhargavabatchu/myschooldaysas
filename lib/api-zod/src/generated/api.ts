@@ -788,6 +788,85 @@ export const GetMeResponse = zod.object({
 
 
 /**
+ * @summary List staff members with their employment records
+ */
+export const getStaffRecordsResponseItemsItemEmployeeCodeMax = 40;
+
+export const getStaffRecordsResponseItemsItemPhoneMax = 20;
+
+export const getStaffRecordsResponseItemsItemQualificationMax = 160;
+
+export const getStaffRecordsResponseItemsItemSpecializationMax = 160;
+
+export const getStaffRecordsResponseItemsItemJoiningDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetStaffRecordsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "userId": zod.uuid(),
+  "name": zod.string(),
+  "email": zod.email(),
+  "roles": zod.array(zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent'])),
+  "employeeCode": zod.string().max(getStaffRecordsResponseItemsItemEmployeeCodeMax).nullish(),
+  "phone": zod.string().max(getStaffRecordsResponseItemsItemPhoneMax).nullish(),
+  "qualification": zod.string().max(getStaffRecordsResponseItemsItemQualificationMax).nullish(),
+  "specialization": zod.string().max(getStaffRecordsResponseItemsItemSpecializationMax).nullish(),
+  "joiningDate": zod.string().regex(getStaffRecordsResponseItemsItemJoiningDateRegExp).nullish()
+}))
+})
+
+
+/**
+ * @summary Create or update a staff member's employment record
+ */
+export const UpdateStaffRecordParams = zod.object({
+  "userId": zod.uuid()
+})
+
+export const updateStaffRecordBodyEmployeeCodeMax = 40;
+
+export const updateStaffRecordBodyPhoneMax = 20;
+
+export const updateStaffRecordBodyQualificationMax = 160;
+
+export const updateStaffRecordBodySpecializationMax = 160;
+
+export const updateStaffRecordBodyJoiningDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const UpdateStaffRecordBody = zod.object({
+  "employeeCode": zod.string().max(updateStaffRecordBodyEmployeeCodeMax).nullish(),
+  "phone": zod.string().max(updateStaffRecordBodyPhoneMax).nullish(),
+  "qualification": zod.string().max(updateStaffRecordBodyQualificationMax).nullish(),
+  "specialization": zod.string().max(updateStaffRecordBodySpecializationMax).nullish(),
+  "joiningDate": zod.string().regex(updateStaffRecordBodyJoiningDateRegExp).nullish()
+})
+
+export const updateStaffRecordResponseEmployeeCodeMax = 40;
+
+export const updateStaffRecordResponsePhoneMax = 20;
+
+export const updateStaffRecordResponseQualificationMax = 160;
+
+export const updateStaffRecordResponseSpecializationMax = 160;
+
+export const updateStaffRecordResponseJoiningDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const UpdateStaffRecordResponse = zod.object({
+  "userId": zod.uuid(),
+  "name": zod.string(),
+  "email": zod.email(),
+  "roles": zod.array(zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent'])),
+  "employeeCode": zod.string().max(updateStaffRecordResponseEmployeeCodeMax).nullish(),
+  "phone": zod.string().max(updateStaffRecordResponsePhoneMax).nullish(),
+  "qualification": zod.string().max(updateStaffRecordResponseQualificationMax).nullish(),
+  "specialization": zod.string().max(updateStaffRecordResponseSpecializationMax).nullish(),
+  "joiningDate": zod.string().regex(updateStaffRecordResponseJoiningDateRegExp).nullish()
+})
+
+
+/**
  * @summary Get role-scoped dashboard summary
  */
 export const getDashboardOverviewQueryAcademicYearMin = 4;
@@ -1335,6 +1414,18 @@ export const getStudentProfileResponseProfileGuardianPhoneMax = 32;
 
 export const getStudentProfileResponseProfileGuardianRelationshipMax = 40;
 
+export const getStudentProfileResponseProfileNationalityMax = 80;
+
+export const getStudentProfileResponseProfileMotherTongueMax = 80;
+
+export const getStudentProfileResponseProfileCategoryMax = 80;
+
+export const getStudentProfileResponseProfileReligionMax = 80;
+
+export const getStudentProfileResponseProfilePreviousSchoolMax = 200;
+
+export const getStudentProfileResponseProfilePreviousTcNoMax = 80;
+
 
 
 export const GetStudentProfileResponse = zod.object({
@@ -1368,7 +1459,13 @@ export const GetStudentProfileResponse = zod.object({
   "guardianName": zod.string().max(getStudentProfileResponseProfileGuardianNameMax).nullable(),
   "guardianEmail": zod.email().max(getStudentProfileResponseProfileGuardianEmailMax).nullable(),
   "guardianPhone": zod.string().max(getStudentProfileResponseProfileGuardianPhoneMax).nullable(),
-  "guardianRelationship": zod.string().max(getStudentProfileResponseProfileGuardianRelationshipMax).nullable()
+  "guardianRelationship": zod.string().max(getStudentProfileResponseProfileGuardianRelationshipMax).nullable(),
+  "nationality": zod.string().max(getStudentProfileResponseProfileNationalityMax).nullish(),
+  "motherTongue": zod.string().max(getStudentProfileResponseProfileMotherTongueMax).nullish(),
+  "category": zod.string().max(getStudentProfileResponseProfileCategoryMax).nullish(),
+  "religion": zod.string().max(getStudentProfileResponseProfileReligionMax).nullish(),
+  "previousSchool": zod.string().max(getStudentProfileResponseProfilePreviousSchoolMax).nullish(),
+  "previousTcNo": zod.string().max(getStudentProfileResponseProfilePreviousTcNoMax).nullish()
 })
 })
 
@@ -1403,6 +1500,18 @@ export const updateStudentProfileBodyProfileGuardianPhoneMax = 32;
 
 export const updateStudentProfileBodyProfileGuardianRelationshipMax = 40;
 
+export const updateStudentProfileBodyProfileNationalityMax = 80;
+
+export const updateStudentProfileBodyProfileMotherTongueMax = 80;
+
+export const updateStudentProfileBodyProfileCategoryMax = 80;
+
+export const updateStudentProfileBodyProfileReligionMax = 80;
+
+export const updateStudentProfileBodyProfilePreviousSchoolMax = 200;
+
+export const updateStudentProfileBodyProfilePreviousTcNoMax = 80;
+
 
 
 export const UpdateStudentProfileBody = zod.object({
@@ -1418,7 +1527,13 @@ export const UpdateStudentProfileBody = zod.object({
   "guardianName": zod.string().max(updateStudentProfileBodyProfileGuardianNameMax).nullable(),
   "guardianEmail": zod.email().max(updateStudentProfileBodyProfileGuardianEmailMax).nullable(),
   "guardianPhone": zod.string().max(updateStudentProfileBodyProfileGuardianPhoneMax).nullable(),
-  "guardianRelationship": zod.string().max(updateStudentProfileBodyProfileGuardianRelationshipMax).nullable()
+  "guardianRelationship": zod.string().max(updateStudentProfileBodyProfileGuardianRelationshipMax).nullable(),
+  "nationality": zod.string().max(updateStudentProfileBodyProfileNationalityMax).nullish(),
+  "motherTongue": zod.string().max(updateStudentProfileBodyProfileMotherTongueMax).nullish(),
+  "category": zod.string().max(updateStudentProfileBodyProfileCategoryMax).nullish(),
+  "religion": zod.string().max(updateStudentProfileBodyProfileReligionMax).nullish(),
+  "previousSchool": zod.string().max(updateStudentProfileBodyProfilePreviousSchoolMax).nullish(),
+  "previousTcNo": zod.string().max(updateStudentProfileBodyProfilePreviousTcNoMax).nullish()
 })
 })
 
@@ -1440,6 +1555,18 @@ export const updateStudentProfileResponseProfileGuardianEmailMax = 254;
 export const updateStudentProfileResponseProfileGuardianPhoneMax = 32;
 
 export const updateStudentProfileResponseProfileGuardianRelationshipMax = 40;
+
+export const updateStudentProfileResponseProfileNationalityMax = 80;
+
+export const updateStudentProfileResponseProfileMotherTongueMax = 80;
+
+export const updateStudentProfileResponseProfileCategoryMax = 80;
+
+export const updateStudentProfileResponseProfileReligionMax = 80;
+
+export const updateStudentProfileResponseProfilePreviousSchoolMax = 200;
+
+export const updateStudentProfileResponseProfilePreviousTcNoMax = 80;
 
 
 
@@ -1474,7 +1601,13 @@ export const UpdateStudentProfileResponse = zod.object({
   "guardianName": zod.string().max(updateStudentProfileResponseProfileGuardianNameMax).nullable(),
   "guardianEmail": zod.email().max(updateStudentProfileResponseProfileGuardianEmailMax).nullable(),
   "guardianPhone": zod.string().max(updateStudentProfileResponseProfileGuardianPhoneMax).nullable(),
-  "guardianRelationship": zod.string().max(updateStudentProfileResponseProfileGuardianRelationshipMax).nullable()
+  "guardianRelationship": zod.string().max(updateStudentProfileResponseProfileGuardianRelationshipMax).nullable(),
+  "nationality": zod.string().max(updateStudentProfileResponseProfileNationalityMax).nullish(),
+  "motherTongue": zod.string().max(updateStudentProfileResponseProfileMotherTongueMax).nullish(),
+  "category": zod.string().max(updateStudentProfileResponseProfileCategoryMax).nullish(),
+  "religion": zod.string().max(updateStudentProfileResponseProfileReligionMax).nullish(),
+  "previousSchool": zod.string().max(updateStudentProfileResponseProfilePreviousSchoolMax).nullish(),
+  "previousTcNo": zod.string().max(updateStudentProfileResponseProfilePreviousTcNoMax).nullish()
 })
 })
 

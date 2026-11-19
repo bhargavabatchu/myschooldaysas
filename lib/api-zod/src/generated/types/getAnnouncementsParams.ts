@@ -7,5 +7,5 @@
  */
 
 export type GetAnnouncementsParams = {
-unread?: boolean;
+  unread?: boolean;
 };

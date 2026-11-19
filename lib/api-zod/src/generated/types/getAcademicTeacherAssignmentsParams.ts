@@ -7,5 +7,5 @@
  */
 
 export type GetAcademicTeacherAssignmentsParams = {
-sectionId?: string;
+  sectionId?: string;
 };

@@ -7,5 +7,5 @@
  */
 
 export type GetLearningExamsParams = {
-sectionId?: string;
+  sectionId?: string;
 };

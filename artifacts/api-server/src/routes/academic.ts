@@ -2280,13 +2280,21 @@ async function readStudentProfile(client: PoolClient, orgId: string, studentId: 
     guardian_email: string | null;
     guardian_phone: string | null;
     guardian_relationship: string | null;
+    nationality: string | null;
+    mother_tongue: string | null;
+    category: string | null;
+    religion: string | null;
+    previous_school: string | null;
+    previous_tc_no: string | null;
   }>(
     `SELECT u.id, u.name, u.email, u.status,
             enrollment.id AS enrollment_id, enrollment.section_id,
             enrollment.admission_no, enrollment.academic_year,
             enrollment.class_name, enrollment.grade_level, enrollment.section_name,
             p.date_of_birth::text AS date_of_birth, p.gender, p.phone, p.address, p.blood_group,
-            p.guardian_name, p.guardian_email, p.guardian_phone, p.guardian_relationship
+            p.guardian_name, p.guardian_email, p.guardian_phone, p.guardian_relationship,
+            p.nationality, p.mother_tongue, p.category, p.religion,
+            p.previous_school, p.previous_tc_no
        FROM identity.users u
        LEFT JOIN identity.profiles p ON p.org_id = u.org_id AND p.user_id = u.id
        LEFT JOIN LATERAL (
@@ -2357,6 +2365,12 @@ async function readStudentProfile(client: PoolClient, orgId: string, studentId: 
       guardianEmail: row.guardian_email,
       guardianPhone: row.guardian_phone,
       guardianRelationship: row.guardian_relationship,
+      nationality: row.nationality,
+      motherTongue: row.mother_tongue,
+      category: row.category,
+      religion: row.religion,
+      previousSchool: row.previous_school,
+      previousTcNo: row.previous_tc_no,
     },
   };
 }
@@ -2455,6 +2469,12 @@ router.put("/academic/students/:studentId/profile", requireAuth, async (req, res
     guardianEmail: clean(fields.guardianEmail)?.toLowerCase() ?? null,
     guardianPhone: clean(fields.guardianPhone),
     guardianRelationship: clean(fields.guardianRelationship),
+    nationality: fields.nationality?.trim() || null,
+    motherTongue: fields.motherTongue?.trim() || null,
+    category: fields.category?.trim() || null,
+    religion: fields.religion?.trim() || null,
+    previousSchool: fields.previousSchool?.trim() || null,
+    previousTcNo: fields.previousTcNo?.trim() || null,
   };
   if (profile.dateOfBirth) {
     const parsedDate = new Date(`${profile.dateOfBirth}T00:00:00.000Z`);
@@ -2536,8 +2556,9 @@ router.put("/academic/students/:studentId/profile", requireAuth, async (req, res
       await client.query(
         `INSERT INTO identity.profiles
            (org_id, user_id, date_of_birth, gender, phone, address, blood_group,
-            guardian_name, guardian_email, guardian_phone, guardian_relationship, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
+            guardian_name, guardian_email, guardian_phone, guardian_relationship,
+            nationality, mother_tongue, category, religion, previous_school, previous_tc_no, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, now())
          ON CONFLICT (org_id, user_id) DO UPDATE
            SET date_of_birth = EXCLUDED.date_of_birth,
                gender = EXCLUDED.gender,
@@ -2548,11 +2569,19 @@ router.put("/academic/students/:studentId/profile", requireAuth, async (req, res
                guardian_email = EXCLUDED.guardian_email,
                guardian_phone = EXCLUDED.guardian_phone,
                guardian_relationship = EXCLUDED.guardian_relationship,
+               nationality = EXCLUDED.nationality,
+               mother_tongue = EXCLUDED.mother_tongue,
+               category = EXCLUDED.category,
+               religion = EXCLUDED.religion,
+               previous_school = EXCLUDED.previous_school,
+               previous_tc_no = EXCLUDED.previous_tc_no,
                updated_at = now()`,
         [
           user.orgId, params.data.studentId, profile.dateOfBirth, profile.gender, profile.phone,
           profile.address, profile.bloodGroup, profile.guardianName, profile.guardianEmail,
-          profile.guardianPhone, profile.guardianRelationship,
+          profile.guardianPhone, profile.guardianRelationship, profile.nationality ?? null,
+          profile.motherTongue ?? null, profile.category ?? null, profile.religion ?? null,
+          profile.previousSchool ?? null, profile.previousTcNo ?? null,
         ],
       );
       const result = await readStudentProfile(client, user.orgId, params.data.studentId);

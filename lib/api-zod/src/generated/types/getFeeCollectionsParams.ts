@@ -8,17 +8,15 @@
 import type { GetFeeCollectionsChannel } from './getFeeCollectionsChannel';
 
 export type GetFeeCollectionsParams = {
-date?: Date;
-classId?: string;
-sectionId?: string;
-channel?: GetFeeCollectionsChannel;
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
-/**
- * @minimum 0
- */
-offset?: number;
+  date?: Date;
+  classId?: string;
+  sectionId?: string;
+  channel?: GetFeeCollectionsChannel;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
 };

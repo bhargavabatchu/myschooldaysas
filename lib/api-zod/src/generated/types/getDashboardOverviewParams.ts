@@ -7,9 +7,9 @@
  */
 
 export type GetDashboardOverviewParams = {
-/**
- * @minLength 4
- * @maxLength 24
- */
-academicYear?: string;
+  /**
+   * @minLength 4
+   * @maxLength 24
+   */
+  academicYear?: string;
 };

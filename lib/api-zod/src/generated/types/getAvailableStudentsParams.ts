@@ -7,22 +7,18 @@
  */
 
 export type GetAvailableStudentsParams = {
-/**
- * @minLength 4
- * @maxLength 24
- */
-academicYear: string;
-/**
- * @maxLength 100
- */
-q?: string;
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
-/**
- * @minimum 0
- */
-offset?: number;
+  /**
+   * @minLength 4
+   * @maxLength 24
+   */
+  academicYear: string;
+  /** @maxLength 100 */
+  q?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
 };

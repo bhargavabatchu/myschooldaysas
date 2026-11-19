@@ -7,6 +7,6 @@
  */
 
 export type GetLearningReportCardsParams = {
-sectionId?: string;
-termId?: string;
+  sectionId?: string;
+  termId?: string;
 };

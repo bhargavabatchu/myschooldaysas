@@ -7,9 +7,9 @@
  */
 
 export type GetSchoolHighlightsParams = {
-/**
- * @minimum 1
- * @maximum 30
- */
-limit?: number;
+  /**
+   * @minimum 1
+   * @maximum 30
+   */
+  limit?: number;
 };

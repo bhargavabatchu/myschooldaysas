@@ -7,5 +7,5 @@
  */
 
 export type GetCalendarWorkingDayParams = {
-date: Date;
+  date: Date;
 };

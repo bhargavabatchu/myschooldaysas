@@ -52,4 +52,34 @@ export interface StudentProfileFields {
      * @nullable
      */
   guardianRelationship: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  nationality?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  motherTongue?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  category?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  religion?: string | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  previousSchool?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  previousTcNo?: string | null;
 }

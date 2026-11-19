@@ -7,17 +7,13 @@
  */
 
 export type GetGuardianLinksParams = {
-/**
- * @maxLength 120
- */
-q?: string;
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
-/**
- * @minimum 0
- */
-offset?: number;
+  /** @maxLength 120 */
+  q?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
 };

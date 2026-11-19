@@ -7,5 +7,5 @@
  */
 
 export type GetClassesParams = {
-includeArchived?: boolean;
+  includeArchived?: boolean;
 };

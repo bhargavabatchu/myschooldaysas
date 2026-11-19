@@ -7,6 +7,6 @@
  */
 
 export type GetLearningSyllabusParams = {
-classId?: string;
-subjectId?: string;
+  classId?: string;
+  subjectId?: string;
 };

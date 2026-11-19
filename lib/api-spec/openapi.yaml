@@ -616,6 +616,47 @@ paths:
                 $ref: "#/components/schemas/User"
         "401":
           description: Authentication required
+  /identity/staff:
+    get:
+      operationId: getStaffRecords
+      tags: [identity]
+      summary: List staff members with their employment records
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Staff records page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffRecordsPage"
+        "403":
+          description: Administrator role required
+  /identity/staff/{userId}/profile:
+    put:
+      operationId: updateStaffRecord
+      tags: [identity]
+      summary: Create or update a staff member's employment record
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StaffRecordInput" }
+      responses:
+        "200":
+          description: Saved staff record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffRecord" }
+        "404":
+          description: Staff member not found
   /dashboard/overview:
     get:
       operationId: getDashboardOverview
@@ -2951,6 +2992,43 @@ components:
         guardianEmail: { type: [string, "null"], format: email, maxLength: 254 }
         guardianPhone: { type: [string, "null"], maxLength: 32 }
         guardianRelationship: { type: [string, "null"], maxLength: 40 }
+        nationality: { type: [string, "null"], maxLength: 80 }
+        motherTongue: { type: [string, "null"], maxLength: 80 }
+        category: { type: [string, "null"], maxLength: 80 }
+        religion: { type: [string, "null"], maxLength: 80 }
+        previousSchool: { type: [string, "null"], maxLength: 200 }
+        previousTcNo: { type: [string, "null"], maxLength: 80 }
+    StaffRecordInput:
+      type: object
+      additionalProperties: false
+      properties:
+        employeeCode: { type: [string, "null"], maxLength: 40 }
+        phone: { type: [string, "null"], maxLength: 20 }
+        qualification: { type: [string, "null"], maxLength: 160 }
+        specialization: { type: [string, "null"], maxLength: 160 }
+        joiningDate: { type: [string, "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
+    StaffRecord:
+      type: object
+      required: [userId, name, email, roles]
+      properties:
+        userId: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        roles:
+          type: array
+          items: { $ref: "#/components/schemas/Role" }
+        employeeCode: { type: [string, "null"], maxLength: 40 }
+        phone: { type: [string, "null"], maxLength: 20 }
+        qualification: { type: [string, "null"], maxLength: 160 }
+        specialization: { type: [string, "null"], maxLength: 160 }
+        joiningDate: { type: [string, "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
+    StaffRecordsPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/StaffRecord" }
     StudentCurrentEnrollment:
       type: object
       required: [enrollmentId, sectionId, admissionNo, academicYear, className, gradeLevel, sectionName]

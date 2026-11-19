@@ -37,6 +37,7 @@ identity:004|services/identity/migrations/004_student_profiles.sql
 identity:005|services/identity/migrations/005_auth_sessions.sql
 identity:006|services/identity/migrations/006_supabase_auth.sql
 identity:007|services/identity/migrations/007_campus_profile_rpc.sql
+identity:008|services/identity/migrations/008_records.sql
 academic:001|services/academic/migrations/001_academic.sql
 academic:002|services/academic/migrations/002_consents.sql
 academic:003|services/academic/migrations/003_subjects.sql

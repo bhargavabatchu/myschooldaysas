@@ -7,5 +7,5 @@
  */
 
 export type GetTimetableParams = {
-sectionId?: string;
+  sectionId?: string;
 };

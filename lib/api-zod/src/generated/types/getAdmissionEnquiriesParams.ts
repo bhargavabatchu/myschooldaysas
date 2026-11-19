@@ -8,18 +8,14 @@
 import type { AdmissionEnquiryStatus } from './admissionEnquiryStatus';
 
 export type GetAdmissionEnquiriesParams = {
-status?: AdmissionEnquiryStatus;
-/**
- * @maxLength 120
- */
-search?: string;
-/**
- * @minimum 1
- * @maximum 100
- */
-limit?: number;
-/**
- * @minimum 0
- */
-offset?: number;
+  status?: AdmissionEnquiryStatus;
+  /** @maxLength 120 */
+  search?: string;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
 };
