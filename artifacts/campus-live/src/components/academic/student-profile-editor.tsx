@@ -11,6 +11,7 @@ import {
 import type { StudentProfileFields } from "@workspace/api-client-react";
 import { Save, X } from "lucide-react";
 import { StudentEnrollmentManager } from "./student-enrollment-manager";
+import { getAccessToken } from "../../auth-token";
 
 const emptyProfile: StudentProfileFields = {
   dateOfBirth: null,
@@ -112,7 +113,27 @@ export function StudentProfileEditor({
               : "No active enrollment"}
           </p>
         </div>
-        <button type="button" className="btn btn-muted min-h-9 px-3" onClick={onClose} aria-label="Close student profile"><X size={16}/><span className="ml-1">Close</span></button>
+        <div className="flex items-center gap-2">
+          {!data.currentEnrollment && data.enrollmentHistory.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-primary min-h-9 px-3"
+              onClick={async () => {
+                const token = getAccessToken();
+                if (!token) return;
+                const response = await fetch(`/api/academic/students/${encodeURIComponent(studentId)}/tc`, {
+                  headers: { authorization: `Bearer ${token}` },
+                });
+                if (!response.ok) return;
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                window.open(url, "_blank", "noopener");
+                setTimeout(() => URL.revokeObjectURL(url), 60_000);
+              }}
+            >Transfer certificate</button>
+          )}
+          <button type="button" className="btn btn-muted min-h-9 px-3" onClick={onClose} aria-label="Close student profile"><X size={16}/><span className="ml-1">Close</span></button>
+        </div>
       </div>
 
       <div className="mt-4 border-b border-[hsl(var(--border))] pb-4">
