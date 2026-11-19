@@ -96,15 +96,22 @@ export async function assertLeastPrivilegeDatabaseRole(
   }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function withOrg<T>(
   orgId: string,
   callback: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
+  if (!UUID_RE.test(orgId)) {
+    throw new Error("withOrg requires a UUID organization id.");
+  }
   const client = await pool.connect();
   try {
-    // BEGIN + set_config and COMMIT each travel as a single round trip
-    // instead of two — noticeable against a remote pooler.
-    await client.query("BEGIN; SELECT set_config('app.org_id', $1, true)", [orgId]);
+    // BEGIN + set_config in one parameterless (simple-protocol) query — one
+    // round trip instead of two; parameterized multi-command statements are
+    // rejected by the extended protocol. orgId is strictly a UUID (checked
+    // above) so inlining it is safe.
+    await client.query(`BEGIN; SELECT set_config('app.org_id', '${orgId.toLowerCase()}', true)`);
     const result = await callback(client);
     await client.query("COMMIT");
     return result;

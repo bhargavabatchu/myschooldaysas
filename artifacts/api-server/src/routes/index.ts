@@ -20,11 +20,13 @@ import feesRouter from "./fees";
 import admissionsRouter from "./admissions";
 import announcementsRouter from "./announcements";
 import highlightsRouter from "./highlights";
+import publicRouter from "./public";
 import { installFeatureAvailability } from "../lib/feature-availability";
 
 const routes: FastifyPluginAsync = async (fastify) => {
   installFeatureAvailability(fastify);
   await fastify.register(healthRouter);
+  await fastify.register(publicRouter);
   await fastify.register(identityRouter);
   await fastify.register(academicRouter);
   await fastify.register(academicSubjectsRouter);

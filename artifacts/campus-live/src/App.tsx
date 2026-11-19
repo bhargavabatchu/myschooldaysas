@@ -37,6 +37,7 @@ import {
   profileToUser,
 } from './lib/supabase';
 import { ClassroomScreen } from '@/components/classroom/classroom-screen';
+import { PublicHomePage, VisitorHomeGate } from '@/components/public-home';
 import { LearningPage } from '@/components/learning/learning-page';
 import { AttendancePage } from '@/components/attendance/attendance-page';
 import { TimetablePage } from '@/components/academic/timetable-page';
@@ -153,6 +154,8 @@ function App() {
   return <QueryClientProvider client={queryClient}><Switch>
     <Route path="/login" component={LoginPage} />
     <Route path="/apply" component={PublicAdmissionForm} />
+    <Route path="/home" component={PublicHomePage} />
+    <Route path="/" component={VisitorHomeGate} />
     <Route><ProtectedApp /></Route>
   </Switch></QueryClientProvider>;
 }
@@ -519,6 +522,7 @@ function LoginPage() {
           <Check className="premium-assurance-check" size={16} aria-hidden="true"/>
         </div>
         <PwaInstallButton />
+        <div className="premium-form-backlink"><Link href="/home">← Back to the school website</Link></div>
       </div>
       <div className="premium-panel-footer" aria-hidden="true">
         <span>{PLATFORM_NAME.toUpperCase()}</span>
