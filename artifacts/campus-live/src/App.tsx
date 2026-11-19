@@ -18,7 +18,7 @@ import {
   ChevronLeft, ChevronRight, CircleAlert, Clock3, DoorOpen, GraduationCap, LayoutDashboard,
   Library, LoaderCircle, LogOut, Menu, Moon, Plus, Radio, Search, Settings2, ShieldCheck,
   Sun, Users, Video, X, CalendarCheck,
-  CreditCard,
+  CreditCard, UserRound, KeyRound,
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/components/not-found';
@@ -264,6 +264,7 @@ function ProtectedApp() {
         <Route path="/fees/receipts/:receiptNumber" component={FeeReceiptPage} />
         <Route path="/fees" component={() => <FeesPage roles={user.roles} />} />
         <Route path="/classroom/:sessionId" component={() => <ClassroomPage roles={user.roles} />} />
+        <Route path="/profile" component={() => <ProfilePage user={user} />} />
         <Route component={NotFound} />
       </Switch>
     </ErrorBoundary>
@@ -306,6 +307,7 @@ function AppShell({
     { label: 'Attendance', href: '/attendance', icon: CalendarCheck },
     { label: 'Timetable', href: '/timetable', icon: CalendarCheck },
     { label: 'Academic calendar', href: '/calendar', icon: CalendarDays },
+    { label: 'My profile', href: '/profile', icon: UserRound },
   ];
   if (user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role))) {
     nav.push({ label: 'Teachers', href: '/admin/teachers', icon: Users });
@@ -1066,6 +1068,85 @@ function TemplatesPage({ roles }: { roles: string[] }) {
         </div></article>)}</div>}
     </QueryState>
   </>;
+}
+
+function ProfilePage({ user }: { user: { name: string; email: string; orgId: string; roles: string[] } }) {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changeError, setChangeError] = useState<string | null>(null);
+  const [changing, setChanging] = useState(false);
+  const [changed, setChanged] = useState(false);
+  const [orgSlug, setOrgSlug] = useState('');
+  const confirmError = confirmPassword && newPassword !== confirmPassword ? 'Passwords do not match.' : null;
+  useEffect(() => {
+    void fetchCampusProfile().then(profile => { if (profile?.orgSlug) setOrgSlug(profile.orgSlug); });
+  }, []);
+
+  // Direct-to-Supabase self-service password change: verify the current
+  // password with a fresh sign-in, set the new one via updateUser, then
+  // clear the campus must-change-password flag through the Supabase RPC.
+  const submitNewPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    if (confirmError) return;
+    setChangeError(null);
+    setChanging(true);
+    setChanged(false);
+    try {
+      const { error: signInError } = await getSupabase().auth.signInWithPassword({ email: user.email, password: currentPassword });
+      if (signInError) {
+        setChangeError('Your current password is incorrect.');
+        return;
+      }
+      const { error: updateError } = await getSupabase().auth.updateUser({ password: newPassword });
+      if (updateError) {
+        setChangeError(updateError.message);
+        return;
+      }
+      await completeCampusPasswordChange();
+      const profile = await fetchCampusProfile();
+      if (profile) queryClient.setQueryData(getGetMeQueryKey(), profileToUser(profile));
+      setChanged(true);
+      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+    } catch {
+      setChangeError('Password change is temporarily unavailable. Try again.');
+    } finally {
+      setChanging(false);
+    }
+  };
+
+  return <div>
+    <PageHeading eyebrow="Your account" title="My profile" description="Your account details and password."/>
+    <div className="grid gap-4 lg:grid-cols-2">
+      <section className="surface p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><UserRound size={20}/></div>
+          <div><div className="font-bold">{user.name}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">{user.email}</div></div>
+        </div>
+        <dl className="space-y-3 text-sm">
+          <div className="flex items-center justify-between gap-3"><dt className="text-xs font-bold text-[hsl(var(--muted-foreground))]">Email</dt><dd>{user.email}</dd></div>
+          <div className="flex items-center justify-between gap-3"><dt className="text-xs font-bold text-[hsl(var(--muted-foreground))]">Organization</dt><dd className="capitalize">{orgSlug || '—'}</dd></div>
+          <div className="flex items-start justify-between gap-3"><dt className="text-xs font-bold text-[hsl(var(--muted-foreground))]">Roles</dt><dd className="flex flex-wrap justify-end gap-1.5">{user.roles.map((role: string) => <span key={role} className="tag">{roleName(role)}</span>)}</dd></div>
+        </dl>
+        <p className="mt-4 border-t border-[hsl(var(--border))] pt-3 text-xs leading-5 text-[hsl(var(--muted-foreground))]">To change your name or email, contact your school administrator.</p>
+      </section>
+
+      <section className="surface p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><KeyRound size={20}/></div>
+          <div><div className="font-bold">Change password</div><div className="text-xs text-[hsl(var(--muted-foreground))]">Use at least 12 characters.</div></div>
+        </div>
+        <form className="space-y-3" onSubmit={submitNewPassword}>
+          <label className="block text-xs font-bold">Current password<div className="mt-1.5"><input required type="password" autoComplete="current-password" className="field" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)}/></div></label>
+          <label className="block text-xs font-bold">New password<div className="mt-1.5"><input required minLength={12} maxLength={256} type="password" autoComplete="new-password" className="field" value={newPassword} onChange={event => setNewPassword(event.target.value)}/></div></label>
+          <label className="block text-xs font-bold">Confirm new password<div className="mt-1.5"><input required minLength={12} maxLength={256} type="password" autoComplete="new-password" className="field" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)}/></div></label>
+          {(confirmError || changeError) && <p role="alert" className="text-xs text-[hsl(var(--destructive))]">{confirmError ?? changeError}</p>}
+          {changed && <p className="text-xs font-semibold text-[hsl(var(--status-good))]">Your password has been updated.</p>}
+          <button disabled={changing || !!confirmError} className="btn btn-primary w-full">{changing ? 'Updating…' : 'Update password'}<ArrowRight size={15}/></button>
+        </form>
+      </section>
+    </div>
+  </div>;
 }
 
 function ClassroomPage({ roles: _roles, sessionId: sessionIdProp }: { roles: string[]; sessionId?: string }) {
