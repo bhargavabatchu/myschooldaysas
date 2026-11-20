@@ -734,49 +734,64 @@ function DashboardPage({ roles, userName, requestedAcademicYear }: { roles: stri
     </section>
     <QueryState loading={overview.isLoading} error={overview.error} empty={!data} retry={() => overview.refetch()}>
       {data && <div className="dashboard-content">
-        {adminInsights && <section className="dashboard-admin-insights" aria-label="Attendance and fee overview" data-testid="dashboard-admin-insights">
-          <div className="dashboard-insight-attendance" data-testid="dashboard-attendance-insight">
-            <div className="dashboard-insight-heading">
-              <div className="dashboard-insight-symbol"><CalendarCheck size={16}/></div>
-              <div><span className="dashboard-panel-kicker">ATTENDANCE · {adminInsights.attendanceToday.attendanceDate}</span><h2>Today’s register</h2></div>
-            </div>
-            {adminInsights.attendanceToday.attendancePercent === null
-              ? <div className="dashboard-attendance-unmarked"><strong>Not recorded yet</strong><span>No marks have been entered for today.</span></div>
-              : <div className="dashboard-attendance-readout">
-                <strong>{adminInsights.attendanceToday.attendancePercent}<small>%</small></strong>
-                <div className="dashboard-attendance-detail"><span>{adminInsights.attendanceToday.presentStudents} present of {adminInsights.attendanceToday.markedStudents} marked</span></div>
-                <div className="dashboard-progress-track" role="progressbar" aria-label={`${adminInsights.attendanceToday.attendancePercent}% attendance among marked students`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.max(0, Math.min(100, adminInsights.attendanceToday.attendancePercent))}><span style={{ width: `${Math.max(0, Math.min(100, adminInsights.attendanceToday.attendancePercent))}%` }}/></div>
-              </div>}
-            <Link href="/attendance" className="dashboard-insight-link">Open register <ArrowRight size={13}/></Link>
+        {adminInsights && <section className="dashboard-ref-row" aria-label="Attendance, fees and enrollment analytics" data-testid="dashboard-admin-insights">
+          <div className="dashboard-ref-card">
+            <h2 className="dashboard-ref-title">Student Attendance</h2>
+            {adminInsights.attendanceToday.attendancePercent === null ? (
+              <div className="dashboard-chart-empty">No attendance recorded today yet.<button type="button" className="btn btn-muted min-h-8 mt-3" onClick={() => overview.refetch()}>Refresh</button></div>
+            ) : (() => {
+              const present = adminInsights.attendanceToday.presentStudents;
+              const absent = Math.max(0, adminInsights.attendanceToday.markedStudents - present);
+              const slices = [
+                { name: 'Present', value: present, color: '#2e8b70' },
+                { name: 'Absent', value: absent, color: '#b94f47' },
+              ].filter((s) => s.value > 0);
+              return <div className="dashboard-ref-donut">
+                <ResponsiveContainer width="100%" height={150}>
+                  <PieChart>
+                    <Pie data={slices.length ? slices : [{ name: 'None', value: 1, color: '#e3e1d8' }]} dataKey="value" innerRadius={46} outerRadius={70} paddingAngle={2} strokeWidth={0}>
+                      {(slices.length ? slices : [{ color: '#e3e1d8' }]).map((slice, i) => <Cell key={i} fill={slice.color} />)}
+                    </Pie>
+                    <ChartTooltip contentStyle={{ borderRadius: 10, border: '1px solid #e3e1d8', fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="dashboard-ref-legend">
+                  <span><i style={{ background: '#2e8b70' }} />Present {present}</span>
+                  <span><i style={{ background: '#b94f47' }} />Absent {absent}</span>
+                  <span><i style={{ background: '#e3e1d8' }} />Not marked {Math.max(0, adminInsights.attendanceToday.markedStudents - present - absent) || adminInsights.attendanceToday.markedStudents === 0 ? '—' : ''}</span>
+                </div>
+                <Link href="/attendance" className="dashboard-text-link">View report <ArrowRight size={13} /></Link>
+              </div>;
+            })()}
           </div>
-          <div className="dashboard-insight-fees" data-testid="dashboard-fees-insight">
-            <div className="dashboard-insight-heading">
-              <div className="dashboard-insight-symbol gold"><CreditCard size={16}/></div>
-              <div><span className="dashboard-panel-kicker">ACADEMIC YEAR {academicYear}</span><h2>Fee collection</h2></div>
+
+          <div className="dashboard-ref-card">
+            <h2 className="dashboard-ref-title">Fees Collection</h2>
+            <div className="dashboard-ref-fees">
+              <div className="dashboard-ref-fee-chip"><span className="pg-icon-green">{formatRupees(adminInsights.fees.collectedThisYearPaise)}</span><small>Collected · {academicYear}</small></div>
+              <div className="dashboard-ref-fee-chip v2-red"><span className="pg-icon-red">{formatRupees(adminInsights.fees.outstandingThisYearPaise)}</span><small>Outstanding</small></div>
+              <div className="dashboard-ref-fee-chip"><span className="pg-icon-blue">{formatRupees(adminInsights.fees.todayCollection.totalPaise)}</span><small>Collected today</small></div>
             </div>
-            <div className="dashboard-fee-totals" data-testid="dashboard-fee-totals">
-              <div><span>Total issued</span><strong>{formatRupees(adminInsights.fees.totalFeesThisYearPaise)}</strong><small>Net of concessions</small></div>
-              <div><span>Collected</span><strong>{formatRupees(adminInsights.fees.collectedThisYearPaise)}</strong><small>This year</small></div>
-              <div><span>Outstanding</span><strong>{formatRupees(adminInsights.fees.outstandingThisYearPaise)}</strong><small>Due</small></div>
+            <div className="dashboard-ref-bars">
+              <div className="dashboard-ref-bar"><span>Paid invoices {feeStatus.data?.summary.paid ?? '—'}</span><div><i style={{ width: '70%', background: '#2e8b70' }} /></div></div>
+              <div className="dashboard-ref-bar"><span>Partially paid {feeStatus.data?.summary.partial ?? '—'}</span><div><i style={{ width: '35%', background: '#dc8b43' }} /></div></div>
+              <div className="dashboard-ref-bar"><span>Not paid {feeStatus.data?.summary.unpaid ?? '—'}</span><div><i style={{ width: '55%', background: '#b94f47' }} /></div></div>
+              <div className="dashboard-ref-bar"><span>Overdue {adminInsights.fees.overdueInvoiceCount}</span><div><i style={{ width: '25%', background: '#b94f47' }} /></div></div>
             </div>
-            <div className="dashboard-collection-progress" data-testid="dashboard-collection-progress">
-              <div className="dashboard-collection-progress-copy"><span>Collection rate</span><strong>{collectionPercent === null ? '—' : `${collectionPercent}%`}</strong></div>
-              <div className="dashboard-collection-progress-track" role="progressbar" aria-label={collectionPercent === null ? 'No fee collection percentage available' : `${collectionPercent}% of net fees collected for ${academicYear}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={collectionPercent ?? 0}><span style={{ width: `${Math.max(0, Math.min(100, collectionPercent ?? 0))}%` }}/></div>
-            </div>
-            <div className="dashboard-fee-day" data-testid="dashboard-fee-day">
-              <div className="dashboard-fee-day-total"><span>Collected today</span><strong>{formatRupees(adminInsights.fees.todayCollection.totalPaise)}</strong></div>
-              <div className="dashboard-fee-day-breakdown">
-                <span>Cash <strong>{formatRupees(adminInsights.fees.todayCollection.cashPaise)}</strong></span>
-                <span>Digital / online <strong>{formatRupees(adminInsights.fees.todayCollection.onlinePaise)}</strong></span>
-              </div>
-              <Link href="/fees#collections" className="dashboard-insight-link">Daily details <ArrowRight size={13}/></Link>
-            </div>
-            {adminInsights.fees.todayCollection.testPaise > 0 && (
-              <p className="dashboard-fee-test-note">
-                Includes {formatRupees(adminInsights.fees.todayCollection.testPaise)} in mock/test payments.
-              </p>
-            )}
-            <div className="dashboard-overdue-summary"><span>Overdue invoices</span><strong>{adminInsights.fees.overdueInvoiceCount}</strong><Link href="/fees" className="dashboard-insight-link">Review fees <ArrowRight size={13}/></Link></div>
+            <Link href="/admin/reports" className="dashboard-text-link">Fee dues report <ArrowRight size={13} /></Link>
+          </div>
+
+          <div className="dashboard-ref-card">
+            <h2 className="dashboard-ref-title">Joiners &amp; leavers — 12 months</h2>
+            {trends.data?.series?.length ? <ResponsiveContainer width="100%" height={170}>
+              <AreaChart data={trends.data.series} margin={{ top: 6, right: 8, left: -20, bottom: 0 }}>
+                <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#7d877f' }} tickFormatter={(m: string) => `${m.slice(5)}/${m.slice(2, 4)}`} interval="preserveStartEnd" axisLine={false} tickLine={false} />
+                <ChartTooltip cursor={{ stroke: '#d9d3c1' }} contentStyle={{ borderRadius: 10, border: '1px solid #e3e1d8', fontSize: 12 }} formatter={(value: number, name) => [value, name === 'joiners' ? 'Joiners' : 'Leavers']} />
+                <Area type="monotone" dataKey="joiners" stroke="#2e8b70" strokeWidth={2} fill="#2e8b70" fillOpacity={0.14} />
+                <Area type="monotone" dataKey="leavers" stroke="#b94f47" strokeWidth={2} fill="#b94f47" fillOpacity={0.1} />
+              </AreaChart>
+            </ResponsiveContainer> : <div className="dashboard-chart-empty">No enrollment activity yet.</div>}
+            <Link href="/admin/reports" className="dashboard-text-link">Full report <ArrowRight size={13} /></Link>
           </div>
         </section>}
         <section className="dashboard-metrics" aria-label="School overview metrics">
@@ -792,53 +807,6 @@ function DashboardPage({ roles, userName, requestedAcademicYear }: { roles: stri
               : card;
           })}
         </section>
-        {adminInsights && <section className="dashboard-charts" aria-label="Enrollment and fee analytics">
-          <div className="dashboard-chart-card" data-testid="dashboard-trend-chart">
-            <div className="dashboard-chart-head">
-              <span className="dashboard-panel-kicker">STRENGTH · 12 MONTHS</span>
-              <h2>Joiners &amp; leavers</h2>
-              <span className="dashboard-chart-note">{trends.data?.currentStrength ?? '—'} enrolled now</span>
-            </div>
-            {trends.data?.series?.length ? <ResponsiveContainer width="100%" height={150}>
-              <AreaChart data={trends.data.series} margin={{ top: 6, right: 8, left: -18, bottom: 0 }}>
-                <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#7d877f' }} tickFormatter={(m: string) => `${m.slice(5)}/${m.slice(2, 4)}`} interval="preserveStartEnd" axisLine={false} tickLine={false} />
-                <ChartTooltip cursor={{ stroke: '#d9d3c1' }} contentStyle={{ borderRadius: 10, border: '1px solid #e3e1d8', fontSize: 12 }} formatter={(value: number, name) => [value, name === 'joiners' ? 'Joiners' : 'Leavers']} />
-                <Area type="monotone" dataKey="joiners" stroke="#2e8b70" strokeWidth={2} fill="#2e8b70" fillOpacity={0.14} />
-                <Area type="monotone" dataKey="leavers" stroke="#b94f47" strokeWidth={2} fill="#b94f47" fillOpacity={0.1} />
-              </AreaChart>
-            </ResponsiveContainer> : <div className="dashboard-chart-empty">Enrollment activity will appear here as students join.</div>}
-          </div>
-          <div className="dashboard-chart-card" data-testid="dashboard-fee-donut">
-            <div className="dashboard-chart-head">
-              <span className="dashboard-panel-kicker">ACADEMIC YEAR {adminInsights.fees.academicYear}</span>
-              <h2>Invoice status</h2>
-              <span className="dashboard-chart-note">{feeStatus.data?.summary.outstanding ?? '—'} outstanding</span>
-            </div>
-            {feeStatus.data?.summary ? (() => {
-              const s = feeStatus.data.summary;
-              const statusData = [
-                { name: 'Paid', value: s.paid, color: '#2e8b70' },
-                { name: 'Partial', value: s.partial, color: '#dc8b43' },
-                { name: 'Not paid', value: s.unpaid, color: '#b94f47' },
-              ].filter((slice) => slice.value > 0);
-              return <div className="dashboard-donut-wrap">
-                <ResponsiveContainer width="100%" height={150}>
-                  <PieChart>
-                    <Pie data={statusData.length ? statusData : [{ name: 'No invoices', value: 1, color: '#e3e1d8' }]} dataKey="value" innerRadius={48} outerRadius={72} paddingAngle={2} strokeWidth={0}>
-                      {(statusData.length ? statusData : [{ color: '#e3e1d8' }]).map((slice, i) => <Cell key={i} fill={slice.color} />)}
-                    </Pie>
-                    <ChartTooltip contentStyle={{ borderRadius: 10, border: '1px solid #e3e1d8', fontSize: 12 }} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="dashboard-donut-legend">
-                  <span><i style={{ background: '#2e8b70' }}/>Paid {s.paid}</span>
-                  <span><i style={{ background: '#dc8b43' }}/>Partial {s.partial}</span>
-                  <span><i style={{ background: '#b94f47' }}/>Not paid {s.unpaid}</span>
-                </div>
-              </div>;
-            })() : <div className="dashboard-chart-empty">Fee status will appear once invoices are generated.</div>}
-          </div>
-        </section>}
         {adminInsights && latestStudents.data?.items?.length ? <section className="dashboard-students-compact" aria-label="Latest students">
           <div className="dashboard-chart-head">
             <span className="dashboard-panel-kicker">PEOPLE · LATEST</span>
