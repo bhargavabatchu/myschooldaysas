@@ -14,6 +14,7 @@ import {
   useUpdateLearningSyllabusMaterial,
   useUpdateLearningSyllabusTopic,
 } from '@workspace/api-client-react';
+import { SyllabusMaterialViewer, type ViewerTarget } from './syllabus-viewer';
 import type {
   LearningSyllabus,
   LearningSyllabusLesson,
@@ -76,6 +77,7 @@ export function LearningSyllabus({ canManage, studentView, onNotice }: Props) {
   const [lessonForm, setLessonForm] = useState<'create' | string | null>(null);
   const [topicForm, setTopicForm] = useState<{ lessonId: string; topicId?: string } | null>(null);
   const [materialForm, setMaterialForm] = useState<{ topicId: string; materialId?: string } | null>(null);
+  const [viewer, setViewer] = useState<ViewerTarget | null>(null);
 
   const items = syllabus.data?.items ?? [];
   const classes = useMemo(() => {
@@ -212,10 +214,9 @@ export function LearningSyllabus({ canManage, studentView, onNotice }: Props) {
       onSave={(draft) => saveMaterial(draft, topicId, material)}
     />;
     return <div key={material.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[hsl(var(--background))] px-3 py-2.5">
-      <a href={material.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-2 text-xs font-bold text-[hsl(var(--primary))] hover:underline">
+      <button type="button" className="flex min-w-0 items-center gap-2 text-xs font-bold text-[hsl(var(--primary))] hover:underline" onClick={() => setViewer({ title: material.title, url: material.url, kind: material.kind })}>
         <Icon size={15} className="shrink-0"/><span className="truncate">{material.title}</span><ExternalLink size={12} className="shrink-0"/>
-        <span className="sr-only">opens in a new tab</span>
-      </a>
+      </button>
       <div className="flex items-center gap-2">
         <span className="rounded-full bg-white px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">{material.kind}</span>
         {canManage && <><button className="btn btn-quiet btn-sm" aria-label={`Edit ${material.title}`} onClick={() => { setMaterialForm({ topicId, materialId: material.id }); setLessonForm(null); setTopicForm(null); }}><Pencil size={13}/></button>
