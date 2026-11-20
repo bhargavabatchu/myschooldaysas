@@ -38,6 +38,8 @@ import {
 } from './lib/supabase';
 import { ClassroomScreen } from '@/components/classroom/classroom-screen';
 import { PublicHomePage, VisitorHomeGate } from '@/components/public-home';
+import { PayrollPage } from '@/components/admin/payroll-page';
+import { ReportsPage } from '@/components/admin/reports-page';
 import { LearningPage } from '@/components/learning/learning-page';
 import { AttendancePage } from '@/components/attendance/attendance-page';
 import { TimetablePage } from '@/components/academic/timetable-page';
@@ -265,6 +267,9 @@ function ProtectedApp() {
         <Route path="/fees" component={() => <FeesPage roles={user.roles} />} />
         <Route path="/classroom/:sessionId" component={() => <ClassroomPage roles={user.roles} />} />
         <Route path="/profile" component={() => <ProfilePage user={user} />} />
+        <Route path="/admin/payroll" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <PayrollPage /> : <NotFound />} />
+        <Route path="/admin/reports" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <ReportsPage /> : <NotFound />} />
+        <Route path="/admin" component={() => user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role)) ? <AdminConsolePage user={user} /> : <NotFound />} />
         <Route component={NotFound} />
       </Switch>
     </ErrorBoundary>
@@ -294,37 +299,47 @@ function AppShell({
   const isDashboard = path === '/' || path === '/dashboard' || path === '/admin/assistant';
   const isStudent = user.roles.includes('student');
   const isAdmin = user.roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role));
-  const nav = [
-    { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-    ...(canViewAcademicDirectory(user.roles) ? [{ label: 'Classes', href: '/admin/classes', icon: BookOpen }] : []),
-    ...(canViewStudentRoster(user.roles) ? [{ label: 'Students', href: '/admin/students', icon: Users }] : []),
-    ...(liveClassesEnabled ? [{ label: 'Live classes', href: '/live/sessions', icon: Video }] : []),
-    { label: 'Smartboards', href: '/boards/templates', icon: Library },
-    { label: 'Learning', href: '/learning', icon: GraduationCap },
-    { label: 'Results', href: '/results', icon: Award },
-    { label: 'Announcements', href: '/announcements', icon: Radio },
-    { label: 'Highlights', href: '/highlights', icon: Activity },
-    { label: 'Attendance', href: '/attendance', icon: CalendarCheck },
-    { label: 'Timetable', href: '/timetable', icon: CalendarCheck },
-    { label: 'Academic calendar', href: '/calendar', icon: CalendarDays },
-    { label: 'My profile', href: '/profile', icon: UserRound },
+  type NavItem = { label: string; href: string; icon: typeof LayoutDashboard };
+  const navGroups: { label: string; items: NavItem[] }[] = [
+    { label: 'Workspace', items: [
+      { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+      ...(isAdmin ? [{ label: 'Administration', href: '/admin', icon: ShieldCheck } as NavItem] : []),
+      ...(liveClassesEnabled ? [{ label: 'Live classes', href: '/live/sessions', icon: Video } as NavItem] : []),
+    ] },
+    ...(isAdmin || canViewAcademicDirectory(user.roles) ? [{ label: 'People', items: [
+      ...(canViewStudentRoster(user.roles) ? [{ label: 'Students', href: '/admin/students', icon: Users } as NavItem] : []),
+      ...(isAdmin ? [
+        { label: 'Teachers & staff', href: '/admin/teachers', icon: Users } as NavItem,
+        ...(user.roles.some(role => ['super_admin','org_admin'].includes(role)) ? [{ label: 'Administrators', href: '/admin/administrators', icon: ShieldCheck } as NavItem] : []),
+        { label: 'Admissions', href: '/admin/admissions', icon: ClipboardList } as NavItem,
+        { label: 'Family access', href: '/admin/guardians', icon: ShieldCheck } as NavItem,
+      ] : []),
+    ] }] : []),
+    { label: 'Academics', items: [
+      ...(canViewAcademicDirectory(user.roles) ? [{ label: 'Classes', href: '/admin/classes', icon: BookOpen } as NavItem] : []),
+      { label: 'Learning', href: '/learning', icon: GraduationCap },
+      { label: 'Results', href: '/results', icon: Award },
+      { label: 'Attendance', href: '/attendance', icon: CalendarCheck },
+      { label: 'Timetable', href: '/timetable', icon: CalendarCheck },
+      { label: 'Academic calendar', href: '/calendar', icon: CalendarDays },
+      { label: 'Smartboards', href: '/boards/templates', icon: Library },
+    ] },
+    ...(isAdmin || user.roles.includes('parent') || user.roles.includes('student') ? [{ label: 'Finance', items: [
+      { label: 'Fees', href: '/fees', icon: CreditCard },
+      ...(isAdmin ? [
+        { label: 'Payroll', href: '/admin/payroll', icon: CreditCard } as NavItem,
+        { label: 'Reports', href: '/admin/reports', icon: Activity } as NavItem,
+      ] : []),
+    ] }] : []),
+    { label: 'Communication', items: [
+      { label: 'Announcements', href: '/announcements', icon: Radio },
+      { label: 'Highlights', href: '/highlights', icon: Activity },
+    ] },
+    { label: 'Account', items: [
+      { label: 'My profile', href: '/profile', icon: UserRound },
+      ...(user.roles.includes('parent') ? [{ label: 'Privacy & consent', href: '/family/consents', icon: ShieldCheck } as NavItem] : []),
+    ] },
   ];
-  if (user.roles.some(role => ['super_admin','org_admin','campus_admin'].includes(role))) {
-    nav.push({ label: 'Teachers', href: '/admin/teachers', icon: Users });
-    if (user.roles.some(role => ['super_admin','org_admin'].includes(role))) {
-      nav.push({ label: 'Administrators', href: '/admin/administrators', icon: ShieldCheck });
-    }
-    nav.push({ label: 'Admissions', href: '/admin/admissions', icon: ClipboardList });
-    nav.push({ label: 'Family access', href: '/admin/guardians', icon: ShieldCheck });
-    nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
-  }
-  if (user.roles.includes('parent')) {
-    nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
-    nav.push({ label: 'Privacy & consent', href: '/family/consents', icon: ShieldCheck });
-  }
-  if (user.roles.includes('student')) {
-    nav.push({ label: 'Fees', href: '/fees', icon: CreditCard });
-  }
   return <div className={`signed-in-shell min-h-[100dvh] md:flex ${isDashboard ? 'dashboard-app-shell' : ''}`}>
     <aside className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-[hsl(var(--sidebar))] px-4 py-5 text-[hsl(var(--sidebar-foreground))] transition-transform md:translate-x-0 ${mobileNav ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="mb-9 flex items-center gap-3 px-2">
@@ -333,17 +348,21 @@ function AppShell({
         <button aria-label="Close navigation" className="ml-auto text-white/60 md:hidden" onClick={() => setMobileNav(false)}><X size={18}/></button>
       </div>
       <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.17em] text-white/40">Workspace</div>
-       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto">
-        {nav.map(item => {
+       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto pb-4">
+        {navGroups.map(group => group.items.length > 0 && <div key={group.label}>
+          <div className="mb-1 mt-4 px-3 text-[10px] font-bold uppercase tracking-[.17em] text-white/40 first:mt-0">{group.label}</div>
+          {group.items.map(item => {
           const Icon = item.icon;
           const active = path === item.href
             || (path === '/learning/reports' && item.href === '/results')
             || (item.href !== '/dashboard' && path.startsWith(item.href)
-              && !(path === '/learning/reports' && item.href === '/learning'));
+              && !(path === '/learning/reports' && item.href === '/learning'))
+            || (item.href === '/admin' && path === '/admin');
           return <Link key={item.href} href={item.href} onClick={() => setMobileNav(false)} data-testid={`link-nav-${item.label.toLowerCase().replaceAll(' ', '-')}`} className={`flex h-11 items-center gap-3 rounded-xl px-3 text-[13px] font-semibold transition ${active ? 'bg-white/10 text-white' : 'text-white/65 hover:bg-white/5 hover:text-white'}`}>
             <Icon size={17} strokeWidth={1.8}/>{item.label}{active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[hsl(var(--accent))]"/>}
           </Link>;
-        })}
+          })}
+        </div>)}
       </nav>
       <div className="mt-auto">
         <div className="mb-4 rounded-xl border border-white/10 bg-white/[.04] p-3">
@@ -363,7 +382,7 @@ function AppShell({
       <header className={`sticky top-0 z-20 ${isStudent ? 'hidden md:flex' : 'flex'} h-[68px] items-center justify-between border-b border-[hsl(var(--border))] bg-[hsl(var(--background)/.94)] px-4 backdrop-blur-md md:px-9`}>
         <div className="flex items-center gap-3">
           <button aria-label="Open navigation" data-testid="button-open-navigation" onClick={() => setMobileNav(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-[hsl(var(--border))] md:hidden"><Menu size={18}/></button>
-           <div className="text-[11px] text-[hsl(var(--muted-foreground))]">Workspace / <span className="font-semibold capitalize text-[hsl(var(--foreground))]">{path === '/admin/assistant' ? 'Ask assistant' : path === '/learning/reports' ? 'Results' : nav.find(item => path.startsWith(item.href))?.label ?? 'Classroom'}</span></div>
+           <div className="text-[11px] text-[hsl(var(--muted-foreground))]">Workspace / <span className="font-semibold capitalize text-[hsl(var(--foreground))]">{path === '/admin/assistant' ? 'Ask assistant' : path === '/learning/reports' ? 'Results' : navGroups.flatMap(group => group.items).find(item => item.href !== '/dashboard' && path.startsWith(item.href))?.label ?? 'Classroom'}</span></div>
         </div>
          <div className="flex items-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]">
            {isDashboard && isAdmin && (
@@ -1068,6 +1087,65 @@ function TemplatesPage({ roles }: { roles: string[] }) {
         </div></article>)}</div>}
     </QueryState>
   </>;
+}
+
+function AdminConsolePage({ user }: { user: { name: string; email: string; orgId: string; roles: string[] } }) {
+  const overview = useGetDashboardOverview();
+  const metrics = overview.data?.metrics ?? [];
+  const cards: { title: string; description: string; href: string }[][] = [
+    [
+      { title: "Students", description: "Registry, profiles, enrollment history, promote, transfer, withdraw (TC).", href: "/admin/students" },
+      { title: "Teachers & staff", description: "Accounts, staff employment records.", href: "/admin/teachers" },
+      { title: "Administrators", description: "School administrator accounts and access.", href: "/admin/administrators" },
+      { title: "Admissions", description: "Public enquiries and batch admissions.", href: "/admin/admissions" },
+      { title: "Family access", description: "Guardian links and family portal access.", href: "/admin/guardians" },
+    ],
+    [
+      { title: "Classes & sections", description: "Create classes, sections, and run promotions.", href: "/admin/classes" },
+      { title: "Timetable", description: "Weekly class and section timetables.", href: "/timetable" },
+      { title: "Academic calendar", description: "Holidays, exams, events, PTMs.", href: "/calendar" },
+      { title: "Attendance", description: "Daily register and history.", href: "/attendance" },
+    ],
+    [
+      { title: "Fees", description: "Invoices, concessions/scholarships, payments, receipts.", href: "/fees" },
+      { title: "Payroll", description: "Staff salaries, monthly payments, payslips.", href: "/admin/payroll" },
+      { title: "Reports & analytics", description: "Joiners/leavers trends, fee dues, certificate log.", href: "/admin/reports" },
+    ],
+    [
+      { title: "Announcements", description: "School and class announcements.", href: "/announcements" },
+      { title: "Highlights", description: "School highlights with photos.", href: "/highlights" },
+      { title: "Live classes", description: "Schedule and run live classrooms.", href: "/live/sessions" },
+      { title: "Smartboards", description: "Board templates for classrooms.", href: "/boards/templates" },
+    ],
+  ];
+  const groupLabels = ["People", "Academics", "Finance", "Communication"];
+  return <div>
+    <PageHeading eyebrow="Administration" title="Admin console" description={`Everything for running ${'the school'} — signed in as ${user.name}.`}/>
+    {metrics.length > 0 && <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {metrics.slice(0, 4).map((metric) => (
+        <div key={metric.label} className="surface p-4">
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">{metric.label}</p>
+          <p className="display m-0 text-xl font-extrabold">{metric.value}</p>
+          {metric.change && <p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">{metric.change}</p>}
+        </div>
+      ))}
+    </div>}
+    <div className="space-y-6">
+      {cards.map((group, index) => (
+        <section key={groupLabels[index]}>
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-[.14em] text-[hsl(var(--muted-foreground))]">{groupLabels[index]}</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {group.map((card) => (
+              <Link key={card.href} href={card.href} className="surface p-5 transition hover:border-[hsl(var(--primary)/.4)] hover:shadow-md" style={{ textDecoration: "none" }}>
+                <p className="m-0 text-sm font-extrabold">{card.title}</p>
+                <p className="mb-0 mt-1.5 text-xs leading-5 text-[hsl(var(--muted-foreground))]">{card.description}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  </div>;
 }
 
 function ProfilePage({ user }: { user: { name: string; email: string; orgId: string; roles: string[] } }) {

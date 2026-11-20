@@ -867,6 +867,219 @@ export const UpdateStaffRecordResponse = zod.object({
 
 
 /**
+ * @summary Monthly payroll list with salary and payment status
+ */
+export const getPayrollQueryMonthRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const GetPayrollQueryParams = zod.object({
+  "month": zod.string().regex(getPayrollQueryMonthRegExp)
+})
+
+export const getPayrollResponseItemsItemEmployeeCodeMax = 40;
+
+
+
+export const GetPayrollResponse = zod.object({
+  "period": zod.string(),
+  "items": zod.array(zod.object({
+  "userId": zod.uuid(),
+  "name": zod.string(),
+  "email": zod.email(),
+  "roles": zod.array(zod.enum(['super_admin', 'org_admin', 'campus_admin', 'hod', 'teacher', 'class_teacher', 'student', 'parent'])),
+  "employeeCode": zod.string().max(getPayrollResponseItemsItemEmployeeCodeMax).nullish(),
+  "monthlyAmountPaise": zod.int().nullish(),
+  "paid": zod.boolean(),
+  "paidAmountPaise": zod.int().nullish(),
+  "paidOn": zod.string().nullish(),
+  "mode": zod.string().nullish(),
+  "notes": zod.string().nullish()
+})),
+  "summary": zod.object({
+  "staff": zod.int(),
+  "withSalary": zod.int(),
+  "paid": zod.int(),
+  "unpaid": zod.int(),
+  "totalMonthlyPaise": zod.int(),
+  "paidPaise": zod.int()
+})
+})
+
+
+/**
+ * @summary Set a staff member's monthly salary
+ */
+export const SetStaffSalaryParams = zod.object({
+  "userId": zod.uuid()
+})
+
+export const setStaffSalaryBodyMonthlyAmountPaiseMin = 0;
+
+export const setStaffSalaryBodyEffectiveFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const SetStaffSalaryBody = zod.object({
+  "monthlyAmountPaise": zod.int().min(setStaffSalaryBodyMonthlyAmountPaiseMin),
+  "effectiveFrom": zod.string().regex(setStaffSalaryBodyEffectiveFromRegExp).optional()
+})
+
+export const SetStaffSalaryResponse = zod.object({
+  "userId": zod.uuid(),
+  "monthlyAmountPaise": zod.int()
+})
+
+
+/**
+ * @summary Record (or update) a month's salary payment
+ */
+export const recordSalaryPaymentBodyPeriodRegExp = new RegExp('^\\d{4}-\\d{2}$');
+export const recordSalaryPaymentBodyAmountPaiseMin = 0;
+
+export const recordSalaryPaymentBodyPaidOnRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const recordSalaryPaymentBodyNotesMax = 300;
+
+
+
+export const RecordSalaryPaymentBody = zod.object({
+  "userId": zod.uuid(),
+  "period": zod.string().regex(recordSalaryPaymentBodyPeriodRegExp),
+  "amountPaise": zod.int().min(recordSalaryPaymentBodyAmountPaiseMin),
+  "paidOn": zod.string().regex(recordSalaryPaymentBodyPaidOnRegExp).optional(),
+  "mode": zod.enum(['bank', 'cash', 'cheque', 'other']),
+  "notes": zod.string().max(recordSalaryPaymentBodyNotesMax).nullish()
+})
+
+export const RecordSalaryPaymentResponse = zod.object({
+  "userId": zod.uuid(),
+  "period": zod.string(),
+  "amountPaise": zod.int(),
+  "paidOn": zod.string(),
+  "mode": zod.string(),
+  "notes": zod.string().nullish()
+})
+
+
+/**
+ * @summary Render a printable payslip (HTML)
+ */
+export const getPayrollPayslipPathPeriodRegExp = new RegExp('^\\d{4}-\\d{2}$');
+
+
+export const GetPayrollPayslipParams = zod.object({
+  "userId": zod.uuid(),
+  "period": zod.string().regex(getPayrollPayslipPathPeriodRegExp)
+})
+
+export const GetPayrollPayslipResponse = zod.unknown()
+
+
+/**
+ * @summary Monthly joiners and leavers trend
+ */
+export const getEnrollmentTrendsQueryMonthsDefault = 12;
+export const getEnrollmentTrendsQueryMonthsMax = 36;
+
+
+
+export const GetEnrollmentTrendsQueryParams = zod.object({
+  "months": zod.coerce.number().int().min(1).max(getEnrollmentTrendsQueryMonthsMax).default(getEnrollmentTrendsQueryMonthsDefault)
+})
+
+export const GetEnrollmentTrendsResponse = zod.object({
+  "series": zod.array(zod.object({
+  "month": zod.string(),
+  "joiners": zod.int(),
+  "leavers": zod.int()
+})),
+  "reasons": zod.record(zod.string(), zod.int()),
+  "currentStrength": zod.int()
+})
+
+
+/**
+ * @summary Fee dues with paid/unpaid/partial filters
+ */
+export const getFeesDueReportQueryAcademicYearMax = 24;
+
+export const getFeesDueReportQueryLimitDefault = 100;
+export const getFeesDueReportQueryLimitMax = 200;
+
+export const getFeesDueReportQueryOffsetDefault = 0;
+export const getFeesDueReportQueryOffsetMin = 0;
+
+
+
+export const GetFeesDueReportQueryParams = zod.object({
+  "academicYear": zod.string().max(getFeesDueReportQueryAcademicYearMax).optional(),
+  "classId": zod.uuid().optional(),
+  "sectionId": zod.uuid().optional(),
+  "status": zod.enum(['all', 'paid', 'unpaid', 'partial']).optional(),
+  "limit": zod.coerce.number().int().min(1).max(getFeesDueReportQueryLimitMax).default(getFeesDueReportQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(getFeesDueReportQueryOffsetMin).default(getFeesDueReportQueryOffsetDefault)
+})
+
+export const GetFeesDueReportResponse = zod.object({
+  "summary": zod.object({
+  "paid": zod.int(),
+  "unpaid": zod.int(),
+  "partial": zod.int(),
+  "outstanding": zod.string(),
+  "billed": zod.string(),
+  "collected": zod.string()
+}),
+  "items": zod.array(zod.object({
+  "invoiceNumber": zod.string(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string().nullish(),
+  "className": zod.string().nullish(),
+  "sectionName": zod.string().nullish(),
+  "academicYear": zod.string(),
+  "period": zod.string(),
+  "amountPaise": zod.int(),
+  "concessionPaise": zod.int(),
+  "paidPaise": zod.int(),
+  "balancePaise": zod.int(),
+  "dueDate": zod.string().nullish(),
+  "status": zod.enum(['paid', 'unpaid', 'partial'])
+})),
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int()
+})
+
+
+/**
+ * @summary Certificates issued log
+ */
+export const getCertificateLogQueryLimitDefault = 100;
+export const getCertificateLogQueryLimitMax = 200;
+
+export const getCertificateLogQueryOffsetDefault = 0;
+export const getCertificateLogQueryOffsetMin = 0;
+
+
+
+export const GetCertificateLogQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(getCertificateLogQueryLimitMax).default(getCertificateLogQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(getCertificateLogQueryOffsetMin).default(getCertificateLogQueryOffsetDefault)
+})
+
+export const GetCertificateLogResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.uuid(),
+  "studentName": zod.string(),
+  "admissionNo": zod.string().nullish(),
+  "kind": zod.enum(['tc', 'bonafide', 'study', 'character']),
+  "issuedBy": zod.string(),
+  "issuedAt": zod.coerce.date()
+})),
+  "total": zod.int(),
+  "limit": zod.int(),
+  "offset": zod.int()
+})
+
+
+/**
  * @summary Get role-scoped dashboard summary
  */
 export const getDashboardOverviewQueryAcademicYearMin = 4;

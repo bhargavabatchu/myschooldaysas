@@ -57,6 +57,7 @@ import type {
   CalendarEventInput,
   CalendarEventPage,
   CalendarWorkingDay,
+  CertificateLogPage,
   ChangePasswordInput,
   ClassCreateInput,
   ClassSummary,
@@ -77,6 +78,7 @@ import type {
   EnrollmentMoveResult,
   EnrollmentPromotionInput,
   EnrollmentTransferInput,
+  EnrollmentTrends,
   EnrollmentYearUpdateInput,
   FeeCollectionReport,
   FeeInvoice,
@@ -87,6 +89,7 @@ import type {
   FeeInvoicePage,
   FeePaymentResult,
   FeeReceipt,
+  FeesDueReport,
   GetAcademicTeacherAssignmentsParams,
   GetAdmissionEnquiriesParams,
   GetAnnouncementsParams,
@@ -94,17 +97,21 @@ import type {
   GetBoardTemplates200,
   GetCalendarParams,
   GetCalendarWorkingDayParams,
+  GetCertificateLogParams,
   GetClasses200,
   GetClassesParams,
   GetConsents200,
   GetDashboardOverviewParams,
+  GetEnrollmentTrendsParams,
   GetFeeCollectionsParams,
   GetFeeInvoicesParams,
+  GetFeesDueReportParams,
   GetGuardianLinksParams,
   GetLearningAssignmentsParams,
   GetLearningExamsParams,
   GetLearningReportCardsParams,
   GetLearningSyllabusParams,
+  GetPayrollParams,
   GetSchoolAdminAccountsParams,
   GetSchoolAttendanceParams,
   GetSchoolHighlightsParams,
@@ -161,6 +168,7 @@ import type {
   ManualFeePaymentResult,
   MySchoolAttendancePage,
   PasswordChangeResult,
+  PayrollPage,
   PromoteStudentsInput,
   PromotionResult,
   PublicAdmissionEnquiryInput,
@@ -168,6 +176,9 @@ import type {
   RestoreStudentEnrollmentInput,
   RestoreStudentEnrollmentResult,
   RevokeConsent200,
+  SalaryInput,
+  SalaryPaymentInput,
+  SalaryPaymentResult,
   SchoolAdminAccount,
   SchoolAdminAccountPage,
   SchoolAttendanceInput,
@@ -181,6 +192,7 @@ import type {
   SectionSubjectsUpdateInput,
   SectionSummary,
   SetAcademicEntityActivityInput,
+  SetStaffSalary200,
   StaffRecord,
   StaffRecordInput,
   StaffRecordsPage,
@@ -3630,6 +3642,720 @@ export const useUpdateStaffRecord = <TError = ErrorType<void>,
       > => {
       return useMutation(getUpdateStaffRecordMutationOptions(options), queryClient);
     }
+
+export const getGetPayrollUrl = (params: GetPayrollParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/identity/payroll?${stringifiedParams}` : `/api/identity/payroll`
+}
+
+/**
+ * @summary Monthly payroll list with salary and payment status
+ */
+export const getPayroll = async (params: GetPayrollParams, options?: Parameters<typeof customFetch>[1]): Promise<PayrollPage> => {
+
+  return customFetch<PayrollPage>(getGetPayrollUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPayrollQueryKey = (params?: GetPayrollParams,) => {
+    return [
+    `/api/identity/payroll`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPayrollQueryOptions = <TData = Awaited<ReturnType<typeof getPayroll>>, TError = ErrorType<unknown>>(params: GetPayrollParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPayroll>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPayrollQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPayroll>>> = ({ signal }) => getPayroll(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPayroll>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPayrollQueryResult = NonNullable<Awaited<ReturnType<typeof getPayroll>>>
+export type GetPayrollQueryError = ErrorType<unknown>
+
+
+/** @summary Monthly payroll list with salary and payment status */
+export function useGetPayroll<TData = Awaited<ReturnType<typeof getPayroll>>, TError = ErrorType<unknown>>(
+ params: GetPayrollParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPayroll>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPayroll>>,
+          TError,
+          Awaited<ReturnType<typeof getPayroll>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Monthly payroll list with salary and payment status */
+export function useGetPayroll<TData = Awaited<ReturnType<typeof getPayroll>>, TError = ErrorType<unknown>>(
+ params: GetPayrollParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPayroll>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPayroll>>,
+          TError,
+          Awaited<ReturnType<typeof getPayroll>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Monthly payroll list with salary and payment status */
+export function useGetPayroll<TData = Awaited<ReturnType<typeof getPayroll>>, TError = ErrorType<unknown>>(
+ params: GetPayrollParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPayroll>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Monthly payroll list with salary and payment status */
+export function useGetPayroll<TData = Awaited<ReturnType<typeof getPayroll>>, TError = ErrorType<unknown>>(
+ params: GetPayrollParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPayroll>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPayrollQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSetStaffSalaryUrl = (userId: string,) => {
+
+
+
+
+  return `/api/identity/payroll/${userId}/salary`
+}
+
+/**
+ * @summary Set a staff member's monthly salary
+ */
+export const setStaffSalary = async (userId: string,
+    salaryInput: SalaryInput, options?: Parameters<typeof customFetch>[1]): Promise<SetStaffSalary200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SetStaffSalary200>(getSetStaffSalaryUrl(userId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(salaryInput)
+  }
+);}
+
+
+
+
+
+export const getSetStaffSalaryMutationKey = () => ['setStaffSalary'] as const;
+
+export const getSetStaffSalaryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setStaffSalary>>, TError,SetStaffSalaryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setStaffSalary>>, TError,SetStaffSalaryMutationVariables, TContext> => {
+
+const mutationKey = getSetStaffSalaryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setStaffSalary>>, SetStaffSalaryMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  setStaffSalary(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetStaffSalaryMutationResult = NonNullable<Awaited<ReturnType<typeof setStaffSalary>>>
+    export type SetStaffSalaryMutationBody = BodyType<SalaryInput>
+    export type SetStaffSalaryMutationError = ErrorType<void>
+    export type SetStaffSalaryMutationVariables = {userId: string;data: BodyType<SalaryInput>}
+
+    /** @summary Set a staff member's monthly salary */
+export const useSetStaffSalary = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setStaffSalary>>, TError,SetStaffSalaryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setStaffSalary>>,
+        TError,
+        SetStaffSalaryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetStaffSalaryMutationOptions(options), queryClient);
+    }
+
+export const getRecordSalaryPaymentUrl = () => {
+
+
+
+
+  return `/api/identity/payroll/pay`
+}
+
+/**
+ * @summary Record (or update) a month's salary payment
+ */
+export const recordSalaryPayment = async (salaryPaymentInput: SalaryPaymentInput, options?: Parameters<typeof customFetch>[1]): Promise<SalaryPaymentResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SalaryPaymentResult>(getRecordSalaryPaymentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(salaryPaymentInput)
+  }
+);}
+
+
+
+
+
+export const getRecordSalaryPaymentMutationKey = () => ['recordSalaryPayment'] as const;
+
+export const getRecordSalaryPaymentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordSalaryPayment>>, TError,RecordSalaryPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordSalaryPayment>>, TError,RecordSalaryPaymentMutationVariables, TContext> => {
+
+const mutationKey = getRecordSalaryPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordSalaryPayment>>, RecordSalaryPaymentMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordSalaryPayment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordSalaryPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof recordSalaryPayment>>>
+    export type RecordSalaryPaymentMutationBody = BodyType<SalaryPaymentInput>
+    export type RecordSalaryPaymentMutationError = ErrorType<unknown>
+    export type RecordSalaryPaymentMutationVariables = {data: BodyType<SalaryPaymentInput>}
+
+    /** @summary Record (or update) a month's salary payment */
+export const useRecordSalaryPayment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordSalaryPayment>>, TError,RecordSalaryPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof recordSalaryPayment>>,
+        TError,
+        RecordSalaryPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordSalaryPaymentMutationOptions(options), queryClient);
+    }
+
+export const getGetPayrollPayslipUrl = (userId: string,
+    period: string,) => {
+
+
+
+
+  return `/api/identity/payroll/${userId}/payslip/${period}`
+}
+
+/**
+ * @summary Render a printable payslip (HTML)
+ */
+export const getPayrollPayslip = async (userId: string,
+    period: string, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getGetPayrollPayslipUrl(userId,period),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPayrollPayslipQueryKey = (userId: string,
+    period: string,) => {
+    return [
+    `/api/identity/payroll/${userId}/payslip/${period}`
+    ] as const;
+    }
+
+
+export const getGetPayrollPayslipQueryOptions = <TData = Awaited<ReturnType<typeof getPayrollPayslip>>, TError = ErrorType<void>>(userId: string,
+    period: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPayrollPayslip>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPayrollPayslipQueryKey(userId,period);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPayrollPayslip>>> = ({ signal }) => getPayrollPayslip(userId,period, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: userId !== null && userId !== undefined && period !== null && period !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPayrollPayslip>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPayrollPayslipQueryResult = NonNullable<Awaited<ReturnType<typeof getPayrollPayslip>>>
+export type GetPayrollPayslipQueryError = ErrorType<void>
+
+
+/** @summary Render a printable payslip (HTML) */
+export function useGetPayrollPayslip<TData = Awaited<ReturnType<typeof getPayrollPayslip>>, TError = ErrorType<void>>(
+ userId: string,
+    period: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPayrollPayslip>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPayrollPayslip>>,
+          TError,
+          Awaited<ReturnType<typeof getPayrollPayslip>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Render a printable payslip (HTML) */
+export function useGetPayrollPayslip<TData = Awaited<ReturnType<typeof getPayrollPayslip>>, TError = ErrorType<void>>(
+ userId: string,
+    period: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPayrollPayslip>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPayrollPayslip>>,
+          TError,
+          Awaited<ReturnType<typeof getPayrollPayslip>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Render a printable payslip (HTML) */
+export function useGetPayrollPayslip<TData = Awaited<ReturnType<typeof getPayrollPayslip>>, TError = ErrorType<void>>(
+ userId: string,
+    period: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPayrollPayslip>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Render a printable payslip (HTML) */
+export function useGetPayrollPayslip<TData = Awaited<ReturnType<typeof getPayrollPayslip>>, TError = ErrorType<void>>(
+ userId: string,
+    period: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPayrollPayslip>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPayrollPayslipQueryOptions(userId,period,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetEnrollmentTrendsUrl = (params?: GetEnrollmentTrendsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/enrollment-trends?${stringifiedParams}` : `/api/reports/enrollment-trends`
+}
+
+/**
+ * @summary Monthly joiners and leavers trend
+ */
+export const getEnrollmentTrends = async (params?: GetEnrollmentTrendsParams, options?: Parameters<typeof customFetch>[1]): Promise<EnrollmentTrends> => {
+
+  return customFetch<EnrollmentTrends>(getGetEnrollmentTrendsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEnrollmentTrendsQueryKey = (params?: GetEnrollmentTrendsParams,) => {
+    return [
+    `/api/reports/enrollment-trends`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetEnrollmentTrendsQueryOptions = <TData = Awaited<ReturnType<typeof getEnrollmentTrends>>, TError = ErrorType<unknown>>(params?: GetEnrollmentTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEnrollmentTrends>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEnrollmentTrendsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEnrollmentTrends>>> = ({ signal }) => getEnrollmentTrends(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEnrollmentTrends>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetEnrollmentTrendsQueryResult = NonNullable<Awaited<ReturnType<typeof getEnrollmentTrends>>>
+export type GetEnrollmentTrendsQueryError = ErrorType<unknown>
+
+
+/** @summary Monthly joiners and leavers trend */
+export function useGetEnrollmentTrends<TData = Awaited<ReturnType<typeof getEnrollmentTrends>>, TError = ErrorType<unknown>>(
+ params: undefined |  GetEnrollmentTrendsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEnrollmentTrends>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEnrollmentTrends>>,
+          TError,
+          Awaited<ReturnType<typeof getEnrollmentTrends>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Monthly joiners and leavers trend */
+export function useGetEnrollmentTrends<TData = Awaited<ReturnType<typeof getEnrollmentTrends>>, TError = ErrorType<unknown>>(
+ params?: GetEnrollmentTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEnrollmentTrends>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEnrollmentTrends>>,
+          TError,
+          Awaited<ReturnType<typeof getEnrollmentTrends>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Monthly joiners and leavers trend */
+export function useGetEnrollmentTrends<TData = Awaited<ReturnType<typeof getEnrollmentTrends>>, TError = ErrorType<unknown>>(
+ params?: GetEnrollmentTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEnrollmentTrends>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Monthly joiners and leavers trend */
+export function useGetEnrollmentTrends<TData = Awaited<ReturnType<typeof getEnrollmentTrends>>, TError = ErrorType<unknown>>(
+ params?: GetEnrollmentTrendsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEnrollmentTrends>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetEnrollmentTrendsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFeesDueReportUrl = (params?: GetFeesDueReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/fees-due?${stringifiedParams}` : `/api/reports/fees-due`
+}
+
+/**
+ * @summary Fee dues with paid/unpaid/partial filters
+ */
+export const getFeesDueReport = async (params?: GetFeesDueReportParams, options?: Parameters<typeof customFetch>[1]): Promise<FeesDueReport> => {
+
+  return customFetch<FeesDueReport>(getGetFeesDueReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFeesDueReportQueryKey = (params?: GetFeesDueReportParams,) => {
+    return [
+    `/api/reports/fees-due`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetFeesDueReportQueryOptions = <TData = Awaited<ReturnType<typeof getFeesDueReport>>, TError = ErrorType<unknown>>(params?: GetFeesDueReportParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeesDueReport>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFeesDueReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFeesDueReport>>> = ({ signal }) => getFeesDueReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFeesDueReport>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFeesDueReportQueryResult = NonNullable<Awaited<ReturnType<typeof getFeesDueReport>>>
+export type GetFeesDueReportQueryError = ErrorType<unknown>
+
+
+/** @summary Fee dues with paid/unpaid/partial filters */
+export function useGetFeesDueReport<TData = Awaited<ReturnType<typeof getFeesDueReport>>, TError = ErrorType<unknown>>(
+ params: undefined |  GetFeesDueReportParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeesDueReport>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeesDueReport>>,
+          TError,
+          Awaited<ReturnType<typeof getFeesDueReport>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Fee dues with paid/unpaid/partial filters */
+export function useGetFeesDueReport<TData = Awaited<ReturnType<typeof getFeesDueReport>>, TError = ErrorType<unknown>>(
+ params?: GetFeesDueReportParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeesDueReport>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeesDueReport>>,
+          TError,
+          Awaited<ReturnType<typeof getFeesDueReport>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Fee dues with paid/unpaid/partial filters */
+export function useGetFeesDueReport<TData = Awaited<ReturnType<typeof getFeesDueReport>>, TError = ErrorType<unknown>>(
+ params?: GetFeesDueReportParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeesDueReport>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Fee dues with paid/unpaid/partial filters */
+export function useGetFeesDueReport<TData = Awaited<ReturnType<typeof getFeesDueReport>>, TError = ErrorType<unknown>>(
+ params?: GetFeesDueReportParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeesDueReport>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFeesDueReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCertificateLogUrl = (params?: GetCertificateLogParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/certificates?${stringifiedParams}` : `/api/reports/certificates`
+}
+
+/**
+ * @summary Certificates issued log
+ */
+export const getCertificateLog = async (params?: GetCertificateLogParams, options?: Parameters<typeof customFetch>[1]): Promise<CertificateLogPage> => {
+
+  return customFetch<CertificateLogPage>(getGetCertificateLogUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCertificateLogQueryKey = (params?: GetCertificateLogParams,) => {
+    return [
+    `/api/reports/certificates`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCertificateLogQueryOptions = <TData = Awaited<ReturnType<typeof getCertificateLog>>, TError = ErrorType<unknown>>(params?: GetCertificateLogParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCertificateLog>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCertificateLogQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCertificateLog>>> = ({ signal }) => getCertificateLog(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCertificateLog>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCertificateLogQueryResult = NonNullable<Awaited<ReturnType<typeof getCertificateLog>>>
+export type GetCertificateLogQueryError = ErrorType<unknown>
+
+
+/** @summary Certificates issued log */
+export function useGetCertificateLog<TData = Awaited<ReturnType<typeof getCertificateLog>>, TError = ErrorType<unknown>>(
+ params: undefined |  GetCertificateLogParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCertificateLog>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCertificateLog>>,
+          TError,
+          Awaited<ReturnType<typeof getCertificateLog>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Certificates issued log */
+export function useGetCertificateLog<TData = Awaited<ReturnType<typeof getCertificateLog>>, TError = ErrorType<unknown>>(
+ params?: GetCertificateLogParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCertificateLog>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCertificateLog>>,
+          TError,
+          Awaited<ReturnType<typeof getCertificateLog>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Certificates issued log */
+export function useGetCertificateLog<TData = Awaited<ReturnType<typeof getCertificateLog>>, TError = ErrorType<unknown>>(
+ params?: GetCertificateLogParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCertificateLog>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Certificates issued log */
+export function useGetCertificateLog<TData = Awaited<ReturnType<typeof getCertificateLog>>, TError = ErrorType<unknown>>(
+ params?: GetCertificateLogParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCertificateLog>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCertificateLogQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetDashboardOverviewUrl = (params?: GetDashboardOverviewParams,) => {
   const normalizedParams = new URLSearchParams();

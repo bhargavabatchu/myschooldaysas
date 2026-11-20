@@ -570,6 +570,174 @@ export interface StaffRecordInput {
   joiningDate?: string | null;
 }
 
+export interface SalaryInput {
+  /** @minimum 0 */
+  monthlyAmountPaise: number;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  effectiveFrom?: string;
+}
+
+export type SalaryPaymentInputMode = typeof SalaryPaymentInputMode[keyof typeof SalaryPaymentInputMode];
+
+
+export const SalaryPaymentInputMode = {
+  bank: 'bank',
+  cash: 'cash',
+  cheque: 'cheque',
+  other: 'other',
+} as const;
+
+export interface SalaryPaymentInput {
+  userId: string;
+  /** @pattern ^\d{4}-\d{2}$ */
+  period: string;
+  /** @minimum 0 */
+  amountPaise: number;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  paidOn?: string;
+  mode: SalaryPaymentInputMode;
+  /**
+     * @maxLength 300
+     * @nullable
+     */
+  notes?: string | null;
+}
+
+export interface SalaryPaymentResult {
+  userId: string;
+  period: string;
+  amountPaise: number;
+  paidOn: string;
+  mode: string;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface PayrollRow {
+  userId: string;
+  name: string;
+  email: string;
+  roles: Role[];
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  employeeCode?: string | null;
+  /** @nullable */
+  monthlyAmountPaise?: number | null;
+  paid: boolean;
+  /** @nullable */
+  paidAmountPaise?: number | null;
+  /** @nullable */
+  paidOn?: string | null;
+  /** @nullable */
+  mode?: string | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface PayrollSummary {
+  staff: number;
+  withSalary: number;
+  paid: number;
+  unpaid: number;
+  totalMonthlyPaise: number;
+  paidPaise: number;
+}
+
+export interface PayrollPage {
+  period: string;
+  items: PayrollRow[];
+  summary: PayrollSummary;
+}
+
+export type EnrollmentTrendsSeriesItem = {
+  month: string;
+  joiners: number;
+  leavers: number;
+};
+
+export type EnrollmentTrendsReasons = {[key: string]: number};
+
+export interface EnrollmentTrends {
+  series: EnrollmentTrendsSeriesItem[];
+  reasons: EnrollmentTrendsReasons;
+  currentStrength: number;
+}
+
+export type FeeDueRowStatus = typeof FeeDueRowStatus[keyof typeof FeeDueRowStatus];
+
+
+export const FeeDueRowStatus = {
+  paid: 'paid',
+  unpaid: 'unpaid',
+  partial: 'partial',
+} as const;
+
+export interface FeeDueRow {
+  invoiceNumber: string;
+  studentName: string;
+  /** @nullable */
+  admissionNo?: string | null;
+  /** @nullable */
+  className?: string | null;
+  /** @nullable */
+  sectionName?: string | null;
+  academicYear: string;
+  period: string;
+  amountPaise: number;
+  concessionPaise: number;
+  paidPaise: number;
+  balancePaise: number;
+  /** @nullable */
+  dueDate?: string | null;
+  status: FeeDueRowStatus;
+}
+
+export type FeesDueReportSummary = {
+  paid: number;
+  unpaid: number;
+  partial: number;
+  outstanding: string;
+  billed: string;
+  collected: string;
+};
+
+export interface FeesDueReport {
+  summary: FeesDueReportSummary;
+  items: FeeDueRow[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export type CertificateLogPageItemsItemKind = typeof CertificateLogPageItemsItemKind[keyof typeof CertificateLogPageItemsItemKind];
+
+
+export const CertificateLogPageItemsItemKind = {
+  tc: 'tc',
+  bonafide: 'bonafide',
+  study: 'study',
+  character: 'character',
+} as const;
+
+export type CertificateLogPageItemsItem = {
+  id: string;
+  studentName: string;
+  /** @nullable */
+  admissionNo?: string | null;
+  kind: CertificateLogPageItemsItemKind;
+  issuedBy: string;
+  issuedAt: string;
+};
+
+export interface CertificateLogPage {
+  items: CertificateLogPageItemsItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface StaffRecord {
   userId: string;
   name: string;
@@ -2721,6 +2889,59 @@ export type GetSchoolAdminAccountsParams = {
   /**
    * @minimum 1
    * @maximum 100
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
+};
+
+export type GetPayrollParams = {
+  /** @pattern ^\d{4}-\d{2}$ */
+  month: string;
+};
+
+export type SetStaffSalary200 = {
+  userId: string;
+  monthlyAmountPaise: number;
+};
+
+export type GetEnrollmentTrendsParams = {
+  /**
+   * @minimum 1
+   * @maximum 36
+   */
+  months?: number;
+};
+
+export type GetFeesDueReportParams = {
+  /** @maxLength 24 */
+  academicYear?: string;
+  classId?: string;
+  sectionId?: string;
+  status?: GetFeesDueReportStatus;
+  /**
+   * @minimum 1
+   * @maximum 200
+   */
+  limit?: number;
+  /** @minimum 0 */
+  offset?: number;
+};
+
+export type GetFeesDueReportStatus = typeof GetFeesDueReportStatus[keyof typeof GetFeesDueReportStatus];
+
+
+export const GetFeesDueReportStatus = {
+  all: 'all',
+  paid: 'paid',
+  unpaid: 'unpaid',
+  partial: 'partial',
+} as const;
+
+export type GetCertificateLogParams = {
+  /**
+   * @minimum 1
+   * @maximum 200
    */
   limit?: number;
   /** @minimum 0 */

@@ -241,6 +241,13 @@ function renderTcHtml(data: {
           issuedBy: user.name,
           issuedOn: fmtDate(new Date()),
         });
+        await withOrg(user.orgId, (client) =>
+          client.query(
+            `INSERT INTO school.certificate_log (org_id, student_user_id, kind, actor_user_id, metadata)
+             VALUES ($1, $2, 'tc', $3, $4::jsonb)`,
+            [user.orgId, params.data.studentId, user.id, JSON.stringify({ admissionNo: withdrawnEnrollment.admission_no, tcNumber })],
+          ),
+        );
         res
           .type("text/html; charset=utf-8")
           .header("Cache-Control", "private, no-store")
@@ -316,6 +323,13 @@ function renderTcHtml(data: {
           issuedBy: user.name,
           issuedOn: fmtDate(new Date()),
         });
+        await withOrg(user.orgId, (client) =>
+          client.query(
+            `INSERT INTO school.certificate_log (org_id, student_user_id, kind, actor_user_id, metadata)
+             VALUES ($1, $2, $3, $4, $5::jsonb)`,
+            [user.orgId, parsed.data.studentId, parsed.data.kind, user.id, JSON.stringify({ admissionNo: record.current.admission_no })],
+          ),
+        );
         res
           .type("text/html; charset=utf-8")
           .header("Cache-Control", "private, no-store")
