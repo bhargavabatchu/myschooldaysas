@@ -19,7 +19,7 @@ import {
   ChevronLeft, ChevronRight, CircleAlert, Clock3, DoorOpen, GraduationCap, LayoutDashboard,
   Library, LoaderCircle, LogOut, Menu, Moon, Plus, Radio, Search, Settings2, ShieldCheck,
   Sun, Users, Video, X, CalendarCheck,
-  CreditCard, UserRound, KeyRound,
+  CreditCard, UserRound, KeyRound, ArrowRightLeft, Download,
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import NotFound from '@/components/not-found';
@@ -1046,7 +1046,21 @@ function ClassesPage({ roles }: { roles: string[] }) {
   );
 }
 
-function StudentsPage({ roles }: { roles: string[] }) {
+function downloadRowsCsv(filename: string, rows: (string | number | null)[][]) {
+  const escape = (value: string | number | null) => {
+    const text = String(value ?? "");
+    return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+  };
+  const csv = rows.map((row) => row.map(escape).join(",")).join("\r\n");
+  const url = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+  function StudentsPage({ roles }: { roles: string[] }) {
   const canManage = roles.some(role => ['super_admin', 'org_admin', 'campus_admin'].includes(role));
   const classes = useGetClasses();
   const sections = useGetSections();
@@ -1054,49 +1068,163 @@ function StudentsPage({ roles }: { roles: string[] }) {
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
+  const [statusTab, setStatusTab] = useState<'all' | 'enrolled' | 'withdrawn' | 'inactive'>('all');
+  const [yearFilter, setYearFilter] = useState('');
+  const [panel, setPanel] = useState<'none' | 'admission' | 'enroll' | 'lifecycle'>('none');
   const [profileStudentId, setProfileStudentId] = useState<string | null>(null);
-  const [includeArchived, setIncludeArchived] = useState(false);
   const visibleSections = useMemo(
     () => (sections.data?.items ?? []).filter(section => !classId || section.classId === classId),
     [classId, sections.data?.items],
   );
   const effectiveSection = canManage ? sectionId : sectionId || sections.data?.items[0]?.id || '';
-  const params = useMemo(() => ({
+  const baseParams = {
     ...(effectiveSection ? { sectionId: effectiveSection } : {}),
     ...(canManage && classId ? { classId } : {}),
-    ...(canManage && includeArchived ? { includeArchived: true } : {}),
-    limit: 20,
-    offset: page * 20,
     ...(search.trim() ? { q: search.trim() } : {}),
-  }), [canManage, classId, effectiveSection, includeArchived, page, search]);
+  };
+  const params = useMemo(() => ({
+    ...baseParams,
+    ...(canManage && statusTab !== 'enrolled' ? { includeArchived: true } : {}),
+    limit: pageSize,
+    offset: page * pageSize,
+  }), [canManage, classId, effectiveSection, statusTab, page, pageSize, search]);
   const students = useGetStudents(params, {
     query: { enabled: canManage || !!effectiveSection, queryKey: getGetStudentsQueryKey(params) },
   });
+  // Totals for the stat cards (lightweight queries, 1 row each).
+  const activeTotals = useGetStudents({ ...baseParams, limit: 1 }, {
+    query: { enabled: canManage || !!effectiveSection, queryKey: getGetStudentsQueryKey({ ...baseParams, limit: 1 }) },
+  });
+  const allTotals = useGetStudents({ ...baseParams, includeArchived: true, limit: 1 }, {
+    query: { enabled: canManage, queryKey: getGetStudentsQueryKey({ ...baseParams, includeArchived: true, limit: 1 }) },
+  });
+  const enrolledCount = canManage ? (activeTotals.data?.total ?? 0) : (students.data?.total ?? 0);
+  const allCount = canManage ? (allTotals.data?.total ?? 0) : (students.data?.total ?? 0);
+  const archivedRows = useGetStudents(
+    canManage && statusTab !== 'enrolled' ? { ...baseParams, includeArchived: true, limit: 200 } : { ...baseParams, limit: 1 },
+    { query: { enabled: canManage && statusTab !== 'enrolled', queryKey: ['students-archived-scan', statusTab, baseParams] } },
+  );
+  const withdrawnCount = canManage && statusTab !== 'enrolled'
+    ? (archivedRows.data?.items ?? []).filter(s => s.status === 'disabled' && s.endedReason === 'withdrawn').length
+    : 0;
+  const inactiveCount = canManage && statusTab !== 'enrolled'
+    ? (archivedRows.data?.items ?? []).filter(s => s.status === 'disabled' && s.endedReason !== 'withdrawn').length
+    : 0;
+  const totalCount = statusTab === 'all' ? allCount : statusTab === 'enrolled' ? enrolledCount : statusTab === 'withdrawn' ? withdrawnCount : inactiveCount;
   const filterError = sections.error || (canManage ? classes.error : null);
   const filtersLoading = sections.isLoading || (canManage && classes.isLoading);
-  return <div className="directory-page students-page"><PageHeading eyebrow="Academic directory" title={canManage ? "Student registry" : "Student roster"} description={canManage ? "Find and review students across every class and section." : "Find a student and review their current section."}/>
-    <div className="surface mb-5 flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-       <div className="relative min-w-[220px] flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={16}/><input aria-label="Search students" data-testid="input-search-students" className="field pl-9" placeholder={canManage ? "Search name, admission no., email, or guardian" : "Search by name or admission number"} value={search} onChange={e => { setSearch(e.target.value); setPage(0); setProfileStudentId(null); }}/></div>
-       {canManage && <label className="flex items-center gap-2 text-xs font-semibold"><span>Class</span><select data-testid="select-student-class" className="field min-w-[145px]" value={classId} onChange={e => { setClassId(e.target.value); setSectionId(''); setPage(0); setProfileStudentId(null); }}><option value="">All classes</option>{classes.data?.items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
-       <label className="flex items-center gap-2 text-xs font-semibold"><span>Section</span><select data-testid="select-student-section" className="field min-w-[150px]" value={effectiveSection} onChange={e => { setSectionId(e.target.value); setPage(0); setProfileStudentId(null); }}>{canManage ? <option value="">All sections</option> : <option value="">Choose section</option>}{visibleSections.map(s => <option key={s.id} value={s.id}>{s.className} · {s.name}</option>)}</select></label>
-        {canManage && <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={includeArchived} onChange={e => { setIncludeArchived(e.target.checked); setPage(0); setProfileStudentId(null); }} />Include withdrawn and inactive</label>}
+  const activeChips = [
+    ...(classId ? [{ label: `Class: ${classes.data?.items.find(c => c.id === classId)?.name ?? classId}`, clear: () => { setClassId(''); setPage(0); } }] : []),
+    ...(sectionId ? [{ label: `Section: ${visibleSections.find(s => s.id === sectionId)?.name ?? sectionId}`, clear: () => { setSectionId(''); setPage(0); } }] : []),
+    ...(statusTab !== 'all' ? [{ label: `Status: ${statusTab}`, clear: () => setStatusTab('all') }] : []),
+    ...(yearFilter ? [{ label: `Year: ${yearFilter}`, clear: () => setYearFilter('') }] : []),
+    ...(search.trim() ? [{ label: `Search: ${search.trim()}`, clear: () => setSearch('') }] : []),
+  ];
+  const rows = (students.data?.items ?? []).filter(student => {
+    if (yearFilter && student.academicYear !== yearFilter) return false;
+    if (statusTab === 'withdrawn' && !(student.status === 'disabled' && student.endedReason === 'withdrawn')) return false;
+    if (statusTab === 'inactive' && !(student.status === 'disabled' && student.endedReason !== 'withdrawn')) return false;
+    return true;
+  });
+  const exportCsv = () => downloadRowsCsv(`students-${statusTab}.csv`, [
+    ['Student', 'Admission No.', 'Class', 'Section', 'Academic Year', 'Status'],
+    ...rows.map(s => [s.name, s.admissionNo, s.className ?? '', s.sectionName, s.academicYear, s.status === 'active' ? 'Enrolled' : (s.endedReason ?? 'Inactive')]),
+  ]);
+  const tabButton = (kind: typeof statusTab, label: string, count: number) => (
+    <button type="button" className={`students-tab ${statusTab === kind ? 'students-tab-active' : ''}`} onClick={() => { setStatusTab(kind); setPage(0); }}>
+      {label} ({count})
+    </button>
+  );
+  return <div className="directory-page students-page">
+    <div className="students-v2-header">
+      <div className="students-v2-title-wrap">
+        <span className="students-v2-title-icon"><GraduationCap size={26} strokeWidth={1.7} /></span>
+        <div>
+          <h1 className="students-v2-title">Student Management</h1>
+          <p className="students-v2-sub">{canManage ? 'Academic directory · Find, manage and view student records across the school.' : 'Class roster · Find and review students in your section.'}</p>
+        </div>
+      </div>
+      {canManage && academicYears.data?.items.length ? (
+        <label className="students-v2-year">
+          Academic Year
+          <select className="field" value={yearFilter} onChange={e => { setYearFilter(e.target.value); setPage(0); }}>
+            <option value="">All years</option>
+            {academicYears.data.items.map(y => <option key={y.academicYear} value={y.academicYear}>{y.academicYear}{y.status === 'current' ? ' (Current)' : ''}</option>)}
+          </select>
+        </label>
+      ) : null}
     </div>
-    {canManage && sections.data && (sections.data.items.length ? <>
-      <AdmissionIntake sections={sections.data.items}/>
-      <EnrollmentForm sections={sections.data.items}/>
-      {students.data && classes.data && <EnrollmentLifecycle sections={sections.data.items} classes={classes.data.items} students={students.data.items}/>}
-    </> : <div className="surface mb-5 flex flex-wrap items-center justify-between gap-3 p-4">
-      <div><h2 className="m-0 text-sm font-bold">Set up a class before adding students</h2><p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Create a class and its first section so new students can be enrolled.</p></div>
-      <Link href="/admin/classes" className="btn btn-primary min-h-9">Set up classes</Link>
-    </div>)}
-     {filtersLoading ? <div className="skeleton h-48"/> : filterError ? <QueryState loading={false} error={filterError} empty={false} retry={() => { sections.refetch(); if (canManage) classes.refetch(); }}><></></QueryState> :
-       !canManage && !effectiveSection ? <InlineEmpty text="No sections are available to display students."/> :
+
+    {canManage && <div className="students-v2-stats">
+      <div className="students-v2-stat"><span className="students-v2-stat-icon v2-green"><Users size={18} /></span><div><span>Total Students</span><strong>{allCount}</strong></div><em className="v2-chip-green">{allCount ? Math.round((enrolledCount / Math.max(1, allCount)) * 100) + '%' : '—'}</em></div>
+      <div className="students-v2-stat"><span className="students-v2-stat-icon v2-green"><Check size={18} /></span><div><span>Enrolled</span><strong>{enrolledCount}</strong></div></div>
+      <div className="students-v2-stat"><span className="students-v2-stat-icon v2-amber"><UserRound size={18} /></span><div><span>Withdrawn</span><strong>{withdrawnCount}</strong></div></div>
+      <div className="students-v2-stat"><span className="students-v2-stat-icon v2-red"><Activity size={18} /></span><div><span>Inactive</span><strong>{inactiveCount}</strong></div></div>
+    </div>}
+
+    {canManage && <div className="students-v2-actions">
+      <button type="button" className={`students-v2-action ${panel === 'admission' ? 'students-v2-action-primary' : ''}`} onClick={() => setPanel(panel === 'admission' ? 'none' : 'admission')}>
+        <Plus size={18} /><span><strong>New Student Admission</strong><small>Register one or multiple students</small></span>
+      </button>
+      <button type="button" className={`students-v2-action ${panel === 'enroll' ? 'students-v2-action-primary' : ''}`} onClick={() => setPanel(panel === 'enroll' ? 'none' : 'enroll')}>
+        <UserRound size={18} /><span><strong>Enroll a Student</strong><small>Assign existing student to a class</small></span>
+      </button>
+      <button type="button" className={`students-v2-action ${panel === 'lifecycle' ? 'students-v2-action-primary' : ''}`} onClick={() => setPanel(panel === 'lifecycle' ? 'none' : 'lifecycle')}>
+        <ArrowRightLeft size={18} /><span><strong>Transfer Student</strong><small>Move between classes or sections</small></span>
+      </button>
+      <button type="button" className={`students-v2-action ${panel === 'lifecycle' ? 'students-v2-action-primary' : ''}`} onClick={() => setPanel(panel === 'lifecycle' ? 'none' : 'lifecycle')}>
+        <GraduationCap size={18} /><span><strong>Promote Students</strong><small>Promote an entire class to next year</small></span>
+      </button>
+    </div>}
+
+    {canManage && panel === 'admission' && sections.data && (
+      <section className="surface p-5 md:p-6"><AdmissionIntake sections={sections.data.items} /></section>
+    )}
+    {canManage && panel === 'enroll' && sections.data && (
+      <section className="surface p-5 md:p-6"><EnrollmentForm sections={sections.data.items} /></section>
+    )}
+    {canManage && panel === 'lifecycle' && sections.data && students.data && classes.data && (
+      <section className="surface p-5 md:p-6"><EnrollmentLifecycle sections={sections.data.items} classes={classes.data.items} students={students.data.items} /></section>
+    )}
+
+    {canManage && sections.data && !sections.data.items.length && (
+      <div className="surface mb-1 flex flex-wrap items-center justify-between gap-3 p-4">
+        <div><h2 className="m-0 text-sm font-bold">Set up a class before adding students</h2><p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Create a class and its first section so new students can be enrolled.</p></div>
+        <Link href="/admin/classes" className="btn btn-primary min-h-9">Set up classes</Link>
+      </div>
+    )}
+
+    {filtersLoading ? <div className="skeleton h-48" /> : filterError ? <QueryState loading={false} error={filterError} empty={false} retry={() => { sections.refetch(); if (canManage) classes.refetch(); }}><></></QueryState> :
+      !canManage && !effectiveSection ? <InlineEmpty text="No sections are available to display students." /> :
       <QueryState loading={students.isLoading} error={students.error} empty={!students.data?.items.length} retry={() => students.refetch()}>
-         {students.data && <div className="surface overflow-hidden">
-           <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-4"><div className="text-xs font-bold">{students.data.total} students</div><div className="text-[11px] text-[hsl(var(--muted-foreground))">{canManage ? "School-wide registry" : "Section roster"}</div></div>
-              <div className="overflow-x-auto"><table className="w-full min-w-[1000px] text-left"><thead className="bg-[hsl(var(--muted))] text-[10px] uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]"><tr><th className="px-4 py-3">Student</th><th className="px-4 py-3">Admission no.</th><th className="px-4 py-3">Class</th><th className="px-4 py-3">Section</th><th className="px-4 py-3">Academic year</th><th className="px-4 py-3">Status</th>{canManage && <th className="px-4 py-3">Profile</th>}</tr></thead><tbody>{students.data.items.map(student => <tr key={student.enrollmentId} data-testid={`student-row-${student.id}`} className="border-t border-[hsl(var(--border))]"><td className="px-4 py-3"><div className="flex items-center gap-3"><div className="grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--secondary))] text-xs font-bold text-[hsl(var(--primary))]">{student.name.slice(0,1).toUpperCase()}</div><span className="text-xs font-bold">{student.name}</span></div></td><td className="px-4 py-3 text-xs text-[hsl(var(--muted-foreground))]">{student.admissionNo}</td><td className="px-4 py-3 text-xs">{student.className ?? '—'}</td><td className="px-4 py-3 text-xs">{student.sectionName}</td><td className="px-4 py-3">{canManage && student.status === "active" ? <EnrollmentYearField enrollmentId={student.enrollmentId} academicYear={student.academicYear} items={academicYears.data?.items ?? []} loading={academicYears.isLoading} error={academicYears.isError}/> : <span className="text-xs">{student.academicYear}</span>}</td><td className="px-4 py-3"><StudentRegistryStatusTag status={student.status} endedReason={student.endedReason}/></td>{canManage && <td className="px-4 py-3"><button type="button" className="btn btn-muted min-h-8 px-3 text-[10px]" aria-expanded={profileStudentId === student.id} onClick={() => setProfileStudentId(current => current === student.id ? null : student.id)}>{profileStudentId === student.id ? "Close" : "Edit profile"}</button></td>}</tr>)}</tbody></table></div>
-          <div className="flex items-center justify-between border-t border-[hsl(var(--border))] px-4 py-3"><span className="text-[11px] text-[hsl(var(--muted-foreground))">Showing {students.data.total ? page * 20 + 1 : 0}–{Math.min((page + 1) * 20, students.data.total)} of {students.data.total}</span><div className="flex gap-2"><button data-testid="button-students-prev" disabled={page === 0} className="btn btn-muted min-h-8 px-2" onClick={() => setPage(p => p - 1)}><ChevronLeft size={16}/><span className="desktop-only">Previous</span></button><button data-testid="button-students-next" disabled={(page + 1) * 20 >= students.data.total} className="btn btn-muted min-h-8 px-2" onClick={() => setPage(p => p + 1)}><span className="desktop-only">Next</span><ChevronRight size={16}/></button></div></div>
+        {students.data && <div className="surface students-v2-directory">
+          <div className="students-v2-directory-head">
+            <h2 className="students-v2-directory-title">Student Directory</h2>
+            <div className="students-v2-tabs">
+              {tabButton('all', 'All Students', allCount)}
+              {tabButton('enrolled', 'Enrolled', enrolledCount)}
+              {canManage && tabButton('withdrawn', 'Withdrawn', withdrawnCount)}
+              {canManage && tabButton('inactive', 'Inactive', inactiveCount)}
+            </div>
+            {canManage && <button type="button" className="btn btn-muted min-h-8 px-3 text-xs" onClick={exportCsv}><Download size={13} /> Export</button>}
+          </div>
+          <div className="students-v2-filters">
+            <div className="relative min-w-[220px] flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={16} /><input aria-label="Search students" data-testid="input-search-students" className="field pl-9" placeholder="Search by name, admission no., email…" value={search} onChange={e => { setSearch(e.target.value); setPage(0); setProfileStudentId(null); }} /></div>
+            {canManage && <label className="students-v2-filter"><span>Class</span><select data-testid="select-student-class" className="field" value={classId} onChange={e => { setClassId(e.target.value); setSectionId(''); setPage(0); setProfileStudentId(null); }}><option value="">All Classes</option>{classes.data?.items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+            <label className="students-v2-filter"><span>Section</span><select data-testid="select-student-section" className="field" value={effectiveSection} onChange={e => { setSectionId(e.target.value); setPage(0); setProfileStudentId(null); }}>{canManage ? <option value="">All Sections</option> : <option value="">Choose section</option>}{visibleSections.map(s => <option key={s.id} value={s.id}>{s.className} · {s.name}</option>)}</select></label>
+          </div>
+          {activeChips.length > 0 && <div className="students-v2-chips">
+            <span>Active filters:</span>
+            {activeChips.map(chip => <button key={chip.label} type="button" className="students-v2-chip" onClick={chip.clear}>{chip.label} <X size={11} /></button>)}
+            <button type="button" className="students-v2-clear" onClick={() => { setClassId(''); setSectionId(''); setStatusTab('all'); setYearFilter(''); setSearch(''); setPage(0); }}>Clear All</button>
+            <span className="students-v2-found">{rows.length} students found</span>
+          </div>}
+          <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left"><thead className="bg-[hsl(var(--muted))] text-[10px] uppercase tracking-[.12em] text-[hsl(var(--muted-foreground))]"><tr><th className="px-4 py-3">Student</th><th className="px-4 py-3">Admission No.</th><th className="px-4 py-3">Class</th><th className="px-4 py-3">Section</th><th className="px-4 py-3">Academic Year</th><th className="px-4 py-3">Status</th>{canManage && <th className="px-4 py-3">Actions</th>}</tr></thead><tbody>{rows.map(student => <tr key={student.enrollmentId} data-testid={`student-row-${student.id}`} className="border-t border-[hsl(var(--border))]"><td className="px-4 py-3"><div className="flex items-center gap-3"><div className="grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--secondary))] text-xs font-bold text-[hsl(var(--primary))]">{student.name.slice(0,1).toUpperCase()}</div><span className="text-xs font-bold">{student.name}</span></div></td><td className="px-4 py-3 text-xs text-[hsl(var(--muted-foreground))]">{student.admissionNo}</td><td className="px-4 py-3 text-xs">{student.className ?? '—'}</td><td className="px-4 py-3 text-xs">{student.sectionName}</td><td className="px-4 py-3">{canManage && student.status === "active" ? <EnrollmentYearField enrollmentId={student.enrollmentId} academicYear={student.academicYear} items={academicYears.data?.items ?? []} loading={academicYears.isLoading} error={academicYears.isError}/> : <span className="text-xs">{student.academicYear}</span>}</td><td className="px-4 py-3"><StudentRegistryStatusTag status={student.status} endedReason={student.endedReason}/></td>{canManage && <td className="px-4 py-3"><button type="button" className="btn btn-muted min-h-8 px-3 text-[10px]" aria-expanded={profileStudentId === student.id} onClick={() => setProfileStudentId(current => current === student.id ? null : student.id)}>{profileStudentId === student.id ? "Close" : "Edit profile"}</button></td>}</tr>)}</tbody></table></div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[hsl(var(--border))] px-4 py-3"><span className="text-[11px] text-[hsl(var(--muted-foreground))">Showing {students.data.total ? page * pageSize + 1 : 0}–{Math.min((page + 1) * pageSize, students.data.total)} of {students.data.total}</span><div className="flex items-center gap-2"><label className="text-[11px] text-[hsl(var(--muted-foreground))]">Rows per page:
+            <select className="field ml-1 min-h-8" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(0); }}><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option></select>
+          </label><button data-testid="button-students-prev" disabled={page === 0} className="btn btn-muted min-h-8 px-2" onClick={() => setPage(p => p - 1)}><ChevronLeft size={16}/><span className="desktop-only">Previous</span></button><button data-testid="button-students-next" disabled={(page + 1) * pageSize >= students.data.total} className="btn btn-muted min-h-8 px-2" onClick={() => setPage(p => p + 1)}><span className="desktop-only">Next</span><ChevronRight size={16}/></button></div></div>
         </div>}
       </QueryState>}
     {canManage && profileStudentId && <StudentProfileEditor studentId={profileStudentId} onClose={() => setProfileStudentId(null)}/>}

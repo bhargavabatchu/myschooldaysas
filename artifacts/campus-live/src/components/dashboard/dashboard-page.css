@@ -1203,3 +1203,53 @@
   .dashboard-student-row { grid-template-columns: 30px minmax(0, 1fr) auto; }
   .dashboard-student-class { display: none; }
 }
+
+/* ===== Student Management v2 (reference-style directory) ===== */
+.students-v2-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+.students-v2-title-wrap { display: flex; align-items: center; gap: 14px; }
+.students-v2-title-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; background: #173e38; color: #f0e9d8; }
+.students-v2-title { font-family: Manrope, sans-serif; font-size: clamp(22px, 3vw, 30px); font-weight: 800; margin: 0; }
+.students-v2-sub { margin: 4px 0 0; font-size: 12.5px; color: #7d877f; }
+.students-v2-year { display: grid; gap: 4px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #7d877f; }
+.students-v2-year .field { min-height: 40px; min-width: 210px; font-weight: 700; color: #173e38; }
+
+.students-v2-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.students-v2-stat { display: flex; align-items: center; gap: 12px; background: #fffdf8; border: 1px solid #e3e1d8; border-radius: 14px; padding: 14px 16px; position: relative; }
+.students-v2-stat > div { display: flex; flex-direction: column; }
+.students-v2-stat span { font-size: 11px; font-weight: 600; color: #7d877f; }
+.students-v2-stat strong { font-family: Manrope, sans-serif; font-size: 24px; font-weight: 800; }
+.students-v2-stat-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; }
+.students-v2-stat-icon.v2-green { background: #e9f2ee; color: #2e8b70; }
+.students-v2-stat-icon.v2-amber { background: #fdf1dc; color: #b08a3e; }
+.students-v2-stat-icon.v2-red { background: #f9e9e7; color: #b94f47; }
+.v2-chip-green { font-style: normal; font-size: 10.5px; font-weight: 800; color: #2e8b70; background: #e9f2ee; border-radius: 999px; padding: 3px 9px; margin-left: auto; }
+
+.students-v2-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0 0 12px; }
+.students-v2-action { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 1px solid #e3e1d8; background: #fffdf8; cursor: pointer; text-align: left; font-family: inherit; color: #23352f; transition: border-color .15s, background .15s; }
+.students-v2-action:hover { border-color: #173e38; background: #f4f6f2; }
+.students-v2-action strong { display: block; font-size: 13px; }
+.students-v2-action small { display: block; margin-top: 2px; font-size: 11px; color: #7d877f; }
+.students-v2-action-primary { background: #173e38; border-color: #173e38; color: #f6f3e9; }
+.students-v2-action-primary small { color: rgba(246, 243, 233, .7); }
+.students-v2-action-primary:hover { background: #1f5247; }
+
+.students-v2-directory-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 16px 16px 8px; }
+.students-v2-directory-title { font-family: Manrope, sans-serif; font-size: 17px; font-weight: 800; margin: 0; }
+.students-v2-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.students-tab { border: 1px solid #e3e1d8; background: #f7f5ef; color: #55685f; font-weight: 700; font-size: 12px; border-radius: 999px; padding: 7px 14px; cursor: pointer; font-family: inherit; }
+.students-tab-active { background: #173e38; border-color: #173e38; color: #f6f3e9; }
+.students-v2-filters { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 16px 12px; }
+.students-v2-filter { display: grid; gap: 3px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #7d877f; }
+.students-v2-filter .field { min-width: 150px; min-height: 38px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.students-v2-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 16px 12px; font-size: 12px; color: #55685f; }
+.students-v2-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #d9d3c1; background: #f4f6f2; border-radius: 999px; padding: 4px 10px; font-size: 11.5px; font-weight: 700; color: #23352f; cursor: pointer; font-family: inherit; }
+.students-v2-clear { background: none; border: none; color: #2e8b70; font-weight: 700; font-size: 12px; cursor: pointer; font-family: inherit; }
+.students-v2-found { margin-left: auto; font-size: 11.5px; color: #7d877f; }
+
+@media (max-width: 1023px) {
+  .students-v2-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .students-v2-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 639px) {
+  .students-v2-stats, .students-v2-actions { grid-template-columns: 1fr; }
+}
