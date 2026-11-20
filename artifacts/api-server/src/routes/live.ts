@@ -1,6 +1,15 @@
 import { createHash } from "node:crypto";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { AccessToken, RoomServiceClient, TrackSource, WebhookReceiver } from "livekit-server-sdk";
+
+// Server-to-LiveKit API base URL. Prefers an explicit https internal URL;
+// derives it from the public wss URL when only that is configured.
+function liveKitServerUrl(): string | null {
+  const internal = process.env.LIVEKIT_INTERNAL_URL;
+  if (internal && internal.startsWith("https://")) return internal.replace(/\/+$/, "");
+  const publicUrl = process.env.LIVEKIT_PUBLIC_URL?.replace(/\/+$/, "");
+  return publicUrl ? publicUrl.replace(/^wss:/, "https:") : null;
+}
 import { z } from "zod";
 import type { PoolClient, QueryResult } from "@workspace/db";
 import { CreateSessionBody } from "@workspace/api-zod";
@@ -282,9 +291,16 @@ router.post("/live/sessions/:sessionId/end", requireAuth, async (req, res, next)
       "SELECT id FROM board.boards WHERE org_id = $1 AND session_id = $2", [user.orgId, sessionId],
     ));
     if (boards.rows[0]) closeBoardConnections(boards.rows[0].id);
-    if (process.env.LIVEKIT_PUBLIC_URL && process.env.LIVEKIT_INTERNAL_URL && process.env.LIVEKIT_API_KEY && process.env.LIVEKIT_API_SECRET) {
-      await new RoomServiceClient(process.env.LIVEKIT_INTERNAL_URL, process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, { requestTimeout: 8 })
-        .deleteRoom(classroomRoom(user.orgId, sessionId));
+    const serverUrl = liveKitServerUrl();
+    if (serverUrl && process.env.LIVEKIT_API_KEY && process.env.LIVEKIT_API_SECRET) {
+      // Ending the class must always succeed; room deletion (which removes
+      // every participant) is best-effort so a LiveKit hiccup never blocks it.
+      try {
+        await new RoomServiceClient(serverUrl, process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, { requestTimeout: 8 })
+          .deleteRoom(classroomRoom(user.orgId, sessionId));
+      } catch (error) {
+        req.log.warn({ err: error, sessionId }, "LiveKit room deletion failed after session end");
+      }
     }
     if (!session) return void res.status(404).json(errorBody("NOT_FOUND", "Live class not found."));
     res.json(serializeSessions([session])[0]);
@@ -431,6 +447,15 @@ router.post("/live/sessions/:sessionId/token", requireAuth, async (req, res, nex
     }
     const roomName = classroomRoom(user.orgId, sessionId);
     const grants = mediaGrants(access.role, access.settings?.chatEnabled !== false);
+    if (access.role === "student") {
+      const mic = await withOrg(user.orgId, (client) =>
+        client.query<{ can_publish: boolean }>(
+          "SELECT can_publish FROM live.session_mic_permissions WHERE org_id = $1 AND session_id = $2 AND user_id = $3",
+          [user.orgId, sessionId, user.id],
+        ),
+      );
+      grants.canPublish = mic.rows[0]?.can_publish === true;
+    }
     const token = new AccessToken(apiKey, apiSecret, { identity: user.id, name: user.name, ttl: "1h" });
     token.metadata = JSON.stringify({ role: access.role });
     token.addGrant({ roomJoin: true, room: roomName, ...grants });
@@ -447,8 +472,8 @@ router.post("/live/sessions/:sessionId/participants/:userId/permissions", requir
   try {
     await withOrg(user.orgId, async client => {
       const access = await classroomAccess(client, user, req.params.sessionId);
-      if (access.role !== "teacher" || access.status !== "live") {
-        throw Object.assign(new Error("Only teaching staff may change microphone permissions."), { status: 403, code: "FORBIDDEN" });
+      if ((!access.role || (access.role !== "teacher" && !access.canManage)) || access.status !== "live") {
+        throw Object.assign(new Error("Only the host or teaching staff may change microphone permissions."), { status: 403, code: "FORBIDDEN" });
       }
       const student = await client.query(
         `SELECT 1 FROM live.session_sections ss JOIN academic.enrollments e
@@ -457,14 +482,78 @@ router.post("/live/sessions/:sessionId/participants/:userId/permissions", requir
         [user.orgId, access.id, req.params.userId],
       );
       if (!student.rowCount) throw Object.assign(new Error("Only an enrolled student may receive a microphone grant."), { status: 403, code: "FORBIDDEN" });
-      const { LIVEKIT_INTERNAL_URL: url, LIVEKIT_API_KEY: key, LIVEKIT_API_SECRET: secret, LIVEKIT_PUBLIC_URL: publicUrl } = process.env;
-      if (!url || !key || !secret || !publicUrl) throw Object.assign(new Error("Live media is not configured."), { status: 503, code: "REALTIME_UNAVAILABLE" });
-      await new RoomServiceClient(url, key, secret, { requestTimeout: 8 }).updateParticipant(
-        classroomRoom(user.orgId, access.id), req.params.userId,
-        { permission: { canPublish: parsed.data.canPublish, canPublishSources: [TrackSource.MICROPHONE] } },
+      // Persist first: the state is authoritative for token minting, so the
+      // permission survives reconnection even if the LiveKit call fails.
+      await client.query(
+        `INSERT INTO live.session_mic_permissions (org_id, session_id, user_id, can_publish)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (org_id, session_id, user_id) DO UPDATE SET
+           can_publish = EXCLUDED.can_publish, updated_at = now()`,
+        [user.orgId, access.id, req.params.userId, parsed.data.canPublish],
       );
+      const serverUrl = liveKitServerUrl();
+      const { LIVEKIT_API_KEY: key, LIVEKIT_API_SECRET: secret, LIVEKIT_PUBLIC_URL: publicUrl } = process.env;
+      if (!serverUrl || !key || !secret || !publicUrl) throw Object.assign(new Error("Live media is not configured."), { status: 503, code: "REALTIME_UNAVAILABLE" });
+      try {
+        await new RoomServiceClient(serverUrl, key, secret, { requestTimeout: 8 }).updateParticipant(
+          classroomRoom(user.orgId, access.id), req.params.userId,
+          { permission: { canPublish: parsed.data.canPublish, canPublishSources: [TrackSource.MICROPHONE] } },
+        );
+      } catch {
+        // Best effort: students not currently in the room simply get the
+        // persisted permission applied when they join.
+      }
     });
     res.json({ userId: req.params.userId, canPublish: parsed.data.canPublish });
+  } catch (error) { next(error); }
+});
+
+router.post("/live/sessions/:sessionId/participants/permissions-all", requireAuth, async (req, res, next) => {
+  const user = req.campusUser!;
+  const parsed = z.object({ canPublish: z.boolean() }).strict().safeParse(req.body);
+  if (!parsed.success) return void res.status(400).json(errorBody("INVALID_REQUEST", "Provide a microphone permission."));
+  try {
+    const affected = await withOrg(user.orgId, async client => {
+      const access = await classroomAccess(client, user, req.params.sessionId);
+      if ((!access.role || (access.role !== "teacher" && !access.canManage)) || access.status !== "live") {
+        throw Object.assign(new Error("Only the host or teaching staff may change microphone permissions."), { status: 403, code: "FORBIDDEN" });
+      }
+      const students = await client.query<{ student_user_id: string }>(
+        `SELECT DISTINCT e.student_user_id
+           FROM live.session_sections ss JOIN academic.enrollments e
+           ON e.org_id = ss.org_id AND e.section_id = ss.section_id
+          WHERE ss.org_id = $1 AND ss.session_id = $2 AND e.status = 'active'`,
+        [user.orgId, access.id],
+      );
+      for (const row of students.rows) {
+        await client.query(
+          `INSERT INTO live.session_mic_permissions (org_id, session_id, user_id, can_publish)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (org_id, session_id, user_id) DO UPDATE SET
+             can_publish = EXCLUDED.can_publish, updated_at = now()`,
+          [user.orgId, access.id, row.student_user_id, parsed.data.canPublish],
+        );
+      }
+      return students.rows.map((row) => row.student_user_id);
+    });
+    // Best-effort live updates for students already in the room.
+    const serverUrl = liveKitServerUrl();
+    const { LIVEKIT_API_KEY: key, LIVEKIT_API_SECRET: secret } = process.env;
+    if (serverUrl && key && secret) {
+      const svc = new RoomServiceClient(serverUrl, key, secret, { requestTimeout: 8 });
+      const roomName = classroomRoom(user.orgId, req.params.sessionId);
+      let participants: Array<{ identity?: string }> = [];
+      try { participants = await svc.listParticipants(roomName); } catch { /* room may be empty */ }
+      for (const participant of participants) {
+        if (participant.identity === user.id) continue;
+        try {
+          await svc.updateParticipant(roomName, participant.identity ?? "", {
+            permission: { canPublish: parsed.data.canPublish, canPublishSources: [TrackSource.MICROPHONE] },
+          });
+        } catch { /* skip participants that leave mid-operation */ }
+      }
+    }
+    res.json({ appliedTo: affected.length, canPublish: parsed.data.canPublish });
   } catch (error) { next(error); }
 });
 

@@ -59,6 +59,7 @@ live:001|services/live/migrations/001_live.sql
 board:001|services/board/migrations/001_board.sql
 board:002|services/board/migrations/002_realtime.sql
 live:002|services/live/migrations/002_classroom.sql
+live:003|services/live/migrations/003_mic_permissions.sql
 learning:001|services/learning/migrations/001_learning.sql
 learning:002|services/learning/migrations/002_report_cards.sql
 learning:003|services/learning/migrations/003_syllabus.sql

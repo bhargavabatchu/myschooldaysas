@@ -70,7 +70,9 @@ export async function classroomAccess(
   if (!row) throw Object.assign(new Error("Classroom not found."), { status: 404, code: "NOT_FOUND" });
   const admin = user.roles.some((role) => ["super_admin", "org_admin", "campus_admin"].includes(role));
   const teacher = user.roles.some((role) => ["teacher", "class_teacher", "hod"].includes(role));
-  const owner = teacher && row.teacher_user_id === user.id;
+  // Whoever the session is assigned to is the host — including administrator
+  // accounts that scheduled the class — and hosts always get teacher controls.
+  const owner = row.teacher_user_id === user.id;
   const assigned = teacher && row.assigned_teacher;
   const parent = canParentViewLiveClassroom(
     user.roles.includes("parent"),

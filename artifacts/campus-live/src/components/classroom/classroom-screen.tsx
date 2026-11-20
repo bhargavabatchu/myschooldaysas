@@ -115,6 +115,26 @@ function Room_({ info, sessionId }: { info: Info; sessionId: string }) {
       }
     }
   }, [audioOnly, people]);
+  const microphoneGrantAll = async (canPublish: boolean) => {
+    setCtlErr(null);
+    try {
+      const response = await fetch(`/api/live/sessions/${encodeURIComponent(sessionId)}/participants/permissions-all`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAccessToken() ?? ''}` },
+        body: JSON.stringify({ canPublish }),
+      });
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(body.error?.message ?? 'Could not update microphone permissions.');
+      }
+      for (const participant of remotes) {
+        if (participant.identity) {
+          // LiveKit pushes the permission change to the participant; the UI
+          // picks it up via the ParticipantPermissionsChanged event.
+        }
+      }
+    } catch (cause) { setCtlErr(cause instanceof Error ? cause.message : 'Could not update microphone permissions.'); }
+  };
+
   const microphoneGrant = async (participant: RemoteParticipant) => {
     setCtlErr(null);
     try {
@@ -157,7 +177,7 @@ function Room_({ info, sessionId }: { info: Info; sessionId: string }) {
         </div>
         {isTeacher && remotes.length > 0 && info.session.status !== 'ended' && <div className={`${panel} p-3`}><div className="mb-2 text-xs font-bold">Drawing access</div>
           <ul className="m-0 list-none space-y-1 p-0">{remotes.map(p => { const on = !!board.grants[p.identity]; return <li key={p.identity} className="flex items-center gap-2 text-xs"><span className="min-w-0 flex-1 truncate">{p.name || p.identity}</span><button aria-pressed={on} onClick={() => board.sendGrant(p.identity, !on)} className={`rounded-lg px-3 py-2 text-[11px] font-bold ${on ? 'bg-[hsl(var(--classroom-ready))] text-[hsl(var(--brand-ink))]' : 'border border-[hsl(var(--classroom-border))]'}`}>{on ? 'Revoke' : 'Allow draw'}</button></li>; })}</ul></div>}
-         {isTeacher && remotes.length > 0 && <div className={`${panel} p-3`}><h2 className="m-0 mb-2 text-xs font-bold">Student microphones</h2>{remotes.filter(p => {
+         {isTeacher && remotes.length > 0 && <div className={`${panel} p-3`}><div className="mb-2 flex items-center justify-between gap-2"><h2 className="m-0 text-xs font-bold">Student microphones</h2><div className="flex gap-1"><button className={ctl} onClick={() => void microphoneGrantAll(true)}>Unmute all</button><button className={ctl} onClick={() => void microphoneGrantAll(false)}>Mute all</button></div></div>{remotes.filter(p => {
            try { return JSON.parse(p.metadata || '{}').role === 'student'; } catch { return false; }
          }).map(p => <div key={p.identity} className="flex items-center gap-2 py-1 text-xs"><span className="min-w-0 flex-1 truncate">{p.name || p.identity}</span><button className={ctl} onClick={() => void microphoneGrant(p)}>{p.permissions?.canPublish ? 'Revoke mic' : 'Allow mic'}</button></div>)}</div>}
          <AttendancePanel sessionId={sessionId} canManage={info.canManage} ended={ended || info.session.status === 'ended'}/>
