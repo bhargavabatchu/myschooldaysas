@@ -1,0 +1,301 @@
+{
+  "reference": {
+    "source": "CISCE (Council for the Indian School Certificate Examinations) curriculum",
+    "url": "https://cisce.org/wp-content/uploads/2025/03/PrimaryCurriculum.pdf"
+  },
+  "stages": [
+    {
+      "name": "Primary (Grades 1-2)",
+      "grades": [1, 2],
+      "subjects": [
+        {
+          "name": "English", "code": "ENG",
+          "units": [
+            { "title": "Alphabet and Phonics", "chapters": ["Learning the alphabet", "Vowel and consonant sounds", "Word families and rhymes", "Picture-word matching", "Simple spelling patterns"] },
+            { "title": "Reading and Comprehension", "chapters": ["Sight words", "Reading short sentences", "Story time: picture reading", "Answering simple questions", "Reading aloud practice"] },
+            { "title": "Grammar Basics", "chapters": ["Naming words (nouns)", "Action words (verbs)", "Describing words (adjectives)", "One and many", "a, an, the"] },
+            { "title": "Writing Skills", "chapters": ["Tracing and copying", "Writing words and sentences", "Capital letters and full stops", "Picture composition", "My first paragraph"] }
+          ]
+        },
+        {
+          "name": "Mathematics", "code": "MATH",
+          "units": [
+            { "title": "Numbers", "chapters": ["Counting 1-100", "Number names", "Comparing numbers", "Place value: ones and tens", "Ordering numbers"] },
+            { "title": "Addition and Subtraction", "chapters": ["Adding with objects", "Adding two-digit numbers", "Subtracting with objects", "Subtracting two-digit numbers", "Word problems"] },
+            { "title": "Shapes and Measurement", "chapters": ["Basic shapes", "Sorting and patterns", "Longer and shorter", "Heavier and lighter", "Money: coins and notes"] },
+            { "title": "Time and Data", "chapters": ["Days of the week", "Months of the year", "Telling time: hours", "Simple pictographs"] }
+          ]
+        },
+        {
+          "name": "EVS", "code": "EVS",
+          "units": [
+            { "title": "Myself", "chapters": ["My body and senses", "Keeping clean", "My family", "My home"] },
+            { "title": "Living and Non-living", "chapters": ["Living things around us", "Plants we see", "Animals we see", "Caring for plants and animals"] },
+            { "title": "Our Environment", "chapters": ["Water and its uses", "Air around us", "Food we eat", "Keeping our surroundings clean"] },
+            { "title": "Our World", "chapters": ["Safety and first aid", "People who help us", "Festivals we celebrate", "Means of transport"] }
+          ]
+        },
+        {
+          "name": "Hindi", "code": "HIN",
+          "units": [
+            { "title": "वर्णमाला", "chapters": ["स्वर अ से अः", "व्यंजन क से ज्ञ", "मात्राओं का परिचय", "दो अक्षर वाले शब्द"] },
+            { "title": "शब्द और वाक्य", "chapters": ["तीन अक्षर वाले शब्द", "सरल वाक्य पढ़ना", "चित्र पहेली", "मेरा परिचय"] },
+            { "title": "कहानियाँ और कविताएँ", "chapters": ["छोटी कविताएँ", "बाल कहानियाँ", "सुनकर समझना", "स्वयं कहानी बनाना"] }
+          ]
+        },
+        {
+          "name": "Computer Studies", "code": "COMP",
+          "units": [
+            { "title": "Introduction to Computers", "chapters": ["What is a computer?", "Parts of a computer", "Using a mouse and keyboard", "Computers around us"] },
+            { "title": "Simple Uses", "chapters": ["Drawing on a computer", "Typing my name", "Safe computer habits"] }
+          ]
+        },
+        {
+          "name": "Arts", "code": "ART",
+          "units": [
+            { "title": "Drawing and Colouring", "chapters": ["Lines and shapes", "Colouring techniques", "Festival art", "Craft with paper"] }
+          ]
+        },
+        {
+          "name": "Physical Education", "code": "PE",
+          "units": [
+            { "title": "Fitness and Games", "chapters": ["Warm-up exercises", "Locomotor skills: run, jump, hop", "Ball skills", "Team play and fair play"] }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Primary (Grades 3-5)",
+      "grades": [3, 4, 5],
+      "subjects": [
+        {
+          "name": "English", "code": "ENG",
+          "units": [
+            { "title": "Reading Comprehension", "chapters": ["Fiction and non-fiction passages", "Main idea and details", "Vocabulary in context", "Poems and rhymes", "Making inferences"] },
+            { "title": "Grammar", "chapters": ["Nouns, verbs, adjectives, adverbs", "Tenses: present, past, future", "Subject-verb agreement", "Prepositions and conjunctions", "Punctuation and capitalisation"] },
+            { "title": "Writing", "chapters": ["Paragraph writing", "Informal letters", "Story writing", "Picture composition", "Dialogue writing"] },
+            { "title": "Speaking and Listening", "chapters": ["Show and tell", "Recitation", "Listening for details", "Simple presentations"] }
+          ]
+        },
+        {
+          "name": "Mathematics", "code": "MATH",
+          "units": [
+            { "title": "Large Numbers", "chapters": ["Place value up to lakhs", "Reading and writing large numbers", "Rounding off", "Roman numerals"] },
+            { "title": "The Four Operations", "chapters": ["Addition and subtraction of large numbers", "Multiplication by 2- and 3-digit numbers", "Division with remainders", "Estimation", "Word problems"] },
+            { "title": "Fractions and Decimals", "chapters": ["Understanding fractions", "Equivalent fractions", "Adding and subtracting fractions", "Introduction to decimals"] },
+            { "title": "Measurement and Geometry", "chapters": ["Length, weight, capacity", "Perimeter and area", "Lines, angles, and shapes", "Symmetry"] },
+            { "title": "Time, Money and Data", "chapters": ["Reading clocks and calendars", "Money calculations", "Bar graphs and pictographs"] }
+          ]
+        },
+        {
+          "name": "Science", "code": "SCI",
+          "units": [
+            { "title": "Plant Life", "chapters": ["Parts of a plant", "How plants make food", "Reproduction in plants", "Uses of plants"] },
+            { "title": "Animal Life", "chapters": ["Classification of animals", "Habitats", "Food chains", "Care of animals"] },
+            { "title": "The Human Body", "chapters": ["Skeleton and muscles", "Digestive system", "Breathing", "Keeping healthy"] },
+            { "title": "Food, Health and Safety", "chapters": ["Balanced diet", "Nutrients", "Diseases and prevention", "Safety and first aid"] },
+            { "title": "Matter and Energy", "chapters": ["Solids, liquids, gases", "Light and shadows", "Sound", "Force and movement"] }
+          ]
+        },
+        {
+          "name": "Social Studies", "code": "SST",
+          "units": [
+            { "title": "Our Earth", "chapters": ["Globes and maps", "Continents and oceans", "Latitudes and longitudes"] },
+            { "title": "Our Country India", "chapters": ["States and capitals", "Physical divisions", "Natural resources", "National symbols"] },
+            { "title": "Early Humans and Civilisations", "chapters": ["Early humans", "River valley civilisations", "Kings and kingdoms"] },
+            { "title": "Our Government and Rights", "chapters": ["Local government", "Being a good citizen", "Rights and duties"] }
+          ]
+        },
+        {
+          "name": "Hindi", "code": "HIN",
+          "units": [
+            { "title": "पठन", "chapters": ["गद्य पाठ", "कविता", "कहानियाँ", "निबंध"] },
+            { "title": "व्याकरण", "chapters": ["संज्ञा, सर्वनाम", "क्रिया और विशेषण", "विलोम, पर्यायवाची", "मुहावरे", "विराम चिह्न"] },
+            { "title": "लेखन", "chapters": ["पत्र लेखन", "अनुच्छेद लेखन", "कहानी लेखन", "संवाद लेखन"] }
+          ]
+        },
+        {
+          "name": "Computer Studies", "code": "COMP",
+          "units": [
+            { "title": "Computer Basics", "chapters": ["Hardware and software", "Input and output devices", "Storage devices", "Operating systems"] },
+            { "title": "Applications", "chapters": ["Word processing", "Drawing and presentations", "Spreadsheets basics", "Safe internet use"] }
+          ]
+        },
+        {
+          "name": "Arts", "code": "ART",
+          "units": [
+            { "title": "Visual Arts", "chapters": ["Drawing from observation", "Colour theory", "Craft and design", "Folk art of India"] }
+          ]
+        },
+        {
+          "name": "Physical Education", "code": "PE",
+          "units": [
+            { "title": "Games and Fitness", "chapters": ["Warm-up and flexibility", "Track and field basics", "Team games: rules and play", "Yoga and breathing", "Health and nutrition"] }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Middle School (Grades 6-8)",
+      "grades": [6, 7, 8],
+      "subjects": [
+        {
+          "name": "English", "code": "ENG",
+          "units": [
+            { "title": "Literature", "chapters": ["Prose: stories and extracts", "Poetry: appreciation", "Drama: scenes and dialogue", "Literary devices"] },
+            { "title": "Grammar and Usage", "chapters": ["Tenses and aspect", "Active and passive voice", "Direct and indirect speech", "Clauses and sentence structure", "Determiners and modals"] },
+            { "title": "Composition", "chapters": ["Formal and informal letters", "Essays: descriptive and narrative", "Report writing", "Comprehension practice"] }
+          ]
+        },
+        {
+          "name": "Mathematics", "code": "MATH",
+          "units": [
+            { "title": "Number System", "chapters": ["Integers", "Rational numbers", "Exponents and powers", "Squares and square roots", "Cubes and cube roots"] },
+            { "title": "Algebra", "chapters": ["Algebraic expressions", "Linear equations", "Factorisation", "Ratio and proportion", "Percentage and its applications"] },
+            { "title": "Geometry", "chapters": ["Lines and angles", "Triangles and their properties", "Congruence", "Quadrilaterals", "Mensuration: area and volume"] },
+            { "title": "Data Handling", "chapters": ["Bar graphs and histograms", "Mean, median, mode", "Probability basics"] }
+          ]
+        },
+        {
+          "name": "Physics", "code": "PHY",
+          "units": [
+            { "title": "Matter and Motion", "chapters": ["Measurements", "Force and pressure", "Friction", "Sound"] },
+            { "title": "Energy", "chapters": ["Light: reflection", "Light: refraction and lenses", "Electricity basics", "Heat transfer"] }
+          ]
+        },
+        {
+          "name": "Chemistry", "code": "CHE",
+          "units": [
+            { "title": "Matter", "chapters": ["Elements, compounds, mixtures", "States of matter", "Separation techniques", "Physical and chemical changes"] },
+            { "title": "Atoms and Reactions", "chapters": ["Atoms and molecules", "Acids, bases and salts", "Water: properties and treatment", "Air and combustion"] }
+          ]
+        },
+        {
+          "name": "Biology", "code": "BIO",
+          "units": [
+            { "title": "Cell and Tissues", "chapters": ["The cell: structure and function", "Tissues", "Microorganisms"] },
+            { "title": "Life Processes", "chapters": ["Photosynthesis", "Respiration in plants", "Human body systems", "Health and diseases"] }
+          ]
+        },
+        {
+          "name": "History & Civics", "code": "HIC",
+          "units": [
+            { "title": "History", "chapters": ["Ancient India: kingdoms and culture", "Medieval India: Delhi Sultanate and Mughals", "British rule and freedom struggle"] },
+            { "title": "Civics", "chapters": ["The Constitution", "The three organs of government", "Local self-government", "Equality and justice"] }
+          ]
+        },
+        {
+          "name": "Geography", "code": "GEO",
+          "units": [
+            { "title": "Physical Geography", "chapters": ["Earth's structure", "Landforms", "Climate and weather", "Natural vegetation and wildlife"] },
+            { "title": "Human and Regional Geography", "chapters": ["Resources and their conservation", "Agriculture and industries", "Map work", "Asia: a regional study"] }
+          ]
+        },
+        {
+          "name": "Hindi", "code": "HIN",
+          "units": [
+            { "title": "पठन सामग्री", "chapters": ["गद्य पाठ", "पद्य पाठ", "कहानी संकलन"] },
+            { "title": "व्याकरण", "chapters": ["काल और वाक्य रचना", "शब्द निर्माण", "अलंकार", "अपठित गद्यांश"] },
+            { "title": "लेखन कौशल", "chapters": ["पत्र लेखन", "निबंध लेखन", "संवाद लेखन", "सारांश लेखन"] }
+          ]
+        },
+        {
+          "name": "Computer Studies", "code": "COMP",
+          "units": [
+            { "title": "Fundamentals", "chapters": ["Computer organisation", "Memory and storage", "Networks and the internet", "Cyber safety"] },
+            { "title": "Programming and Tools", "chapters": ["Introduction to programming logic", "Spreadsheets: formulas and charts", "Presentations", "App and web basics"] }
+          ]
+        },
+        {
+          "name": "Arts", "code": "ART",
+          "units": [
+            { "title": "Art Appreciation and Practice", "chapters": ["Elements of art", "Indian art traditions", "Applied art and design", "Portfolio practice"] }
+          ]
+        },
+        {
+          "name": "Physical Education", "code": "PE",
+          "units": [
+            { "title": "Physical Fitness and Games", "chapters": ["Fitness components", "Major games: rules and skills", "Athletics", "Yoga and wellness", "Leadership through sport"] }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ICSE (Grades 9-10)",
+      "grades": [9, 10],
+      "subjects": [
+        {
+          "name": "English", "code": "ENG",
+          "units": [
+            { "title": "English Language", "chapters": ["Composition: descriptive, narrative, argumentative", "Letter writing: formal and informal", "Comprehension and summary", "Grammar and usage", "Functional grammar in context"] },
+            { "title": "Literature in English", "chapters": ["Prescribed drama", "Prescribed prose", "Prescribed poetry", "Themes and character study", "Critical appreciation"] }
+          ]
+        },
+        {
+          "name": "Mathematics", "code": "MATH",
+          "units": [
+            { "title": "Algebra", "chapters": ["Rational and irrational numbers", "Factorisation and expansion", "Linear and quadratic equations", "Ratio, proportion and variation", "Indices and logarithms", "Matrices", "Arithmetic and geometric progressions"] },
+            { "title": "Commercial Mathematics", "chapters": ["Goods and Service Tax", "Banking", "Shares and dividends"] },
+            { "title": "Geometry", "chapters": ["Similarity", "Loci", "Circles: chords, arcs, tangents", "Constructions"] },
+            { "title": "Mensuration", "chapters": ["Area and volume of solids: cylinder, cone, sphere", "Mixed problems"] },
+            { "title": "Trigonometry and Statistics", "chapters": ["Trigonometric ratios and identities", "Heights and distances", "Statistics: graphs and measures", "Probability"] }
+          ]
+        },
+        {
+          "name": "Physics", "code": "PHY",
+          "units": [
+            { "title": "Mechanics", "chapters": ["Force", "Work, power and energy", "Machines", "Refraction of light at plane surfaces", "Refraction through a lens", "Spectrum"] },
+            { "title": "Electricity and Magnetism", "chapters": ["Sound", "Current electricity", "Electrical power and household circuits", "Electromagnetism", "Calorimetry", "Radioactivity"] }
+          ]
+        },
+        {
+          "name": "Chemistry", "code": "CHE",
+          "units": [
+            { "title": "Physical Chemistry", "chapters": ["Periodic properties", "Chemical bonding", "Study of acids, bases and salts", "Analytical chemistry", "Mole concept and stoichiometry", "Electrolysis", "Metallurgy"] },
+            { "title": "Organic Chemistry", "chapters": ["Hydrocarbons and functional groups", "Alcohols and carboxylic acids", "Industrial chemistry and green chemistry"] }
+          ]
+        },
+        {
+          "name": "Biology", "code": "BIO",
+          "units": [
+            { "title": "Plant Life", "chapters": ["Transport in plants", "Photosynthesis", "Excretion in plants", "Reproduction in plants"] },
+            { "title": "Human Life", "chapters": ["Circulatory system", "Excretory system", "Nervous system and sense organs", "Endocrine system", "Reproductive system", "Population and health", "Genetics"] }
+          ]
+        },
+        {
+          "name": "History & Civics", "code": "HIC",
+          "units": [
+            { "title": "Civics", "chapters": ["The Union Legislature", "The Union Executive and Judiciary", "State government", "Indian foreign policy and UN"] },
+            { "title": "History: Modern India", "chapters": ["The Revolt of 1857", "Rise of nationalism", "The freedom movement", "India after independence"] }
+          ]
+        },
+        {
+          "name": "Geography", "code": "GEO",
+          "units": [
+            { "title": "Geography of India", "chapters": ["Location and physical features", "Climate", "Soils and natural vegetation", "Water resources", "Minerals and energy", "Agriculture", "Industries", "Transport"] },
+            { "title": "Map Work and Practical Skills", "chapters": ["Interpretation of topographical maps", "Contours and relief", "Symbols and scales"] }
+          ]
+        },
+        {
+          "name": "Hindi", "code": "HIN",
+          "units": [
+            { "title": "पाठ्यपुस्तक", "chapters": ["गद्य खंड", "पद्य खंड", "उपन्यास/कहानी संकलन"] },
+            { "title": "व्याकरण और लेखन", "chapters": ["व्याकरण और अपठित गद्यांश", "पत्र लेखन", "निबंध लेखन"] }
+          ]
+        },
+        {
+          "name": "Computer Applications", "code": "CA",
+          "units": [
+            { "title": "Theory", "chapters": ["Computer system overview", "Operating system concepts", "Java programming basics: classes and objects", "Values, data types and operators", "Conditionals and loops", "Methods and encapsulation", "Arrays and strings", "Ethics and cyber safety"] }
+          ]
+        },
+        {
+          "name": "Physical Education", "code": "PE",
+          "units": [
+            { "title": "Theory and Practice", "chapters": ["Human body and exercise physiology", "Sports and games: rules and skills", "Health and wellness", "Yoga for fitness"] }
+          ]
+        }
+      ]
+    }
+  ]
+}
