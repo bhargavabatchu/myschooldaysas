@@ -1158,3 +1158,48 @@
   .dashboard-collection-progress-track span { transition: none; }
   .dashboard-schedule-loading span { animation: none; }
 }
+
+/* ===== Dense analytics layout (reference-style dashboard) ===== */
+.dashboard-page { --dash-gap: 10px; }
+.dashboard-page .dashboard-content { display: flex; flex-direction: column; gap: var(--dash-gap); }
+.dashboard-page .dashboard-welcome { padding: 18px 0 4px; }
+.dashboard-page .dashboard-welcome h1 { font-size: clamp(20px, 2.6vw, 28px); }
+.dashboard-page .dashboard-metrics { gap: var(--dash-gap); margin: 0; }
+.dashboard-page .dashboard-metric { padding: 12px 14px; }
+.dashboard-page .dashboard-metric-value { font-size: 22px; margin-top: 6px; }
+.dashboard-page .dashboard-panel { padding: 16px; }
+.dashboard-page .dashboard-admin-insights { gap: var(--dash-gap); }
+
+.dashboard-charts { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: var(--dash-gap); }
+.dashboard-chart-card { background: #fffdf8; border: 1px solid #e3e1d8; border-radius: 14px; padding: 14px 16px; }
+.dashboard-chart-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.dashboard-chart-head h2 { font-family: Manrope, sans-serif; font-size: 14px; font-weight: 800; margin: 0; }
+.dashboard-chart-head .dashboard-panel-kicker { font-size: 9.5px; }
+.dashboard-chart-note { font-size: 11px; color: #7d877f; font-weight: 600; }
+.dashboard-chart-empty { padding: 26px 0; text-align: center; font-size: 12.5px; color: #7d877f; }
+.dashboard-donut-wrap { display: flex; align-items: center; gap: 10px; }
+.dashboard-donut-legend { display: grid; gap: 6px; font-size: 12px; font-weight: 600; color: #35473f; }
+.dashboard-donut-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; }
+
+.dashboard-students-compact { background: #fffdf8; border: 1px solid #e3e1d8; border-radius: 14px; padding: 14px 16px; }
+.dashboard-students-compact .dashboard-chart-head { flex-direction: row; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.dashboard-students-rows { display: grid; }
+.dashboard-student-row { display: grid; grid-template-columns: 34px minmax(0, 1.4fr) minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f0ede3; }
+.dashboard-student-row:last-child { border-bottom: none; }
+.dashboard-student-avatar { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; background: #e9f2ee; color: #173e38; font-size: 12px; font-weight: 800; }
+.dashboard-student-name { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-student-class { font-size: 11.5px; color: #7d877f; }
+.dashboard-student-pill { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #1c5947; background: #e9f2ee; border-radius: 999px; padding: 3px 10px; }
+
+.dashboard-page .dashboard-admin-actions { margin: 0; }
+.dashboard-page .admin-quick-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--dash-gap); }
+.dashboard-page .admin-quick-link { padding: 10px 12px; }
+@media (max-width: 1023px) {
+  .dashboard-charts { grid-template-columns: 1fr; }
+  .dashboard-page .admin-quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 639px) {
+  .dashboard-page .admin-quick-actions { grid-template-columns: 1fr; }
+  .dashboard-student-row { grid-template-columns: 30px minmax(0, 1fr) auto; }
+  .dashboard-student-class { display: none; }
+}

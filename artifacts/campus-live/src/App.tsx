@@ -7,6 +7,7 @@ import {
   useGetMe, getGetMeQueryKey, useGetDashboardOverview, getGetDashboardOverviewQueryKey,
   useGetClasses, useGetSections, useGetTimetable, useGetCalendar, getGetCalendarQueryKey, useGetAcademicYears,
   useGetStudents, getGetStudentsQueryKey, useGetSessions, getGetSessionsQueryKey,
+  useGetEnrollmentTrends, useGetFeesDueReport,
   useCreateSession, useStartSession, useEndSession, useGetSessionToken,
   useGetBoardTemplates, getGetBoardTemplatesQueryKey, useCreateBoardTemplate, useUpdateBoardTemplate,
   useGetConsents, getGetConsentsQueryKey, useGrantConsent, useRevokeConsent,
@@ -37,6 +38,7 @@ import {
   profileToUser,
 } from './lib/supabase';
 import { ClassroomScreen } from '@/components/classroom/classroom-screen';
+import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip as ChartTooltip, PieChart, Pie, Cell } from 'recharts';
 import { PublicHomePage, VisitorHomeGate } from '@/components/public-home';
 import { PayrollPage } from '@/components/admin/payroll-page';
 import { ReportsPage } from '@/components/admin/reports-page';
@@ -685,6 +687,13 @@ function DashboardPage({ roles, userName, requestedAcademicYear }: { roles: stri
     ? (data?.recentActivity ?? []).slice(0, 8)
     : (data?.recentActivity ?? []).slice(0, 4);
   const timetable = useGetTimetable(undefined, { query: { enabled: Boolean(adminInsights) } });
+  // Dense analytics (reference-style dashboard): enrollment trend + fee status + latest students.
+  const trends = useGetEnrollmentTrends({ months: 12 }, { query: { enabled: Boolean(adminInsights) } });
+  const feeStatus = useGetFeesDueReport(
+    { academicYear: adminInsights?.fees.academicYear || '2026-27', limit: 1 },
+    { query: { enabled: Boolean(adminInsights) } },
+  );
+  const latestStudents = useGetStudents({ limit: 6 }, { query: { enabled: Boolean(adminInsights) } });
   const schoolToday = new Date();
   const todayDateKey = schoolDateKey(schoolToday);
   const calendarParams = useMemo(
@@ -785,6 +794,70 @@ function DashboardPage({ roles, userName, requestedAcademicYear }: { roles: stri
               : card;
           })}
         </section>
+        {adminInsights && <section className="dashboard-charts" aria-label="Enrollment and fee analytics">
+          <div className="dashboard-chart-card" data-testid="dashboard-trend-chart">
+            <div className="dashboard-chart-head">
+              <span className="dashboard-panel-kicker">STRENGTH · 12 MONTHS</span>
+              <h2>Joiners &amp; leavers</h2>
+              <span className="dashboard-chart-note">{trends.data?.currentStrength ?? '—'} enrolled now</span>
+            </div>
+            {trends.data?.series?.length ? <ResponsiveContainer width="100%" height={150}>
+              <AreaChart data={trends.data.series} margin={{ top: 6, right: 8, left: -18, bottom: 0 }}>
+                <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#7d877f' }} tickFormatter={(m: string) => `${m.slice(5)}/${m.slice(2, 4)}`} interval="preserveStartEnd" axisLine={false} tickLine={false} />
+                <ChartTooltip cursor={{ stroke: '#d9d3c1' }} contentStyle={{ borderRadius: 10, border: '1px solid #e3e1d8', fontSize: 12 }} formatter={(value: number, name) => [value, name === 'joiners' ? 'Joiners' : 'Leavers']} />
+                <Area type="monotone" dataKey="joiners" stroke="#2e8b70" strokeWidth={2} fill="#2e8b70" fillOpacity={0.14} />
+                <Area type="monotone" dataKey="leavers" stroke="#b94f47" strokeWidth={2} fill="#b94f47" fillOpacity={0.1} />
+              </AreaChart>
+            </ResponsiveContainer> : <div className="dashboard-chart-empty">Enrollment activity will appear here as students join.</div>}
+          </div>
+          <div className="dashboard-chart-card" data-testid="dashboard-fee-donut">
+            <div className="dashboard-chart-head">
+              <span className="dashboard-panel-kicker">ACADEMIC YEAR {adminInsights.fees.academicYear}</span>
+              <h2>Invoice status</h2>
+              <span className="dashboard-chart-note">{feeStatus.data?.summary.outstanding ?? '—'} outstanding</span>
+            </div>
+            {feeStatus.data?.summary ? (() => {
+              const s = feeStatus.data.summary;
+              const statusData = [
+                { name: 'Paid', value: s.paid, color: '#2e8b70' },
+                { name: 'Partial', value: s.partial, color: '#dc8b43' },
+                { name: 'Not paid', value: s.unpaid, color: '#b94f47' },
+              ].filter((slice) => slice.value > 0);
+              return <div className="dashboard-donut-wrap">
+                <ResponsiveContainer width="100%" height={150}>
+                  <PieChart>
+                    <Pie data={statusData.length ? statusData : [{ name: 'No invoices', value: 1, color: '#e3e1d8' }]} dataKey="value" innerRadius={48} outerRadius={72} paddingAngle={2} strokeWidth={0}>
+                      {(statusData.length ? statusData : [{ color: '#e3e1d8' }]).map((slice, i) => <Cell key={i} fill={slice.color} />)}
+                    </Pie>
+                    <ChartTooltip contentStyle={{ borderRadius: 10, border: '1px solid #e3e1d8', fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="dashboard-donut-legend">
+                  <span><i style={{ background: '#2e8b70' }}/>Paid {s.paid}</span>
+                  <span><i style={{ background: '#dc8b43' }}/>Partial {s.partial}</span>
+                  <span><i style={{ background: '#b94f47' }}/>Not paid {s.unpaid}</span>
+                </div>
+              </div>;
+            })() : <div className="dashboard-chart-empty">Fee status will appear once invoices are generated.</div>}
+          </div>
+        </section>}
+        {adminInsights && latestStudents.data?.items?.length ? <section className="dashboard-students-compact" aria-label="Latest students">
+          <div className="dashboard-chart-head">
+            <span className="dashboard-panel-kicker">PEOPLE · LATEST</span>
+            <h2>Students</h2>
+            <Link href="/admin/students" className="dashboard-text-link">View all <ArrowRight size={13}/></Link>
+          </div>
+          <div className="dashboard-students-rows">
+            {latestStudents.data.items.map((student) => (
+              <div key={student.id} className="dashboard-student-row">
+                <span className="dashboard-student-avatar">{student.name.slice(0, 1).toUpperCase()}</span>
+                <span className="dashboard-student-name">{student.name}</span>
+                <span className="dashboard-student-class">{student.className ?? '—'}{student.sectionName ? ` · ${student.sectionName}` : ''}</span>
+                <span className="dashboard-student-pill">Active</span>
+              </div>
+            ))}
+          </div>
+        </section> : null}
         {adminInsights && <section className="dashboard-admin-actions" aria-label="Quick actions" data-testid="dashboard-admin-actions">
           <div className="dashboard-admin-actions-heading"><h2>Quick actions</h2><span>Common school tasks</span></div>
           <nav className="admin-quick-actions" aria-label="Administrative shortcuts">
