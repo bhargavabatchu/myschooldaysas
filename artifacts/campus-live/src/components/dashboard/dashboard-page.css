@@ -1253,3 +1253,23 @@
 @media (max-width: 639px) {
   .students-v2-stats, .students-v2-actions { grid-template-columns: 1fr; }
 }
+
+/* ===== Generic page kit (v2 style shared by all admin pages) ===== */
+.pg-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+.pg-title-wrap { display: flex; align-items: center; gap: 14px; }
+.pg-title-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; background: #173e38; color: #f0e9d8; }
+.pg-title { font-family: Manrope, sans-serif; font-size: clamp(22px, 3vw, 30px); font-weight: 800; margin: 0; }
+.pg-sub { margin: 4px 0 0; font-size: 12.5px; color: #7d877f; }
+.pg-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.pg-stat { display: flex; align-items: center; gap: 12px; background: #fffdf8; border: 1px solid #e3e1d8; border-radius: 14px; padding: 14px 16px; }
+.pg-stat > div { display: flex; flex-direction: column; }
+.pg-stat span { font-size: 11px; font-weight: 600; color: #7d877f; }
+.pg-stat strong { font-family: Manrope, sans-serif; font-size: 24px; font-weight: 800; }
+.pg-stat em { font-style: normal; font-size: 10.5px; font-weight: 800; border-radius: 999px; padding: 3px 9px; margin-left: auto; }
+.pg-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; }
+.pg-icon-green { background: #e9f2ee; color: #2e8b70; }
+.pg-icon-amber { background: #fdf1dc; color: #b08a3e; }
+.pg-icon-red { background: #f9e9e7; color: #b94f47; }
+.pg-icon-blue { background: #e8eef7; color: #4a6b9c; }
+@media (max-width: 1023px) { .pg-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 639px) { .pg-stats { grid-template-columns: 1fr; } }

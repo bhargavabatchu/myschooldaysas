@@ -93,11 +93,11 @@ export function PayrollPage() {
         </label>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="surface p-4"><p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Staff</p><p className="display m-0 text-xl font-extrabold">{summary?.staff ?? "—"}</p></div>
-        <div className="surface p-4"><p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Total monthly salary</p><p className="display m-0 text-xl font-extrabold">{rupees(summary?.totalMonthlyPaise)}</p></div>
-        <div className="surface p-4"><p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Paid this month</p><p className="display m-0 text-xl font-extrabold text-[hsl(var(--status-good))]">{summary?.paid ?? "—"}</p></div>
-        <div className="surface p-4"><p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Unpaid this month</p><p className="display m-0 text-xl font-extrabold text-[hsl(var(--destructive))]">{summary?.unpaid ?? "—"}</p></div>
+      <div className="pg-stats">
+        <div className="pg-stat"><span className="pg-icon pg-icon-green"><Landmark size={18} /></span><div><span>Staff on payroll</span><strong>{summary?.staff ?? "—"}</strong></div></div>
+        <div className="pg-stat"><span className="pg-icon pg-icon-blue"><Landmark size={18} /></span><div><span>Total monthly salary</span><strong>{rupees(summary?.totalMonthlyPaise)}</strong></div></div>
+        <div className="pg-stat"><span className="pg-icon pg-icon-green"><Landmark size={18} /></span><div><span>Paid — {month}</span><strong>{rupees(summary?.paidPaise)}</strong></div><em className="pg-icon-green">{summary?.paid ?? 0} paid</em></div>
+        <div className="pg-stat"><span className="pg-icon pg-icon-red"><Landmark size={18} /></span><div><span>Outstanding — {month}</span><strong>{summary?.unpaid ?? "—"}</strong><em className="pg-icon-red">unpaid</em></div></div>
       </div>
 
       {error && <div role="alert" className="rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.08)] px-4 py-3 text-sm text-[hsl(var(--destructive))]">{error}</div>}

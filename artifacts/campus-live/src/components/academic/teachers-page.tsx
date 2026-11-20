@@ -309,6 +309,13 @@ function StaffRecordsSection() {
         </div>
         <span className="tag">{records.data?.items.length ?? 0}</span>
       </div>
+      <div className="pg-stats">
+        <div className="pg-stat"><span className="pg-icon pg-icon-green"><UsersRound size={18} /></span><div><span>Total staff</span><strong>{records.data?.items.length ?? 0}</strong></div></div>
+        {STAFF_CATEGORIES.slice(0, 3).map((cat) => {
+          const count = records.data?.items.filter((s) => s.category === cat).length ?? 0;
+          return <div key={cat} className="pg-stat"><span className="pg-icon pg-icon-blue"><UsersRound size={18} /></span><div><span>{cat}s</span><strong>{count}</strong></div></div>;
+        })}
+      </div>
       {records.isLoading ? (
         <div className="space-y-3"><div className="skeleton h-12" /><div className="skeleton h-12" /></div>
       ) : records.isError ? (
@@ -329,7 +336,10 @@ function StaffRecordsSection() {
             <div key={staff.userId} className="py-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
+                  <div className="flex items-center gap-3">
+                  <span className="grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--secondary))] text-xs font-bold text-[hsl(var(--primary))]">{staff.name.slice(0, 1).toUpperCase()}</span>
                   <p className="m-0 text-sm font-semibold">{staff.name} <span className="ml-2 font-normal text-xs text-[hsl(var(--muted-foreground))]">{staff.email}</span></p>
+                </div>
                   <p className="m-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">
                     {[staff.category, staff.employeeCode && `Code ${staff.employeeCode}`, staff.phone, staff.qualification, staff.specialization, staff.joiningDate && `Joined ${staff.joiningDate}`].filter(Boolean).join(" · ") || "No record details added yet"}
                   </p>

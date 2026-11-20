@@ -158,11 +158,11 @@ function FeesDueReport({ classes }: { classes: { id: string; name: string }[] })
         </button>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-xl bg-[hsl(var(--status-good)/.12)] p-3"><p className="m-0 text-[10px] font-bold uppercase text-[hsl(var(--muted-foreground))]">Fully paid</p><p className="display m-0 mt-1 text-lg font-extrabold text-[hsl(var(--status-good))]">{summary?.paid ?? "—"}</p></div>
-        <div className="rounded-xl bg-[hsl(var(--destructive)/.1)] p-3"><p className="m-0 text-[10px] font-bold uppercase text-[hsl(var(--muted-foreground))]">Not paid</p><p className="display m-0 mt-1 text-lg font-extrabold text-[hsl(var(--destructive))]">{summary?.unpaid ?? "—"}</p></div>
-        <div className="rounded-xl bg-[hsl(var(--secondary))] p-3"><p className="m-0 text-[10px] font-bold uppercase text-[hsl(var(--muted-foreground))]">Partially paid</p><p className="display m-0 mt-1 text-lg font-extrabold">{summary?.partial ?? "—"}</p></div>
-        <div className="rounded-xl bg-[hsl(var(--secondary))] p-3"><p className="m-0 text-[10px] font-bold uppercase text-[hsl(var(--muted-foreground))]">Outstanding</p><p className="display m-0 mt-1 text-lg font-extrabold">{summary?.outstanding ?? "—"}</p></div>
+      <div className="pg-stats">
+        <div className="pg-stat"><span className="pg-icon pg-icon-green"><Download size={18} /></span><div><span>Total collected</span><strong>{summary?.collected ?? "—"}</strong></div></div>
+        <div className="pg-stat"><span className="pg-icon pg-icon-red"><Download size={18} /></span><div><span>Outstanding dues</span><strong>{summary?.outstanding ?? "—"}</strong></div><em className="pg-icon-red">{summary?.unpaid ?? 0} not paid</em></div>
+        <div className="pg-stat"><span className="pg-icon pg-icon-amber"><Download size={18} /></span><div><span>Partially paid</span><strong>{summary?.partial ?? "—"}</strong></div></div>
+        <div className="pg-stat"><span className="pg-icon pg-icon-blue"><Download size={18} /></span><div><span>Total billed</span><strong>{summary?.billed ?? "—"}</strong></div><em className="pg-icon-green">{summary?.paid ?? 0} paid</em></div>
       </div>
 
       {report.isLoading ? (
