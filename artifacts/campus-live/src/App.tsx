@@ -463,7 +463,7 @@ function LoginPage() {
         return;
       }
       queryClient.setQueryData(getGetMeQueryKey(), profileToUser(profile));
-      setLocation(profile.mustChangePassword ? '/change-password' : '/dashboard');
+      setLocation('/dashboard');
     } catch {
       setSignInError('Sign-in is temporarily unavailable. Try again.');
     } finally {

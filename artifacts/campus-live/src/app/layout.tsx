@@ -10,6 +10,8 @@ export const metadata: Metadata = {
     icon: "/icons/app-icon-192.png",
     apple: "/icons/apple-touch-icon.png",
   },
+  // Keep browsers (especially Chrome auto-translate) from mangling the UI language.
+  other: { google: 'notranslate' },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
