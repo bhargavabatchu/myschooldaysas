@@ -80,7 +80,7 @@ DECLARE
     nullif(current_setting('request.jwt.claims', true)::json ->> 'sub', '')::uuid
   );
   organization record;
-  updated_count integer := 0;
+  updated boolean := false;
 BEGIN
   IF caller IS NULL THEN
     RETURN false;
@@ -94,10 +94,12 @@ BEGIN
            updated_at = now()
      WHERE supabase_user_id = caller
        AND status = 'active';
-    updated_count := updated_count + SQL%ROWCOUNT;
+    IF FOUND THEN
+      updated := true;
+    END IF;
   END LOOP;
 
-  RETURN updated_count > 0;
+  RETURN updated;
 END;
 $$;
 
