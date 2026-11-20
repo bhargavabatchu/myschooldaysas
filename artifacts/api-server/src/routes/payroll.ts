@@ -168,6 +168,13 @@ const routes: FastifyPluginAsync = async (fastify) => {
           };
         });
       });
+      const year = period.slice(0, 4);
+      const paidYear = await withOrg(user.orgId, (client) =>
+        client.query<{ total: string }>(
+          'SELECT COALESCE(sum(amount_paise), 0)::text AS total FROM identity.salary_payments WHERE org_id = $1 AND period LIKE $2',
+          [user.orgId, year + '-%'],
+        ),
+      );
       const summary = {
         staff: items.length,
         withSalary: items.filter((item) => item.monthlyAmountPaise != null).length,
@@ -175,6 +182,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
         unpaid: items.filter((item) => !item.paid).length,
         totalMonthlyPaise: items.reduce((sum, item) => sum + (item.monthlyAmountPaise ?? 0), 0),
         paidPaise: items.reduce((sum, item) => sum + (item.paidAmountPaise ?? 0), 0),
+        paidYearPaise: Number(paidYear.rows[0]?.total ?? 0),
       };
       res.send({ period, items, summary });
     } catch (error) {

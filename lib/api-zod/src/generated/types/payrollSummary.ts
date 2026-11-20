@@ -13,4 +13,5 @@ export interface PayrollSummary {
   unpaid: number;
   totalMonthlyPaise: number;
   paidPaise: number;
+  paidYearPaise?: number;
 }

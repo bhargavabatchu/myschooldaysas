@@ -266,18 +266,20 @@ export function TeachersPage() {
   );
 }
 
-const emptyStaffDraft = { employeeCode: "", phone: "", qualification: "", specialization: "", joiningDate: "" };
+const emptyStaffDraft = { employeeCode: "", phone: "", qualification: "", specialization: "", joiningDate: "", category: "" };
+const STAFF_CATEGORIES = ['Teacher', 'HOD', 'Class teacher', 'Clerk', 'Driver', 'Attender', 'Librarian', 'Office staff', 'Other'] as const;
 
 function StaffRecordsSection() {
   const records = useGetStaffRecords();
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState(emptyStaffDraft);
   const [savedFor, setSavedFor] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState("");
   const save = useUpdateStaffRecord({
     mutation: { onSuccess: (result) => { setEditing(null); setSavedFor(result.userId); } },
   });
 
-  function startEdit(staff: { userId: string; employeeCode?: string | null; phone?: string | null; qualification?: string | null; specialization?: string | null; joiningDate?: string | null }) {
+  function startEdit(staff: { userId: string; employeeCode?: string | null; phone?: string | null; qualification?: string | null; specialization?: string | null; joiningDate?: string | null; category?: string | null }) {
     setEditing(staff.userId);
     setSavedFor(null);
     setDraft({
@@ -286,6 +288,7 @@ function StaffRecordsSection() {
       qualification: staff.qualification ?? "",
       specialization: staff.specialization ?? "",
       joiningDate: staff.joiningDate ?? "",
+      category: staff.category ?? "",
     });
   }
 
@@ -313,14 +316,22 @@ function StaffRecordsSection() {
       ) : !records.data?.items.length ? (
         <p className="mb-0 text-sm text-[hsl(var(--muted-foreground))]">No staff members yet.</p>
       ) : (
+        <>
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button type="button" className={`btn min-h-8 px-3 text-xs ${categoryFilter === "" ? "btn-primary" : "btn-muted"}`} onClick={() => setCategoryFilter("")}>All ({records.data.items.length})</button>
+          {STAFF_CATEGORIES.map((cat) => {
+            const count = records.data.items.filter((s) => s.category === cat).length;
+            return <button key={cat} type="button" className={`btn min-h-8 px-3 text-xs ${categoryFilter === cat ? "btn-primary" : "btn-muted"}`} onClick={() => setCategoryFilter(cat)}>{cat} ({count})</button>;
+          })}
+        </div>
         <div className="divide-y divide-[hsl(var(--border))]">
-          {records.data.items.map((staff) => (
+          {records.data.items.filter((staff) => !categoryFilter || staff.category === categoryFilter).map((staff) => (
             <div key={staff.userId} className="py-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="m-0 text-sm font-semibold">{staff.name} <span className="ml-2 font-normal text-xs text-[hsl(var(--muted-foreground))]">{staff.email}</span></p>
                   <p className="m-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                    {[staff.employeeCode && `Code ${staff.employeeCode}`, staff.phone, staff.qualification, staff.specialization, staff.joiningDate && `Joined ${staff.joiningDate}`].filter(Boolean).join(" · ") || "No record details added yet"}
+                    {[staff.category, staff.employeeCode && `Code ${staff.employeeCode}`, staff.phone, staff.qualification, staff.specialization, staff.joiningDate && `Joined ${staff.joiningDate}`].filter(Boolean).join(" · ") || "No record details added yet"}
                   </p>
                 </div>
                 <button type="button" className="btn btn-muted min-h-8 self-start px-3 text-xs sm:self-auto" onClick={() => startEdit(staff)}>
@@ -344,6 +355,12 @@ function StaffRecordsSection() {
                   <label className="text-xs font-semibold">Joining date
                     <input type="date" className="field mt-1.5" value={draft.joiningDate} onChange={(e) => setDraft({ ...draft, joiningDate: e.target.value })} />
                   </label>
+                  <label className="text-xs font-semibold">Category
+                    <select className="field mt-1.5" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}>
+                      <option value="">Select…</option>
+                      {STAFF_CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                  </label>
                   <div className="flex items-end gap-2">
                     <button disabled={save.isPending} className="btn btn-primary min-h-10 flex-1">{save.isPending ? "Saving…" : "Save record"}</button>
                     <button type="button" className="btn btn-muted min-h-10" onClick={() => setEditing(null)}>Cancel</button>
@@ -355,6 +372,7 @@ function StaffRecordsSection() {
             </div>
           ))}
         </div>
+        </>
       )}
     </section>
   );

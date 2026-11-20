@@ -790,6 +790,14 @@ export const GetMeResponse = zod.object({
 /**
  * @summary List staff members with their employment records
  */
+export const getStaffRecordsQueryCategoryMax = 60;
+
+
+
+export const GetStaffRecordsQueryParams = zod.object({
+  "category": zod.string().max(getStaffRecordsQueryCategoryMax).optional()
+})
+
 export const getStaffRecordsResponseItemsItemEmployeeCodeMax = 40;
 
 export const getStaffRecordsResponseItemsItemPhoneMax = 20;
@@ -799,6 +807,8 @@ export const getStaffRecordsResponseItemsItemQualificationMax = 160;
 export const getStaffRecordsResponseItemsItemSpecializationMax = 160;
 
 export const getStaffRecordsResponseItemsItemJoiningDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getStaffRecordsResponseItemsItemCategoryMax = 60;
+
 
 
 export const GetStaffRecordsResponse = zod.object({
@@ -811,7 +821,8 @@ export const GetStaffRecordsResponse = zod.object({
   "phone": zod.string().max(getStaffRecordsResponseItemsItemPhoneMax).nullish(),
   "qualification": zod.string().max(getStaffRecordsResponseItemsItemQualificationMax).nullish(),
   "specialization": zod.string().max(getStaffRecordsResponseItemsItemSpecializationMax).nullish(),
-  "joiningDate": zod.string().regex(getStaffRecordsResponseItemsItemJoiningDateRegExp).nullish()
+  "joiningDate": zod.string().regex(getStaffRecordsResponseItemsItemJoiningDateRegExp).nullish(),
+  "category": zod.string().max(getStaffRecordsResponseItemsItemCategoryMax).nullish()
 }))
 })
 
@@ -831,6 +842,8 @@ export const updateStaffRecordBodyQualificationMax = 160;
 
 export const updateStaffRecordBodySpecializationMax = 160;
 
+export const updateStaffRecordBodyCategoryMax = 60;
+
 export const updateStaffRecordBodyJoiningDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
@@ -839,6 +852,7 @@ export const UpdateStaffRecordBody = zod.object({
   "phone": zod.string().max(updateStaffRecordBodyPhoneMax).nullish(),
   "qualification": zod.string().max(updateStaffRecordBodyQualificationMax).nullish(),
   "specialization": zod.string().max(updateStaffRecordBodySpecializationMax).nullish(),
+  "category": zod.string().max(updateStaffRecordBodyCategoryMax).nullish(),
   "joiningDate": zod.string().regex(updateStaffRecordBodyJoiningDateRegExp).nullish()
 })
 
@@ -851,6 +865,8 @@ export const updateStaffRecordResponseQualificationMax = 160;
 export const updateStaffRecordResponseSpecializationMax = 160;
 
 export const updateStaffRecordResponseJoiningDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const updateStaffRecordResponseCategoryMax = 60;
+
 
 
 export const UpdateStaffRecordResponse = zod.object({
@@ -862,7 +878,8 @@ export const UpdateStaffRecordResponse = zod.object({
   "phone": zod.string().max(updateStaffRecordResponsePhoneMax).nullish(),
   "qualification": zod.string().max(updateStaffRecordResponseQualificationMax).nullish(),
   "specialization": zod.string().max(updateStaffRecordResponseSpecializationMax).nullish(),
-  "joiningDate": zod.string().regex(updateStaffRecordResponseJoiningDateRegExp).nullish()
+  "joiningDate": zod.string().regex(updateStaffRecordResponseJoiningDateRegExp).nullish(),
+  "category": zod.string().max(updateStaffRecordResponseCategoryMax).nullish()
 })
 
 
@@ -901,7 +918,8 @@ export const GetPayrollResponse = zod.object({
   "paid": zod.int(),
   "unpaid": zod.int(),
   "totalMonthlyPaise": zod.int(),
-  "paidPaise": zod.int()
+  "paidPaise": zod.int(),
+  "paidYearPaise": zod.int().optional()
 })
 })
 

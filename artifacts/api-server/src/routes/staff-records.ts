@@ -16,6 +16,7 @@ const staffProfileInput = z.object({
   qualification: z.string().trim().max(160).nullish(),
   specialization: z.string().trim().max(160).nullish(),
   joiningDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(),
+  category: z.string().trim().max(60).nullish(),
 });
 
 const paramsSchema = z.object({ userId: z.string().uuid() });
@@ -33,6 +34,7 @@ function mapProfile(row: any) {
     qualification: row.qualification ?? null,
     specialization: row.specialization ?? null,
     joiningDate: row.joining_date ?? null,
+    category: row.category ?? null,
   };
 }
 
@@ -42,20 +44,23 @@ const routes: FastifyPluginAsync = async (fastify) => {
   router.get("/identity/staff", requireAuth, requireRoles("super_admin", "org_admin", "campus_admin"), async (req, res, next) => {
     const user = req.campusUser;
     if (!user) return void res.status(401).send({ error: { code: "UNAUTHENTICATED", message: "Sign in to continue." } });
+    const query = z.object({ category: z.string().trim().max(60).optional() }).safeParse(req.query);
+    const categoryFilter = query.success ? query.data.category : undefined;
     try {
       const result = await withOrg(user.orgId, async (client) => {
-        const rows = await client.query(
+        const rows = await client.query<{ user_id: string; name: string; email: string; roles: string[]; employee_code: string | null; phone: string | null; qualification: string | null; specialization: string | null; joining_date: string | null; category: string | null }>(
           `SELECT u.id AS user_id, u.name, u.email,
                   COALESCE(array_agg(DISTINCT r.role) FILTER (WHERE r.role IN ('super_admin','org_admin','campus_admin','hod','teacher','class_teacher')), '{}') AS roles,
-                  sp.employee_code, sp.phone, sp.qualification, sp.specialization, sp.joining_date
+                  sp.employee_code, sp.phone, sp.qualification, sp.specialization, sp.joining_date, sp.category
              FROM identity.users u
              JOIN identity.user_roles r ON r.org_id = u.org_id AND r.user_id = u.id
              LEFT JOIN identity.staff_profiles sp ON sp.org_id = u.org_id AND sp.user_id = u.id
             WHERE u.org_id = $1 AND u.status = 'active'
-            GROUP BY u.id, sp.org_id, sp.user_id, sp.employee_code, sp.phone, sp.qualification, sp.specialization, sp.joining_date
+              ${categoryFilter ? "AND sp.category = $2" : ""}
+            GROUP BY u.id, sp.org_id, sp.user_id, sp.employee_code, sp.phone, sp.qualification, sp.specialization, sp.joining_date, sp.category
             HAVING count(*) FILTER (WHERE r.role IN ('super_admin','org_admin','campus_admin','hod','teacher','class_teacher')) > 0
             ORDER BY lower(u.name)`,
-          [user.orgId],
+          categoryFilter ? [user.orgId, categoryFilter] : [user.orgId],
         );
         return rows.rows.map(mapProfile);
       });
@@ -86,14 +91,15 @@ const routes: FastifyPluginAsync = async (fastify) => {
 
         const upsert = await client.query(
           `INSERT INTO identity.staff_profiles
-             (org_id, user_id, employee_code, phone, qualification, specialization, joining_date)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
+             (org_id, user_id, employee_code, phone, qualification, specialization, joining_date, category)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            ON CONFLICT (org_id, user_id) DO UPDATE SET
              employee_code = EXCLUDED.employee_code,
              phone = EXCLUDED.phone,
              qualification = EXCLUDED.qualification,
              specialization = EXCLUDED.specialization,
              joining_date = EXCLUDED.joining_date,
+             category = EXCLUDED.category,
              updated_at = now()`,
           [
             user.orgId,
@@ -103,6 +109,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
             body.data.qualification ?? null,
             body.data.specialization ?? null,
             body.data.joiningDate ?? null,
+            body.data.category ?? null,
           ],
         );
         if (!upsert.rowCount) throw new Error("Staff record was not saved.");
@@ -121,6 +128,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
           qualification: body.data.qualification ?? null,
           specialization: body.data.specialization ?? null,
           joining_date: body.data.joiningDate ?? null,
+          category: body.data.category ?? null,
         });
       });
       if (!saved) return void res.status(404).send({ error: { code: "NOT_FOUND", message: "Staff member not found." } });

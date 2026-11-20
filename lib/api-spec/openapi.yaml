@@ -623,6 +623,10 @@ paths:
       summary: List staff members with their employment records
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: category
+          schema: { type: string, maxLength: 60 }
       responses:
         "200":
           description: Staff records page
@@ -3165,6 +3169,7 @@ components:
         phone: { type: [string, "null"], maxLength: 20 }
         qualification: { type: [string, "null"], maxLength: 160 }
         specialization: { type: [string, "null"], maxLength: 160 }
+        category: { type: [string, "null"], maxLength: 60 }
         joiningDate: { type: [string, "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
     SalaryInput:
       type: object
@@ -3221,6 +3226,7 @@ components:
         unpaid: { type: integer }
         totalMonthlyPaise: { type: integer }
         paidPaise: { type: integer }
+        paidYearPaise: { type: integer }
     PayrollPage:
       type: object
       required: [period, items, summary]
@@ -3318,6 +3324,7 @@ components:
         qualification: { type: [string, "null"], maxLength: 160 }
         specialization: { type: [string, "null"], maxLength: 160 }
         joiningDate: { type: [string, "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
+        category: { type: [string, "null"], maxLength: 60 }
     StaffRecordsPage:
       type: object
       required: [items]

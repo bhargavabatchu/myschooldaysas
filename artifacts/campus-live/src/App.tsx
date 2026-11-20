@@ -51,7 +51,6 @@ import { ClassRemovalControls, SectionRemovalControls } from '@/components/acade
 import { EnrollmentYearField } from '@/components/academic/enrollment-year-field';
 import { EnrollmentForm } from '@/components/academic/enrollment-form';
 import { AdmissionIntake } from '@/components/academic/admission-intake';
-import { AdminAssistantChatWidget } from '@/components/admin-assistant-chat-widget';
 import { StudentProfileEditor } from '@/components/academic/student-profile-editor';
 import { ClassPromotionWizard } from '@/components/academic/class-promotion-wizard';
 import { AddSectionForm, ClassSetupPanel } from '@/components/academic/class-setup';
@@ -416,7 +415,6 @@ function AppShell({
       <div className={`page-enter mx-auto w-full max-w-[1450px] px-4 md:px-9 ${isStudent ? 'pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:py-9' : 'py-7 md:py-9'}`}>{children}</div>
     </main>
     {isStudent && <StudentMobileNavigation path={path} menuOpen={mobileNav} onMore={() => setMobileNav(true)} />}
-    {isAdmin && <AdminAssistantChatWidget openOnMount={path === '/admin/assistant'} />}
   </div>;
 }
 

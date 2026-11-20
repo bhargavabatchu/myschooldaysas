@@ -175,6 +175,7 @@ export * from './getSchoolHighlightsParams';
 export * from './getSections200';
 export * from './getSectionsParams';
 export * from './getSessions200';
+export * from './getStaffRecordsParams';
 export * from './getStudentsParams';
 export * from './getTimetableParams';
 export * from './graduateEnrollmentInput';

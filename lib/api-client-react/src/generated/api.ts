@@ -118,6 +118,7 @@ import type {
   GetSections200,
   GetSectionsParams,
   GetSessions200,
+  GetStaffRecordsParams,
   GetStudentsParams,
   GetTimetableParams,
   GraduateEnrollmentInput,
@@ -3455,20 +3456,27 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = Err
 
 
 
-export const getGetStaffRecordsUrl = () => {
+export const getGetStaffRecordsUrl = (params?: GetStaffRecordsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/identity/staff`
+  return stringifiedParams.length > 0 ? `/api/identity/staff?${stringifiedParams}` : `/api/identity/staff`
 }
 
 /**
  * @summary List staff members with their employment records
  */
-export const getStaffRecords = async ( options?: Parameters<typeof customFetch>[1]): Promise<StaffRecordsPage> => {
+export const getStaffRecords = async (params?: GetStaffRecordsParams, options?: Parameters<typeof customFetch>[1]): Promise<StaffRecordsPage> => {
 
-  return customFetch<StaffRecordsPage>(getGetStaffRecordsUrl(),
+  return customFetch<StaffRecordsPage>(getGetStaffRecordsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -3481,23 +3489,23 @@ export const getStaffRecords = async ( options?: Parameters<typeof customFetch>[
 
 
 
-export const getGetStaffRecordsQueryKey = () => {
+export const getGetStaffRecordsQueryKey = (params?: GetStaffRecordsParams,) => {
     return [
-    `/api/identity/staff`
+    `/api/identity/staff`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetStaffRecordsQueryOptions = <TData = Awaited<ReturnType<typeof getStaffRecords>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaffRecords>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetStaffRecordsQueryOptions = <TData = Awaited<ReturnType<typeof getStaffRecords>>, TError = ErrorType<void>>(params?: GetStaffRecordsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaffRecords>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetStaffRecordsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetStaffRecordsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStaffRecords>>> = ({ signal }) => getStaffRecords({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStaffRecords>>> = ({ signal }) => getStaffRecords(params, { signal, ...requestOptions });
 
 
 
@@ -3512,7 +3520,7 @@ export type GetStaffRecordsQueryError = ErrorType<void>
 
 /** @summary List staff members with their employment records */
 export function useGetStaffRecords<TData = Awaited<ReturnType<typeof getStaffRecords>>, TError = ErrorType<void>>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaffRecords>>, TError, TData>> & Pick<
+ params: undefined |  GetStaffRecordsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaffRecords>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getStaffRecords>>,
           TError,
@@ -3523,7 +3531,7 @@ export function useGetStaffRecords<TData = Awaited<ReturnType<typeof getStaffRec
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary List staff members with their employment records */
 export function useGetStaffRecords<TData = Awaited<ReturnType<typeof getStaffRecords>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaffRecords>>, TError, TData>> & Pick<
+ params?: GetStaffRecordsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaffRecords>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getStaffRecords>>,
           TError,
@@ -3534,16 +3542,16 @@ export function useGetStaffRecords<TData = Awaited<ReturnType<typeof getStaffRec
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary List staff members with their employment records */
 export function useGetStaffRecords<TData = Awaited<ReturnType<typeof getStaffRecords>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaffRecords>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ params?: GetStaffRecordsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaffRecords>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary List staff members with their employment records */
 export function useGetStaffRecords<TData = Awaited<ReturnType<typeof getStaffRecords>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaffRecords>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ params?: GetStaffRecordsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaffRecords>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetStaffRecordsQueryOptions(options)
+  const queryOptions = getGetStaffRecordsQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
