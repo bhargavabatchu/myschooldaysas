@@ -41,12 +41,15 @@ function embedUrl(target: ViewerTarget): string | null {
     const id = url.pathname.split("/").filter(Boolean)[0];
     if (id && /^\d+$/.test(id)) return `https://player.vimeo.com/video/${id}`;
   }
-  if (/\.(pdf|doc|docx|ppt|pptx|xls|xlsx)(\?.*)?$/i.test(url.pathname)) {
+  if (/\.(pdf)(\?.*)?$/i.test(url.pathname)) {
+    // Direct PDFs render in every desktop browser's native viewer inside an
+    // iframe — the most reliable in-app reading path.
+    return url.toString();
+  }
+  if (/\.(doc|docx|ppt|pptx|xls|xlsx)(\?.*)?$/i.test(url.pathname)) {
     return `https://docs.google.com/viewer?url=${encodeURIComponent(target.url)}&embedded=true`;
   }
   if (target.kind === "document" || target.kind === "link") {
-    // Try the Google Docs viewer for any likely-document URL; it shows a
-    // graceful message when the file type isn't previewable.
     return `https://docs.google.com/viewer?url=${encodeURIComponent(target.url)}&embedded=true`;
   }
   return null;
