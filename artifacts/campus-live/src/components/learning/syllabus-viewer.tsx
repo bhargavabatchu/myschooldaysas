@@ -32,9 +32,10 @@ function embedUrl(target: ViewerTarget): string | null {
     return null;
   }
   if (url.hostname.includes("youtube.com") || url.hostname.includes("youtu.be")) {
+    const list = url.searchParams.get("list");
+    if (list) return `https://www.youtube.com/embed/videoseries?list=${list}`;
     const id = youtubeId(url);
     if (!id) return null;
-    if (id.startsWith("list")) return `https://www.youtube.com/embed/${id}`;
     return `https://www.youtube.com/embed/${id}`;
   }
   if (url.hostname.includes("vimeo.com")) {
