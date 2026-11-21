@@ -237,7 +237,8 @@ export function LearningSyllabus({ canManage, studentView, onNotice }: Props) {
       <p className="mx-auto mb-0 mt-1 max-w-lg text-sm text-[hsl(var(--muted-foreground))]">Your class subjects and lessons will appear here when the school shares them.</p>
     </div>;
 
-    return <section className="space-y-4" aria-label="Class syllabus">
+    return <>
+    <section className="space-y-4" aria-label="Class syllabus">
       {failure && <div role="alert" className="rounded-xl border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.08)] px-4 py-3 text-sm text-[hsl(var(--destructive))]">{errorMessage(failure)}</div>}
       {!active ? <>
         <header className="space-y-1">
@@ -291,7 +292,9 @@ export function LearningSyllabus({ canManage, studentView, onNotice }: Props) {
           <p className="mb-0 mt-1 text-xs text-[hsl(var(--muted-foreground))]">Lessons and topics for this subject will appear here when the school adds them.</p>
         </div> : <div className="space-y-3">{active.lessons.map(renderLesson)}</div>}
       </>}
-    </section>;
+    </section>
+    {viewer && <SyllabusMaterialViewer target={viewer} onClose={() => setViewer(null)} />}
+    </>;
   }
 
   return <section className="space-y-4">
