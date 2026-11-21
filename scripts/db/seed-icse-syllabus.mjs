@@ -97,6 +97,43 @@ try {
         const syllabusId = syllabus.rows[0].id;
         const wasInserted = syllabus.rows[0].inserted === true;
 
+        // Reference materials (idempotent): CISCE class-video channel + the
+        // official curriculum PDF, attached to the first topic. Runs before
+        // the lesson-skip so reruns still attach materials to new syllabi.
+        const firstLesson = await client.query(
+          "SELECT id FROM learning.syllabus_lessons WHERE org_id = $1 AND syllabus_id = $2 ORDER BY position LIMIT 1",
+          [orgId, syllabusId],
+        );
+        if (firstLesson.rows[0]) {
+          const firstTopic = await client.query(
+            "SELECT id FROM learning.syllabus_topics WHERE org_id = $1 AND lesson_id = $2 ORDER BY position LIMIT 1",
+            [orgId, firstLesson.rows[0].id],
+          );
+          if (firstTopic.rows[0]) {
+            await client.query(
+              `INSERT INTO learning.syllabus_materials (org_id, topic_id, title, kind, url, description, position, created_by, updated_by)
+               SELECT $1, $2, m.title, m.kind, m.url, m.description, m.position, $3, $3
+                 FROM (VALUES
+                   ($4::text, 'video'::text, $5::text, 'CISCE official class-video channel — curated lesson videos for this subject.', 0),
+                   ($6::text, 'document'::text, $7::text, 'Official CISCE curriculum reference document.', 1)
+                 ) AS m(title, kind, url, description, position)
+               WHERE NOT EXISTS (
+                 SELECT 1 FROM learning.syllabus_materials sm
+                  WHERE sm.org_id = $1 AND sm.topic_id = $2 AND sm.title = m.title
+               )`,
+              [
+                orgId,
+                firstTopic.rows[0].id,
+                actorId,
+                "CISCE Class Videos (official channel)",
+                `https://www.youtube.com/c/cisceclassvideos/search?query=${encodeURIComponent(`ICSE ${className} ${subject.name}`)}`,
+                "CISCE Curriculum (official)",
+                "https://cisce.org/wp-content/uploads/2025/03/PrimaryCurriculum.pdf",
+              ],
+            );
+          }
+        }
+
         // Idempotency: skip subjects that already have lessons.
         const existingLessons = await client.query(
           "SELECT count(*)::int AS total FROM learning.syllabus_lessons WHERE org_id = $1 AND syllabus_id = $2",
@@ -136,6 +173,7 @@ try {
           );
           topicsCreated += topics.rowCount;
         }
+
       }
       console.log(`${className}: ${sections.rowCount} sections processed`);
     }

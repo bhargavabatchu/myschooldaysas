@@ -159,10 +159,11 @@ const routes: FastifyPluginAsync = async (fastify) => {
     try {
       const result = await withOrg(user.orgId, (client) =>
         client.query(
-          `SELECT ta.id, ta.section_id, s.name AS section_name, ta.subject_id, sub.name AS subject_name,
+          `SELECT ta.id, ta.section_id, s.name AS section_name, c.name AS class_name, ta.subject_id, sub.name AS subject_name,
                   ta.teacher_user_id, teacher.name AS teacher_name, ta.is_class_teacher
              FROM academic.teacher_assignments ta
              JOIN academic.sections s ON s.org_id=ta.org_id AND s.id=ta.section_id
+             JOIN academic.classes c ON c.org_id=s.org_id AND c.id=s.class_id
              JOIN academic.subjects sub ON sub.org_id=ta.org_id AND sub.id=ta.subject_id
              JOIN identity.users teacher ON teacher.org_id=ta.org_id AND teacher.id=ta.teacher_user_id
             WHERE ta.org_id=$1 AND ($2::uuid IS NULL OR ta.section_id=$2)
@@ -173,7 +174,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
       );
       res.json({
         items: result.rows.map((row: any) => ({
-          id: row.id, sectionId: row.section_id, sectionName: row.section_name,
+          id: row.id, sectionId: row.section_id, sectionName: row.section_name, className: row.class_name,
           subjectId: row.subject_id, subjectName: row.subject_name, teacherId: row.teacher_user_id,
           teacherName: row.teacher_name, isClassTeacher: row.is_class_teacher,
         })),

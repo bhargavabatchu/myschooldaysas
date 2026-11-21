@@ -2044,6 +2044,7 @@ export interface AcademicTeacherAssignment {
   id: string;
   sectionId: string;
   sectionName: string;
+  className?: string;
   subjectId: string;
   subjectName: string;
   teacherId: string;

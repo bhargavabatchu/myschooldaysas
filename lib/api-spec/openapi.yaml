@@ -4298,6 +4298,7 @@ components:
         id: { type: string, format: uuid }
         sectionId: { type: string, format: uuid }
         sectionName: { type: string }
+        className: { type: string }
         subjectId: { type: string, format: uuid }
         subjectName: { type: string }
         teacherId: { type: string, format: uuid }
