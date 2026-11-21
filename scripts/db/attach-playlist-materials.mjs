@@ -48,7 +48,7 @@ try {
 
   let attached = 0;
   for (const playlist of playlists) {
-    const gradeMatch = /class\s*(\d{1,2})\b/i.exec(playlist.title);
+    const gradeMatch = /class\s*(\d{1,2})(?:st|nd|rd|th)?\b/i.exec(playlist.title);
     if (!gradeMatch) continue;
     const grade = Number(gradeMatch[1]);
     if (grade < 1 || grade > 10) continue;
