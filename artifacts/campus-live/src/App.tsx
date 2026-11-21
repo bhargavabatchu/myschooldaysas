@@ -366,10 +366,6 @@ function AppShell({
         </div>)}
       </nav>
       <div className="mt-auto">
-        <div className="mb-4 rounded-xl border border-white/10 bg-white/[.04] p-3">
-          <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold text-white/80"><ShieldCheck size={14} className="text-[hsl(var(--accent))]"/> A trusted classroom</div>
-          <p className="m-0 text-[11px] leading-relaxed text-white/45">Your school’s learning space, all in one place.</p>
-        </div>
         <div className="flex items-center gap-3 border-t border-white/10 px-2 pt-4">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[hsl(var(--brand-mint))] text-xs font-bold text-[hsl(var(--brand-mint-ink))]">{user.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}</div>
           <div className="min-w-0 flex-1"><div data-testid="text-username" className="truncate text-[12px] font-bold">{user.name}</div><div className="truncate text-[10px] capitalize text-white/50">{roleName(user.roles[0])}</div></div>
